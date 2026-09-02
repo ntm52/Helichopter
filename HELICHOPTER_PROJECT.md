@@ -1,6 +1,6 @@
 # Helichopter — Accessibility & Modernization Project
 
-**Status:** Phase 1 complete. Phase 2 is next.
+**Status:** Phase 2 complete. Phase 3 is next.
 **Last updated:** 2026-08-30 — initial audit and plan, written from Windows (read-only).
 
 > **Start a new session with:** *"Read HELICHOPTER_PROJECT.md, check the Progress Log, and
@@ -588,3 +588,41 @@ Existing utilities worth keeping and reusing rather than rewriting: `PhysicsCate
   Replace the scattered `UserDefaults` reads in `GameSceneAdapter`, `PipeFactory`, and
   `HelicopterNode` with a single observable `GameSettings` model. Fix B2 (inverted
   `pipeDistance` toggle) here as part of making gap size a real continuous parameter.
+
+### 2026-09-01 — Phase 2 complete (Mac, Xcode)
+
+- **Phase:** Phase 2 — The tuning engine.
+- **Done:** Clean build confirmed (zero errors, zero warnings).
+  - **`GameSettings.swift` created** (`Helichopter/Utils/`) — singleton, all 10 tuning
+    parameters persisted independently under `gs_*` UserDefaults keys:
+    `gapMin`, `gapMax`, `pipeSpawnInterval`, `pipeMoveDuration`, `scrollSpeed`,
+    `gravity`, `flapStrength`, `terminalVelocity`, `hitboxFraction`, `pipeHeightVariance`.
+  - **Three presets** defined as static `Preset` structs:
+    - `gentlePreset` (slow pipes, wide gaps, forgiving hitbox, low gravity)
+    - `standardPreset` (matches previous medium-difficulty gameplay exactly)
+    - `challengePreset` (fast pipes, tight gaps, full hitbox)
+  - **Migration**: on first launch reads old `Setting.difficulty` key and applies the
+    corresponding preset; sets `gs_hasMigrated = true` to prevent re-migration.
+  - **`AppDelegate`**: now calls `Setting.registerDefaults()` (was never called — music
+    and sound effects would have defaulted to off) and initialises `GameSettings.shared`
+    to run migration early.
+  - **`GameSceneAdapter`**: `gravity` is now a computed property reading from
+    `GameSettings.shared.gravity`; scroll speed passed from `GameSettings.shared.scrollSpeed`
+    to `InfiniteSpriteScrollNode` at creation.
+  - **`PipeFactory`**: spawn interval and pipe move duration read from `GameSettings`;
+    gap min/max read from `GameSettings`; `pipeHeightVariance` controls bottom-pipe
+    height spread (0 = fixed, 1 = full range).
+  - **`HelicopterNode`**: flap strength, terminal velocity, and hitbox radius all read
+    from `GameSettings`. Hitbox radius = `(size.width / 2) * hitboxFraction`
+    (standard preset: 0.8 → 40pt, same as old hardcoded value).
+  - **B2 fix**: `SettingsScene` PipeDistance toggle now writes `gapMin`/`gapMax` to
+    `GameSettings` correctly — isOn=true now means wide/far gaps (was backwards before);
+    difficulty triggle now applies the full corresponding preset (not just spawn interval).
+- **Deferred from Phase 2:** Per-profile save/load (therapist/parent switching) — noted
+  in plan, deferred to Phase 5 when the full settings UI is built. The `GameSettings`
+  model already supports this pattern; it just needs a profile selection layer on top.
+- **Notes for next session:** Phase 3 — Switch access. The `FocusScanner` that drives
+  `ButtonNode.isFocused` / `focusableNeighbors`. Start with keyboard emulation
+  (`pressesBegan`) — highest-value single addition. Then `GCController`. Then native
+  iOS Switch Control via `isAccessibilityElement`. In-game control schemes (hold-to-hover)
+  come after the menu scanning is solid.

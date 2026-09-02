@@ -16,22 +16,14 @@ struct PipeFactory {
 
     static func launch(for scene: SKScene, targetNode: SKNode) -> SKAction {
         let pipeName = "pipe"
+        let settings = GameSettings.shared
 
         let cleanUpAction = SKAction.run {
             targetNode.childNode(withName: pipeName)?.removeFromParent()
         }
 
-        let waitAction = SKAction.wait(forDuration: UserDefaults.standard.getDifficultyLevel().rawValue)
-
-        // B5 fix: switch on the enum directly rather than its raw Double value
-        let temp: Int
-        switch UserDefaults.standard.getDifficultyLevel() {
-        case .easy:   temp = 8
-        case .medium: temp = 7
-        case .hard:   temp = 4
-        }
-
-        let pipeMoveDuration = TimeInterval(temp)
+        let waitAction = SKAction.wait(forDuration: settings.pipeSpawnInterval)
+        let pipeMoveDuration = settings.pipeMoveDuration
 
         let producePipeAction = SKAction.run {
             guard let standardPipe = PipeFactory.produceStandardPipe(sceneSize: scene.size) else {
@@ -66,13 +58,14 @@ struct PipeFactory {
     // MARK: - Pipe parts production
 
     private static func standardPipeParts(for sceneSize: CGSize) -> PipeParts? {
+        let settings = GameSettings.shared
         let pipeX: CGFloat = sceneSize.width
         let sceneHeight = sceneSize.height
         let minPipeHeight: CGFloat = 50
 
-        // B7 fix: cap bottom pipe at 55% of scene height so gap + top pipe always fit
-        let maxBottomHeight = max(70, sceneHeight * 0.55)
-        let bottomHeight = CGFloat.range(min: 70, max: maxBottomHeight)
+        // Variance 0.0 = all pipes at minimum height (predictable), 1.0 = full range
+        let maxBottomHeight = max(70, sceneHeight * 0.55 * settings.pipeHeightVariance)
+        let bottomHeight = CGFloat.range(min: 70, max: max(70, maxBottomHeight))
         let pipeBottomSize = CGSize(width: pipeWidth, height: bottomHeight)
         let pipeBottom = PipeNode(textures: (pipe: "pipe-yellow", cap: "cap-yellow"), of: pipeBottomSize, side: false)
         pipeBottom?.position = CGPoint(x: pipeX, y: bottomHeight / 2)
@@ -82,16 +75,11 @@ struct PipeFactory {
             return nil
         }
 
-        // Gap size (note: pipeDistance toggle logic is inverted — corrected in Phase 2)
-        var minimum: CGFloat = 300
-        var maximum: CGFloat = 700
+        // Gap from GameSettings — B2 fixed: values now directly represent gap size (wider = easier)
+        var minimum = settings.gapMin
+        var maximum = settings.gapMax
 
-        if UserDefaults.standard.bool(for: .pipeDistance) {
-            minimum = 240
-            maximum = 380
-        }
-
-        // B7 fix: clamp gap so top pipe always has at least minPipeHeight
+        // Clamp gap so the top pipe always has at least minPipeHeight
         let absoluteMaxGap = sceneHeight - unwrappedPipeBottom.size.height - minPipeHeight
         maximum = min(maximum, max(minimum, absoluteMaxGap))
 
@@ -105,7 +93,6 @@ struct PipeFactory {
         threshold.physicsBody?.isDynamic = false
         threshold.zPosition = zPosition
 
-        // Top pipe fills the remaining scene height
         let topHeight = max(minPipeHeight, sceneHeight - unwrappedPipeBottom.size.height - threshold.size.height)
         let pipeTopSize = CGSize(width: pipeWidth, height: topHeight)
         let pipeTop = PipeNode(textures: (pipe: "pipe-yellow", cap: "cap-yellow"), of: pipeTopSize, side: true)
