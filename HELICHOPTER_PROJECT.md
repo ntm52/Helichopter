@@ -1,6 +1,6 @@
 # Helichopter — Accessibility & Modernization Project
 
-**Status:** Phase 0 complete. Phase 1 is next.
+**Status:** Phase 1 complete. Phase 2 is next.
 **Last updated:** 2026-08-30 — initial audit and plan, written from Windows (read-only).
 
 > **Start a new session with:** *"Read HELICHOPTER_PROJECT.md, check the Progress Log, and
@@ -552,3 +552,39 @@ Existing utilities worth keeping and reusing rather than rewriting: `PhysicsCate
   then dead code deletion, then the five code fixes (B5–B8), then `@UIApplicationMain` → `@main`.
   Do not start Phase 2 until Phase 1 exit criteria (zero-warning build, behavior identical to
   original) are confirmed.
+
+### 2026-09-01 — Phase 1 complete (Mac, Xcode)
+
+- **Phase:** Phase 1 — Platform and project modernization.
+- **Done:** Clean build confirmed (zero errors, zero warnings).
+  - **Info.plist**: `UIRequiredDeviceCapabilities` → `arm64` (B3); removed `UIAppFonts`/`Inter-Black.otf`
+    (B4); iPad orientation locked to portrait to match `GameViewController` (was previously all-4).
+  - **AppDelegate**: `@UIApplicationMain` → `@main`.
+  - **Dead code deleted**: `SKSpriteNode+GIF.swift`, `SKScene+ShaderTransition.swift`,
+    `SKTexture+Gradient.swift`, `SKScene+SpriteUploader.swift`, `Bool+PipeRandom.swift`,
+    all 4 `.fsh` transition shaders, `SnowParticleEffect.sks`, `CharactersScene.swift`.
+  - **Protocols**: `class` → `AnyObject` in `Updatable`, `Touchable`, `Playable`,
+    `ButtonNodeResponderType`, `ToggleButtonNodeResponderType`, `TriggleButtonNodeResponderType`.
+  - **PipeNode** (UIGraphicsImageRenderer): pipes now render at screen scale — fixes blurry
+    pipes on 2x/3x displays.
+  - **SKTextureAtlas+FrameUploader**: stray `print()` removed.
+  - **B5 fix** (`PipeFactory`): difficulty switch now operates on the `Difficulty` enum directly
+    rather than its raw `Double` value — no more silent fall-through.
+  - **B6 fix** (`PlayingState`, `GameOverState`): discarded `SKAction.play()` return values now
+    correctly run on their respective audio nodes.
+  - **B7 fix** (`PipeFactory`): bottom pipe height capped at 55% of scene height; gap maximum
+    clamped so top pipe always has at least 50pt — prevents negative `topHeight` on any viewport.
+  - **B8 fix** (`ButtonNode`, `ToggleButtonNode`, `TriggleButtonNode`): `focusRing` changed to
+    optional with nil-safe access; `fatalError` on unrecognised button name / missing child
+    labels replaced with `return nil` (failable init propagation).
+- **Deferred from Phase 1:**
+  - iPad `.sks` scene deduplication (A9) — requires Xcode scene editor; deferred to Phase 4/5
+    when the UI is being redesigned anyway. The dual-file system still works correctly.
+  - UIScene lifecycle adoption — `UIRequiresFullScreen: true` makes multi-window moot;
+    deferred until there's a concrete reason to adopt it.
+  - Swift 6 strict concurrency — deferred; `unowned` GK state references would require
+    significant refactoring that belongs in Phase 3/4.
+- **Notes for the next session:** Phase 2 is next — the `GameSettings` tuning model.
+  Replace the scattered `UserDefaults` reads in `GameSceneAdapter`, `PipeFactory`, and
+  `HelicopterNode` with a single observable `GameSettings` model. Fix B2 (inverted
+  `pipeDistance` toggle) here as part of making gap size a real continuous parameter.
