@@ -119,4 +119,19 @@ class TriggleButtonNode: ButtonNode {
         super.touchesBegan(touches, with: event)
         triggle.switchState()
     }
+
+    // MARK: - Scanner & Accessibility Support
+
+    override var accessibilityScanLabel: String {
+        let base = super.accessibilityScanLabel
+        switch triggle.state() {
+        case .off:      return "\(base), Easy"
+        case .switched: return "\(base), Medium"
+        case .on:       return "\(base), Hard"
+        }
+    }
+
+    override func scannerActivate() {
+        triggle.switchState()
+    }
 }

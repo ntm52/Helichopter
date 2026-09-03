@@ -8,7 +8,8 @@ class PlayingState: GKState {
     unowned var adapter: GameSceneAdapter
 
     private let playerScale = CGPoint(x: 0.4, y: 0.4)
-    private let animationTimeInterval: TimeInterval = 0.1
+    // 10 frames × 0.05 s = 0.5 s per full rotor rotation (2 Hz — well under the 3 Hz flicker threshold).
+    private let animationTimeInterval: TimeInterval = 0.05
 
     private(set) var infinitePipeProducer: SKAction! = nil
     let infinitePipeProducerKey = "Pipe Action"
@@ -55,6 +56,16 @@ class PlayingState: GKState {
             if let menuAudio = scene.childNode(withName: adapter.menuAudio.name!) {
                 menuAudio.removeFromParent()
             }
+        }
+
+        // Fade out the tap-to-fly hint a few seconds after the game starts.
+        // The label lives inside the "world" node; try the explicit path first,
+        // then fall back to a full-tree search in case the hierarchy ever changes.
+        let hint = scene.childNode(withName: "world/CLICK ME TO FLY")
+            ?? scene.childNode(withName: "//CLICK ME TO FLY")
+        if let hint {
+            hint.alpha = 1
+            hint.run(.sequence([.wait(forDuration: 3.0), .fadeOut(withDuration: 0.5)]))
         }
 
         let character = PlayableCharacter.helicopter

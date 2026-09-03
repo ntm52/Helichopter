@@ -21,17 +21,16 @@ enum ButtonIdentifier: String {
     case pipeDistance = "PipeDistance"
     case characters = "Characters"
     case difficulty = "Difficulty"
+    // Phase 5
+    case noFail = "NoFail"
+    case calmMode = "CalmMode"
+    case showScore = "ShowScore"
 
     static let allButtonIdentifiers: [ButtonIdentifier] = [
-        .play, .pause, .resume, .menu, .settings, .home, .retry, .cancel, .scores, .soundEffects, .music, .pipeDistance, .characters, .difficulty
+        .play, .pause, .resume, .menu, .settings, .home, .retry, .cancel, .scores,
+        .soundEffects, .music, .pipeDistance, .characters, .difficulty,
+        .noFail, .calmMode, .showScore
     ]
-
-    var selectedTextureName: String? {
-        switch self {
-        default:
-            return nil
-        }
-    }
 }
 
 /// A custom sprite node that represents a pressable and selectable button in a scene.
@@ -48,13 +47,17 @@ class ButtonNode: SKSpriteNode {
         return responder
     }
 
+    /// Baseline blend factor applied by the active UI theme.
+    /// Preserved when transitioning out of highlight so the theme tint isn't lost.
+    var themeColorBlendFactor: CGFloat = 0.0
+
     var isHighlighted = false {
         didSet {
             guard oldValue != isHighlighted else { return }
             removeAllActions()
             let newScale: CGFloat = isHighlighted ? 0.99 : 1.01
             let scaleAction = SKAction.scale(by: newScale, duration: 0.15)
-            let newColorBlendFactor: CGFloat = isHighlighted ? 1.0 : 0.0
+            let newColorBlendFactor: CGFloat = isHighlighted ? 1.0 : themeColorBlendFactor
             let colorBlendAction = SKAction.colorize(withColorBlendFactor: newColorBlendFactor, duration: 0.15)
             run(SKAction.group([scaleAction, colorBlendAction]))
         }
@@ -68,7 +71,6 @@ class ButtonNode: SKSpriteNode {
 
     var defaultTexture: SKTexture?
     var selectedTexture: SKTexture?
-    var focusableNeighbors = [ControlInputDirection: ButtonNode]()
 
     var isFocused = false {
         didSet {
@@ -102,13 +104,8 @@ class ButtonNode: SKSpriteNode {
         }
         self.buttonIdentifier = buttonIdentifier
 
-        defaultTexture = texture
-
-        if let textureName = buttonIdentifier.selectedTextureName {
-            selectedTexture = SKTexture(imageNamed: textureName)
-        } else {
-            selectedTexture = texture
-        }
+        defaultTexture  = texture
+        selectedTexture = texture
 
         focusRing?.isHidden = true
         isUserInteractionEnabled = true
@@ -128,18 +125,76 @@ class ButtonNode: SKSpriteNode {
         }
     }
 
-    func performInvalidFocusChangeAnimationForDirection(direction: ControlInputDirection) {
-        let animationKey = "ButtonNode.InvalidFocusChangeAnimationKey"
-        guard action(forKey: animationKey) == nil else { return }
+    // MARK: - Scanner & Accessibility Support
 
-        let theAction: SKAction
-        switch direction {
-        case .up:    theAction = SKAction(named: "InvalidFocusChange_Up")!
-        case .down:  theAction = SKAction(named: "InvalidFocusChange_Down")!
-        case .left:  theAction = SKAction(named: "InvalidFocusChange_Left")!
-        case .right: theAction = SKAction(named: "InvalidFocusChange_Right")!
+    /// Human-readable label spoken by FocusScanner and read by VoiceOver / Switch Control.
+    var accessibilityScanLabel: String {
+        guard let id = buttonIdentifier else { return name ?? "Button" }
+        switch id {
+        case .play:         return "Play"
+        case .pause:        return "Pause"
+        case .resume:       return "Resume"
+        case .menu:         return "Menu"
+        case .home:         return "Home"
+        case .settings:     return "Settings"
+        case .retry:        return "Try Again"
+        case .cancel:       return "Cancel"
+        case .scores:       return "Scores"
+        case .soundEffects: return "Sound Effects"
+        case .music:        return "Music"
+        case .pipeDistance: return "Pipe Gap"
+        case .characters:   return "Characters"
+        case .difficulty:   return "Difficulty"
+        case .noFail:       return "No-Fail Mode"
+        case .calmMode:     return "Calm Mode"
+        case .showScore:    return "Show Score"
         }
-        run(theAction, withKey: animationKey)
+    }
+
+    /// VoiceOver hint describing what activating this button does.
+    var accessibilityScanHint: String {
+        guard let id = buttonIdentifier else { return "" }
+        switch id {
+        case .play:         return "Starts a new game"
+        case .pause:        return "Pauses the game"
+        case .resume:       return "Resumes the game"
+        case .menu, .home:  return "Goes to the main menu"
+        case .settings:     return "Opens settings"
+        case .retry:        return "Starts a new game"
+        case .cancel:       return "Dismisses this screen"
+        case .scores:       return "Shows your high scores"
+        case .soundEffects: return "Toggles sound effects on or off"
+        case .music:        return "Toggles background music on or off"
+        case .pipeDistance: return "Toggles wide or narrow pipe gaps"
+        case .characters:   return "Changes the playable character"
+        case .difficulty:   return "Cycles through Easy, Medium, and Hard"
+        case .noFail:       return "Toggles no-fail practice mode on or off"
+        case .calmMode:     return "Toggles calm mode — suppresses hit sounds and haptics"
+        case .showScore:    return "Toggles score display on or off"
+        }
+    }
+
+    /// Called by FocusScanner and iOS Switch Control to activate this button.
+    /// Subclasses override to perform the type-appropriate action.
+    func scannerActivate() {
+        buttonTriggered()
+    }
+
+    /// Returns the button's frame in UIKit screen coordinates for UIAccessibilityElement proxies.
+    func accessibilityScreenFrame(in skView: SKView) -> CGRect {
+        guard let scene = scene else { return .zero }
+        let pos = convert(CGPoint.zero, to: scene)
+        let halfW = frame.width / 2
+        let halfH = frame.height / 2
+        let viewTL = skView.convert(CGPoint(x: pos.x - halfW, y: pos.y + halfH), from: scene)
+        let viewBR = skView.convert(CGPoint(x: pos.x + halfW, y: pos.y - halfH), from: scene)
+        let viewRect = CGRect(
+            x: min(viewTL.x, viewBR.x),
+            y: min(viewTL.y, viewBR.y),
+            width: abs(viewBR.x - viewTL.x),
+            height: abs(viewBR.y - viewTL.y)
+        )
+        return UIAccessibility.convertToScreenCoordinates(viewRect, in: skView)
     }
 
     // MARK: Responder
@@ -172,25 +227,5 @@ class ButtonNode: SKSpriteNode {
         }
     }
 
-    #elseif os(OSX)
-    override func mouseDown(with event: NSEvent) {
-        super.mouseDown(with: event)
-        isHighlighted = true
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        super.mouseUp(with: event)
-        isHighlighted = false
-        if containsLocationForEvent(event) {
-            buttonTriggered()
-        }
-    }
-
-    private func containsLocationForEvent(_ event: NSEvent) -> Bool {
-        guard let scene = scene else { return false }
-        let location = event.location(in: scene)
-        let clickedNode = scene.atPoint(location)
-        return clickedNode === self || clickedNode.inParentHierarchy(self)
-    }
     #endif
 }

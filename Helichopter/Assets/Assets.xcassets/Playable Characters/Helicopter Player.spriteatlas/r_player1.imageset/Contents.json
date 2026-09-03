@@ -1,15 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "HelicopterPlayer-removebg-preview.png",
+      "filename" : "r_player1.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "r_player1@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
+      "filename" : "r_player1@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

@@ -1,30 +1,22 @@
-//
-//  GameViewController.swift
-//  ios-spritekit-flappy-flying-bird
-//
-//  Created by Astemir Eleev on 02/05/2018.
-//  Copyright © 2018 Astemir Eleev. All rights reserved.
-//
-
 import UIKit
 import SpriteKit
 import GameplayKit
+import GameController
+
+// MARK: - Scene helpers
 
 enum Scenes: String {
-    case title = "TitleScene"
-    case game = "GameScene"
+    case title   = "TitleScene"
+    case game    = "GameScene"
     case setting = "SettingsScene"
-    case pause = "PauseScene"
-    case failed = "FailedScene"
-    
+    case pause   = "PauseScene"
+    case failed  = "FailedScene"
 }
 
 extension Scenes {
     func getName() -> String {
-        let padId = " iPad"
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
-        
-        return isPad ? self.rawValue + padId : self.rawValue
+        return isPad ? rawValue + " iPad" : rawValue
     }
 }
 
@@ -33,13 +25,10 @@ enum NodeScale: Float {
 }
 
 extension NodeScale {
-    
     func getValue() -> Float {
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
-        
         switch self {
-        case .gameBackgroundScale:
-            return isPad ? 1.5 : 1.35
+        case .gameBackgroundScale: return isPad ? 1.5 : 1.35
         }
     }
 }
@@ -52,43 +41,189 @@ extension CGPoint {
     }
 }
 
+// MARK: - ButtonAccessibilityElement
+
+/// UIKit accessibility proxy that wraps a ButtonNode for iOS Switch Control item scanning.
+private final class ButtonAccessibilityElement: UIAccessibilityElement {
+    weak var buttonNode: ButtonNode?
+    weak var skView: SKView?
+
+    override var accessibilityFrame: CGRect {
+        get {
+            guard let button = buttonNode, let view = skView else { return .zero }
+            return button.accessibilityScreenFrame(in: view)
+        }
+        set { }
+    }
+
+    override func accessibilityActivate() -> Bool {
+        guard let button = buttonNode else { return false }
+        button.scannerActivate()
+        return true
+    }
+}
+
+// MARK: - GameViewController
 
 class GameViewController: UIViewController {
 
-    // MARK: - Overrides
-    
+    // MARK: - Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        let sceneName = Scenes.title.getName()
-        
-        if let scene = SKScene(fileNamed: sceneName) as? TitleScene {
 
-            // Set the scale mode to scale to fit the window
-//            scene.scaleMode = .aspectFit
+        let sceneName = Scenes.title.getName()
+        if let scene = SKScene(fileNamed: sceneName) as? TitleScene {
             scene.scaleMode = .aspectFill
-            
-            // Present the scene
-            if let view = self.view as! SKView? {
+            if let view = self.view as? SKView {
                 view.presentScene(scene)
-                
                 view.ignoresSiblingOrder = true
-//                view.showsFPS = true
-//                view.showsNodeCount = true
-//                view.showsPhysics = true
             }
+        }
+
+        setupGameControllerObservers()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Required so pressesBegan/Ended events reach this view controller
+        becomeFirstResponder()
+    }
+
+    override var canBecomeFirstResponder: Bool { true }
+
+    override var shouldAutorotate: Bool { true }
+
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
+
+    override var prefersStatusBarHidden: Bool { true }
+
+    // MARK: - Accessibility (VoiceOver + iOS Switch Control)
+
+    /// Returns UIKit accessibility elements for every button in the scene, plus a score
+    /// element when gameplay is active. VoiceOver and iOS Switch Control item scanning
+    /// both use this list.
+    override var accessibilityElements: [Any]? {
+        get {
+            guard let skView = view as? SKView, let scene = skView.scene else { return nil }
+            var elements: [Any] = []
+
+            // Score element — present when GameScene is playing
+            if let gameScene = scene as? GameScene, let scoreText = gameScene.currentScoreText {
+                let scoreElem = UIAccessibilityElement(accessibilityContainer: skView)
+                scoreElem.accessibilityLabel = scoreText
+                scoreElem.accessibilityTraits = .staticText
+                scoreElem.accessibilityFrame = UIAccessibility.convertToScreenCoordinates(
+                    CGRect(x: 0, y: 0, width: skView.bounds.width, height: 80), in: skView)
+                elements.append(scoreElem)
+            }
+
+            // Button elements
+            let buttons = scene.findAllButtonsInScene()
+            let buttonElems: [ButtonAccessibilityElement] = buttons.map { btn in
+                let elem = ButtonAccessibilityElement(accessibilityContainer: skView)
+                elem.buttonNode = btn
+                elem.skView = skView
+                elem.accessibilityLabel = btn.accessibilityScanLabel
+                elem.accessibilityHint  = btn.accessibilityScanHint
+                elem.accessibilityTraits = .button
+                return elem
+            }
+            elements.append(contentsOf: buttonElems)
+
+            return elements.isEmpty ? nil : elements
+        }
+        set { }
+    }
+
+    // MARK: - Keyboard input (hardware keyboard / Bluetooth switch interfaces)
+    //
+    // Common emulation mappings:
+    //   Space / Enter / 1 / Up Arrow  → primary switch  (flap, activate)
+    //   2 / Down Arrow / Left Arrow   → secondary switch (advance scan, nudge down)
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        if !forwardPresses(presses, ended: false) {
+            super.pressesBegan(presses, with: event)
         }
     }
 
-    override var shouldAutorotate: Bool {
-        return true
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        if !forwardPresses(presses, ended: true) {
+            super.pressesEnded(presses, with: event)
+        }
     }
 
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        return .portrait
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        _ = forwardPresses(presses, ended: true)
+        super.pressesCancelled(presses, with: event)
     }
 
-    override var prefersStatusBarHidden: Bool {
-        return true
+    @discardableResult
+    private func forwardPresses(_ presses: Set<UIPress>, ended: Bool) -> Bool {
+        guard let skView = view as? SKView,
+              let scene = skView.scene as? SwitchInputReceivable else { return false }
+        var handled = false
+        for press in presses {
+            guard let key = press.key else { continue }
+            switch key.keyCode {
+            case .keyboardSpacebar, .keyboardReturnOrEnter,
+                 .keyboard1, .keyboardUpArrow:
+                ended ? scene.switchPrimaryEnded() : scene.switchPrimaryBegan()
+                handled = true
+            case .keyboard2, .keyboardDownArrow, .keyboardLeftArrow, .keyboardRightArrow:
+                ended ? scene.switchSecondaryEnded() : scene.switchSecondaryBegan()
+                handled = true
+            default:
+                break
+            }
+        }
+        return handled
+    }
+
+    // MARK: - Game Controller (Xbox Adaptive Controller, Logitech Adaptive Gaming Kit, etc.)
+
+    private func setupGameControllerObservers() {
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(controllerConnected(_:)),
+            name: .GCControllerDidConnect, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(controllerDisconnected(_:)),
+            name: .GCControllerDidDisconnect, object: nil)
+        // Wire any controller that was already connected before the app launched
+        GCController.controllers().forEach { setupController($0) }
+    }
+
+    @objc private func controllerConnected(_ notification: Notification) {
+        guard let controller = notification.object as? GCController else { return }
+        setupController(controller)
+    }
+
+    @objc private func controllerDisconnected(_ notification: Notification) {
+        // Handler closures are retained by the controller; release happens automatically
+    }
+
+    private func setupController(_ controller: GCController) {
+        if let pad = controller.extendedGamepad {
+            // Primary: A, Right Shoulder
+            pad.buttonA.pressedChangedHandler          = { [weak self] _, _, p in self?.forwardController(primary: true,  pressed: p) }
+            pad.rightShoulder.pressedChangedHandler    = { [weak self] _, _, p in self?.forwardController(primary: true,  pressed: p) }
+            // Secondary: B, Left Shoulder
+            pad.buttonB.pressedChangedHandler          = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
+            pad.leftShoulder.pressedChangedHandler     = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
+            // D-pad up/right = advance scan; down/left = secondary
+            pad.dpad.up.pressedChangedHandler          = { [weak self] _, _, p in self?.forwardController(primary: true,  pressed: p) }
+            pad.dpad.right.pressedChangedHandler       = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
+        }
+    }
+
+    private func forwardController(primary: Bool, pressed: Bool) {
+        guard let skView = view as? SKView,
+              let scene = skView.scene as? SwitchInputReceivable else { return }
+        if primary {
+            pressed ? scene.switchPrimaryBegan() : scene.switchPrimaryEnded()
+        } else {
+            pressed ? scene.switchSecondaryBegan() : scene.switchSecondaryEnded()
+        }
     }
 }

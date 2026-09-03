@@ -36,6 +36,7 @@ class GameOverState: GKState {
         levelScene.playerCharacter?.shouldAcceptTouches = false
         updateScores()
         updateOverlayPresentation()
+        overlay.applyUITheme(GameSettings.shared.selectedTheme)
 
         levelScene.overlay = overlay
         levelScene.isHUDHidden = true
@@ -84,14 +85,20 @@ extension GameOverState {
 
     fileprivate func updateOverlayPresentation() {
         let contentNode = overlay.contentNode
+        let show = GameSettings.shared.showScore
 
         if let bestScoreLabel = contentNode.childNode(withName: "Best Score") as? SKLabelNode {
-            let bestScore = UserDefaults.standard.integer(for: .bestScore)
-            bestScoreLabel.text = "Best Score: \(bestScore)"
+            bestScoreLabel.isHidden = !show
+            if show {
+                bestScoreLabel.text = "Best Score: \(UserDefaults.standard.integer(for: .bestScore))"
+            }
         }
 
         if let currentScore = contentNode.childNode(withName: "Current Score") as? SKLabelNode {
-            currentScore.text = "Current Score: \(levelScene.score)"
+            currentScore.isHidden = !show
+            if show {
+                currentScore.text = "Current Score: \(levelScene.score)"
+            }
         }
     }
 }

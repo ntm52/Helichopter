@@ -1,11 +1,3 @@
-//
-//  LoopedBgrndNode.swift
-//  ios-spritekit-flappy-flying-bird
-//
-//  Created by Astemir Eleev on 02/05/2018.
-//  Copyright © 2018 Astemir Eleev. All rights reserved.
-//
-
 import UIKit
 import SpriteKit
 
@@ -33,7 +25,7 @@ class InfiniteSpriteScrollNode: SKNode {
     init(fileName: String, scaleFactor scale: CGPoint = CGPoint(x: 1.0, y: 1.0), speed: TimeInterval = 100) {
         self.backgroundSpeed = speed
         
-        let yShift: CGFloat = 5.0
+        let yShift: CGFloat = 0.0  // start flush with the scene bottom (anchor at origin)
         
         tiles = [SKSpriteNode]()
         background = SKNode()
@@ -100,7 +92,11 @@ extension InfiniteSpriteScrollNode: Updatable {
         let computedUpdatable = computeUpdatable(currentTime: currentTime)
         delta = computedUpdatable.delta
         lastUpdateTime = computedUpdatable.lastUpdateTime
-        
+
+        // Stop background parallax when the user has enabled Reduce Motion.
+        // Pipe movement is unaffected — that is gameplay, not decoration.
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
+
         moveBackground()
     }
 }

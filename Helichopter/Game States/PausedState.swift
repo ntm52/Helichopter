@@ -1,11 +1,3 @@
-//
-//  PausedState.swift
-//  ios-spritekit-flappy-flying-bird
-//
-//  Created by Astemir Eleev on 05/05/2018.
-//  Copyright © 2018 Astemir Eleev. All rights reserved.
-//
-
 import GameplayKit
 import SpriteKit
 
@@ -34,8 +26,9 @@ class PausedState: GKState {
     
     override func didEnter(from previousState: GKState?) {
         super.didEnter(from: previousState)
-        
+
         levelScene.isPaused = true
+        overlay.applyUITheme(GameSettings.shared.selectedTheme)
         adapter.overlay = overlay
         adapter.isHUDHidden = true
     }

@@ -1,11 +1,3 @@
-//
-//  UserDefaults.swift
-//  ios-spritekit-flappy-flying-bird
-//
-//  Created by Astemir Eleev on 17/05/2018.
-//  Copyright © 2018 Astemir Eleev. All rights reserved.
-//
-
 import UIKit
 
 extension UserDefaults {
@@ -56,38 +48,37 @@ enum Setting: String {
 
     case bestScore
     case lastScore
-    case isSoundOn
-    case character
+    case isSoundEffectsOn
+    case isMusicOn
+    case pipeDistance
     case difficulty
     
     // MARK: - Methods
     
-    static func regusterDefaults() {
+    static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             Setting.bestScore.rawValue: 0,
             Setting.lastScore.rawValue: 0,
-            Setting.isSoundOn.rawValue: true,
-            Setting.character.rawValue: PlayableCharacter.bird.rawValue,
-            Setting.difficulty.rawValue: Difficulty.medium.rawValue
-            ])
+            Setting.isSoundEffectsOn.rawValue: true,
+            Setting.isMusicOn.rawValue: true,
+            Setting.difficulty.rawValue: Difficulty.medium.rawValue,
+            Setting.pipeDistance.rawValue: true
+        ])
     }
 }
 
 enum Difficulty: Double {
-    case easy = 4.0
+    case easy = 5.5
     case medium = 3.5
-    case hard = 3.0
+    case hard = 2.5
 }
 
 enum PlayableCharacter: String {
-    case bird = "bird"
+    case helicopter = "helicopter"
 }
 
 extension PlayableCharacter {
     func getAssetName() -> String {
-        switch self {
-        case .bird:
-            return "Helicopter Player"
-        }
+        return "Helicopter Player"
     }
 }

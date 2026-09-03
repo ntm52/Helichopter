@@ -1,12 +1,5 @@
-//
-//  SceneOverlay.swift
-//  ios-spritekit-flappy-flying-bird
-//
-//  Created by Astemir Eleev on 07/05/2018.
-//  Copyright © 2018 Astemir Eleev. All rights reserved.
-//
-
 import SpriteKit
+import UIKit
 
 func *(lhs: CGSize, value: CGFloat) -> CGSize {
     return CGSize(width: lhs.width * value, height: lhs.height * value)
@@ -37,6 +30,11 @@ class SceneOverlay {
         
         // Set the content node to a clear color to allow the background node to be seen through it.
         contentNode.color = .clear
+    }
+
+    /// Applies the UITheme to all buttons and labels inside the overlay content.
+    func applyUITheme(_ theme: UITheme) {
+        contentNode.applyUITheme(theme)
     }
 
 }

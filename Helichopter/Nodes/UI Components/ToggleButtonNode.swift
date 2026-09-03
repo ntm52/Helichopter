@@ -79,4 +79,15 @@ class ToggleButtonNode: ButtonNode {
         super.touchesBegan(touches, with: event)
         isOn = !isOn
     }
+
+    // MARK: - Scanner & Accessibility Support
+
+    override var accessibilityScanLabel: String {
+        let base = super.accessibilityScanLabel
+        return isOn ? "\(base), On" : "\(base), Off"
+    }
+
+    override func scannerActivate() {
+        isOn = !isOn
+    }
 }

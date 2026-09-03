@@ -1,85 +1,124 @@
-//
-//  RoutingUtilityScene.swift
-//  ios-spritekit-flappy-flying-bird
-//
-//  Created by Astemir Eleev on 12/05/2018.
-//  Copyright © 2018 Astemir Eleev. All rights reserved.
-//
-
 import SpriteKit
 
 class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
-    
+
     // MARK: - Properties
-    
+
     let selection = UISelectionFeedbackGenerator()
     static let sceneScaleMode: SKSceneScaleMode = .aspectFill
     private static var lastPushTransitionDirection: SKTransitionDirection?
-    
-    
-    // MARK: - Conformance to ButtonNodeResponderType
-    
-    func buttonTriggered(button: ButtonNode) {
-        guard let identifier = button.buttonIdentifier else {
-            return
+
+    // Focus scanner drives the ButtonNode focus-ring for switch / keyboard / controller navigation.
+    // Nil until the first didMove(to:) — subclasses share the same instance.
+    private(set) var focusScanner: FocusScanner?
+
+    // MARK: - Lifecycle
+
+    override func didMove(to view: SKView) {
+        super.didMove(to: view)
+        setupFocusScanner()
+        // Notify Switch Control that a new screen is available
+        UIAccessibility.post(notification: .screenChanged, argument: nil)
+    }
+
+    override func willMove(from view: SKView) {
+        super.willMove(from: view)
+        focusScanner?.stop()
+    }
+
+    // MARK: - Scanner setup
+
+    private func setupFocusScanner() {
+        focusScanner?.stop()
+        let scanner = FocusScanner()
+        scanner.items = findAllButtonsInScene()
+        focusScanner = scanner
+        // Auto-start the timed scanning loop only when the user has opted into switch access.
+        // First-time switch users can still trigger scanning via the first key/controller press.
+        if GameSettings.shared.scanningEnabled {
+            scanner.start()
         }
+    }
+
+    // MARK: - Conformance to ButtonNodeResponderType
+
+    func buttonTriggered(button: ButtonNode) {
+        guard let identifier = button.buttonIdentifier else { return }
         selection.selectionChanged()
-    
+
         var sceneToPresent: SKScene?
         var transition: SKTransition?
-        let sceneScaleMode: SKSceneScaleMode = RoutingUtilityScene.sceneScaleMode
-        
+        let scaleMode: SKSceneScaleMode = RoutingUtilityScene.sceneScaleMode
+
+        // Honour system motion preferences: push/slide transitions are suppressed when
+        // Reduce Motion is enabled or the user has requested cross-fade transitions.
+        var reduceMotion = UIAccessibility.isReduceMotionEnabled
+        if #available(iOS 14.0, *) {
+            reduceMotion = reduceMotion || UIAccessibility.prefersCrossFadeTransitions
+        }
+
         switch identifier {
         case .play:
-            let sceneId = Scenes.game.getName()
-            sceneToPresent = GameScene(fileNamed: sceneId)
-            
+            sceneToPresent = GameScene(fileNamed: Scenes.game.getName())
             transition = SKTransition.fade(withDuration: 1.0)
+
         case .settings:
-            let sceneId = Scenes.setting.getName()
-            sceneToPresent = SettingsScene(fileNamed: sceneId)
-            
-            RoutingUtilityScene.lastPushTransitionDirection = .down
-            transition = SKTransition.push(with: .down, duration: 1.0)
-            
-        case .menu:
-            let sceneId = Scenes.title.getName()
-            sceneToPresent = TitleScene(fileNamed: sceneId)
-            
-            var pushDirection: SKTransitionDirection?
-            
-            if let lastPushTransitionDirection = RoutingUtilityScene.lastPushTransitionDirection {
-                switch lastPushTransitionDirection {
-                case .up:
-                    pushDirection = .down
-                case .down:
-                    pushDirection = .up
-                case .left:
-                    pushDirection = .right
-                case .right:
-                    pushDirection = .left
-                @unknown default:
-                    fatalError("Unknown case was deteced in .menu case in buttonTriggered method. Please, make sure that all the cases are properly handled.")
-                }
-                RoutingUtilityScene.lastPushTransitionDirection = pushDirection
-            }
-            if let pushDirection = pushDirection {
-                transition = SKTransition.push(with: pushDirection, duration: 1.0)
+            guard !GameSettings.shared.isSettingsLocked else { return }
+            sceneToPresent = SettingsScene(fileNamed: Scenes.setting.getName())
+            if reduceMotion {
+                transition = SKTransition.fade(withDuration: 0.4)
             } else {
-                transition = SKTransition.fade(withDuration: 1.0)
+                RoutingUtilityScene.lastPushTransitionDirection = .down
+                transition = SKTransition.push(with: .down, duration: 1.0)
             }
+
+        case .menu:
+            sceneToPresent = TitleScene(fileNamed: Scenes.title.getName())
+            if reduceMotion {
+                RoutingUtilityScene.lastPushTransitionDirection = nil
+                transition = SKTransition.fade(withDuration: 0.4)
+            } else {
+                var pushDir: SKTransitionDirection?
+                if let last = RoutingUtilityScene.lastPushTransitionDirection {
+                    switch last {
+                    case .up:    pushDir = .down
+                    case .down:  pushDir = .up
+                    case .left:  pushDir = .right
+                    case .right: pushDir = .left
+                    @unknown default:
+                        fatalError("Unhandled SKTransitionDirection in RoutingUtilityScene")
+                    }
+                    RoutingUtilityScene.lastPushTransitionDirection = pushDir
+                }
+                transition = pushDir.map { SKTransition.push(with: $0, duration: 1.0) }
+                          ?? SKTransition.fade(withDuration: 1.0)
+            }
+
         default:
-            debugPrint(#function + "triggered button node action that is not supported by the TitleScene class")
+            debugPrint(#function, "unhandled identifier:", identifier)
         }
-        
-        guard let presentationScene = sceneToPresent, let unwrappedTransition = transition  else {
-            return
-        }
-        
-        presentationScene.scaleMode = sceneScaleMode
-        unwrappedTransition.pausesIncomingScene = false
-        unwrappedTransition.pausesOutgoingScene = false
-        self.view?.presentScene(presentationScene, transition: unwrappedTransition)
-        debugPrint("presented CharactersScene instance")
+
+        guard let scene = sceneToPresent, let tx = transition else { return }
+        scene.scaleMode = scaleMode
+        tx.pausesIncomingScene = false
+        tx.pausesOutgoingScene = false
+        view?.presentScene(scene, transition: tx)
     }
+}
+
+// MARK: - SwitchInputReceivable
+
+extension RoutingUtilityScene: SwitchInputReceivable {
+
+    func switchPrimaryBegan() {
+        focusScanner?.primaryActivate()
+    }
+
+    func switchPrimaryEnded() { }
+
+    func switchSecondaryBegan() {
+        focusScanner?.secondaryAdvance()
+    }
+
+    func switchSecondaryEnded() { }
 }

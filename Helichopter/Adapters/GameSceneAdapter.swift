@@ -31,21 +31,21 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     var score: Int = 0
     private(set) var scoreLabel: SKLabelNode?
 
-    private(set) var scoreSound = SKAction.playSoundFileNamed("Score.wav", waitForCompletion: false)
-    private(set) var hitSound = SKAction.playSoundFileNamed("Dead.wav", waitForCompletion: false)
+    private(set) var scoreSound = SKAction.playSoundFileNamed("Score.caf", waitForCompletion: false)
+    private(set) var hitSound = SKAction.playSoundFileNamed("Dead.caf", waitForCompletion: false)
 
     typealias PlayableCharacter = (PhysicsContactable & Updatable & Touchable & Playable & SKNode)
     var playerCharacter: PlayableCharacter?
 
     private(set) lazy var menuAudio: SKAudioNode = {
-        let audioNode = SKAudioNode(fileNamed: "MainTheme.wav")
+        let audioNode = SKAudioNode(fileNamed: "MainTheme.caf")
         audioNode.autoplayLooped = true
         audioNode.name = "menu audio"
         return audioNode
     }()
 
     private(set) lazy var playingAudio: SKAudioNode = {
-        let audioNode = SKAudioNode(fileNamed: "MainTheme.wav")
+        let audioNode = SKAudioNode(fileNamed: "MainTheme.caf")
         audioNode.autoplayLooped = true
         audioNode.name = "playing audio"
         return audioNode
@@ -85,11 +85,16 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         set {
             _isHUDHidden = newValue
             if let world = self.scene?.childNode(withName: "world") {
-                world.childNode(withName: "Score Node")?.isHidden = newValue
+                // Score is hidden when HUD is hidden OR when the player has disabled score display.
+                world.childNode(withName: "Score Node")?.isHidden = newValue || !GameSettings.shared.showScore
                 world.childNode(withName: "Pause")?.isHidden = newValue
             }
         }
     }
+
+    /// Called on the main thread when GameOverState is entered via collision.
+    /// GameScene uses this to set up the overlay focus scanner.
+    var onGameOverEntered: (() -> Void)?
 
     // MARK: - Private properties
 
@@ -160,10 +165,12 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     private func prepareInfiniteBackgroundScroller(for scene: SKScene) {
         let scaleFactor = NodeScale.gameBackgroundScale.getValue()
 
+        // Use backgroundScrollSpeed — independent of gameplay difficulty — so the
+        // parallax can be slowed or stopped without making the game easier.
         infiniteBackgroundNode = InfiniteSpriteScrollNode(
             fileName: backgroundResourceName,
             scaleFactor: CGPoint(x: scaleFactor, y: scaleFactor),
-            speed: GameSettings.shared.scrollSpeed
+            speed: GameSettings.shared.backgroundScrollSpeed
         )
         infiniteBackgroundNode!.zPosition = 0
 
@@ -186,6 +193,11 @@ extension GameSceneAdapter: SKPhysicsContactDelegate {
             if isSoundEffectsOn { scene?.run(scoreSound) }
 
             notification.notificationOccurred(.success)
+
+            // Announce score to VoiceOver — only when it's running to avoid interrupting audio.
+            if UIAccessibility.isVoiceOverRunning {
+                UIAccessibility.post(notification: .announcement, argument: "Score \(score)")
+            }
         }
 
         if collision == (player | PhysicsCategories.pipe.rawValue) {
@@ -200,17 +212,39 @@ extension GameSceneAdapter: SKPhysicsContactDelegate {
     // MARK: - Collision Helpers
 
     private func handleDeadState() {
-        deadState()
+        // Ignore contacts that fire during a no-fail invulnerability window.
+        if let heli = playerCharacter as? HelicopterNode, heli.isInvulnerable { return }
+
+        if GameSettings.shared.noFailMode {
+            handleNoFailHit()
+        } else {
+            deadState()
+            hit()
+            stopMoving()
+        }
+    }
+
+    /// Called instead of deadState() when no-fail mode is active.
+    /// Triggers a brief invulnerability window so the helicopter passes through pipes.
+    private func handleNoFailHit() {
+        (playerCharacter as? HelicopterNode)?.triggerInvulnerability()
         hit()
-        stopMoving()
     }
 
     private func deadState() {
         if stateMachine?.currentState is GameOverState { return }
         stateMachine?.enter(GameOverState.self)
+        onGameOverEntered?()
+
+        if UIAccessibility.isVoiceOverRunning {
+            UIAccessibility.post(notification: .announcement,
+                                 argument: "Game over. Score \(score)")
+        }
     }
 
+    /// Plays the collision hit sound and haptic, unless calm mode is active.
     private func hit() {
+        guard !GameSettings.shared.calmMode else { return }
         impact.impactOccurred()
         if isSoundEffectsOn { scene?.run(hitSound) }
     }

@@ -6,47 +6,48 @@ class PipeNode: SKSpriteNode {
 
     // MARK: - Initializers
 
-    init?(textures: (pipe: String, cap: String), of size: CGSize, side: IsTopPipe) {
+    /// - Parameters:
+    ///   - tintColor: Palette color blended onto the white/grayscale Phase 6 art.
+    ///   - blendFactor: `SKSpriteNode.colorBlendFactor`. 0 = original art, 1 = solid tint.
+    init?(textures: (pipe: String, cap: String), of size: CGSize, side: IsTopPipe,
+          tintColor: UIColor = .white, blendFactor: CGFloat = 0.0) {
 
-        guard let texture = UIImage(named: textures.pipe)?.cgImage else {
-            return nil
-        }
-        let textureRect = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+        // Outer node is a physics-only container — visuals live in the body and cap children.
+        super.init(texture: nil, color: .clear, size: size)
 
-        // UIGraphicsImageRenderer renders at screen scale (2x/3x), fixing blurry pipes on retina.
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let tiledBackground = renderer.image { context in
-            context.cgContext.draw(texture, in: textureRect, byTiling: true)
-        }
+        let bodyTexture = SKTexture(imageNamed: textures.pipe)
 
-        guard let tiledCGImage = tiledBackground.cgImage else {
-            return nil
-        }
-        let backgroundTexture = SKTexture(cgImage: tiledCGImage)
-        let pipe = SKSpriteNode(texture: backgroundTexture)
-        pipe.zPosition = 1
+        // 9-slice stretching: top and bottom 1/6 of the texture are pixel-perfect
+        // (decorative edge detail); the middle 4/6 stretches to any pipe height.
+        // Phase 6 pipe art is 60×120 px with the fixed bands occupying 20 px each.
+        let body = SKSpriteNode(texture: bodyTexture, color: tintColor, size: size)
+        body.colorBlendFactor = blendFactor
+        body.centerRect = CGRect(x: 0.0, y: 1.0 / 6.0, width: 1.0, height: 4.0 / 6.0)
+        body.zPosition = 1
+        addChild(body)
 
-        let cap = SKSpriteNode(imageNamed: textures.cap)
-        cap.position = CGPoint(x: 0.0, y: side ? -pipe.size.height / 2 + cap.size.height / 2 : pipe.size.height / 2 - cap.size.height / 2)
-        cap.size = CGSize(width: pipe.size.width + pipe.size.width / 6, height: cap.size.height)
+        let capTexture = SKTexture(imageNamed: textures.cap)
+        // Cap width scales proportionally from the designed texture ratio (cap 80px / body 60px).
+        let capWidth  = size.width * (capTexture.size().width / bodyTexture.size().width)
+        let capHeight = capTexture.size().height
+        let cap = SKSpriteNode(texture: capTexture, color: tintColor,
+                               size: CGSize(width: capWidth, height: capHeight))
+        cap.colorBlendFactor = blendFactor
+        cap.position = CGPoint(
+            x: 0.0,
+            y: side ? -(size.height / 2.0) + capHeight / 2.0
+                     :  (size.height / 2.0) - capHeight / 2.0
+        )
+        if side { cap.zRotation = .pi }
         cap.zPosition = 5
-        pipe.addChild(cap)
-
-        if side {
-            let angle: CGFloat = 180.0
-            cap.zRotation = angle.toRadians
-        }
-
-        super.init(texture: backgroundTexture, color: .clear, size: backgroundTexture.size())
+        addChild(cap)
 
         physicsBody = SKPhysicsBody(rectangleOf: size)
-        physicsBody?.categoryBitMask = PhysicsCategories.pipe.rawValue
+        physicsBody?.categoryBitMask    = PhysicsCategories.pipe.rawValue
         physicsBody?.contactTestBitMask = PhysicsCategories.player.rawValue
-        physicsBody?.collisionBitMask = PhysicsCategories.player.rawValue
+        physicsBody?.collisionBitMask   = PhysicsCategories.player.rawValue
         physicsBody?.isDynamic = false
         zPosition = 20
-
-        self.addChild(pipe)
     }
 
     required init?(coder aDecoder: NSCoder) {
