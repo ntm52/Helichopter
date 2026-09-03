@@ -17,22 +17,7 @@ Helichopter is a Flappy Bird–style iOS/SpriteKit accessibility game. It was br
 
 ## Known Bugs / Outstanding Issues
 
-### "CLICK ME TO FLY" hint does not fade (unconfirmed)
-The in-game hint label should fade out ~3 s after game start. The label lives inside the `"world"` node in `GameScene.sks` with the exact name `"CLICK ME TO FLY"` (all caps, confirmed via `strings` on the binary).
-
-Code added to `PlayingState.didEnter` (after the PausedState early-return guard):
-```swift
-let hint = scene.childNode(withName: "world/CLICK ME TO FLY")
-    ?? scene.childNode(withName: "//CLICK ME TO FLY")
-if let hint {
-    hint.alpha = 1
-    hint.run(.sequence([.wait(forDuration: 3.0), .fadeOut(withDuration: 0.5)]))
-}
-```
-The code compiles and runs but the fade has **not been confirmed working on device**. If still broken, try:
-- `scene.enumerateChildNodes(withName: "//*") { node, stop in guard let l = node as? SKLabelNode, l.text == "CLICK ME TO FLY" else { return }; /* schedule fade */; stop.pointee = true }`
-- Check that `PlayingState.didEnter` actually reaches this code (add a `debugPrint` to verify the node is found)
-- The action is scheduled in `sceneDidLoad` timing (before scene is presented) — verify SpriteKit runs it once the scene appears
+*No known bugs.* The "CLICK ME TO FLY" hint fade is now fixed (see Progress Log 2026-09-03).
 
 ---
 
@@ -157,6 +142,7 @@ Theme application:
 - **Per-profile save/load** — GameSettings supports the pattern; only needs a profile selection UI layer.
 - **iPad .sks deduplication** — `*iPad.sks` files exist alongside phone versions. Deferred to Phase 4/5 rebuild.
 - **Audio cues** beyond existing Score/Dead — approaching pipe, near-miss, gap cleared.
+- **PrivacyInfo.xcprivacy** created at `Helichopter/PrivacyInfo.xcprivacy` — needs to be added to the Xcode target (File → Add Files to "Helichopter") before App Store submission.
 
 ---
 
@@ -197,3 +183,18 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - **Helicopter sprite atlas**: user replaced 10-frame with 20-frame art. Folder was accidentally renamed from `Helicopter Player.spriteatlas` → `Helicopter Player` (no extension) which broke `SKTextureAtlas` loading. Fixed by renaming back. `HelicopterNode.animate(with:)` now guards `!textures.isEmpty`.
 - **Dead code removed** from `ButtonNode.swift`: `selectedTextureName` (always nil), `focusableNeighbors` (never used), `performInvalidFocusChangeAnimationForDirection` (never called), macOS `#elseif os(OSX)` block.
 - **Known unconfirmed bug**: "CLICK ME TO FLY" label fade — code is in place in `PlayingState.didEnter` but not verified working on device. See Known Bugs section above.
+
+### 2026-09-03 — Pre-Phase-7 deferred items
+- **"CLICK ME TO FLY" hint fixed**: replaced path-based search with `enumerateChildNodes(withName: "//*")` scanning for the label by its `text` property. Fades immediately (0.5 s) when PlayingState is entered rather than waiting 3 s. No more "unconfirmed" status.
+- **SettingsOverlayView theming**: all hardcoded Night Sky colors removed. Colors now derived from `UITheme` at init time via relative-luminance check. Panel background, section headers, text, subtitles, row backgrounds, hairlines, segmented controls, palette swatch borders, and UISwitch/UISlider accents all follow the active theme. Works correctly for all three themes (Night Sky dark navy, Parchment cream, Neon Night dark teal).
+- **Settings screen background**: `SettingsScene.didMove` now sets `backgroundColor` from `selectedTheme.sceneBackgroundColor` instead of hardcoded dark navy.
+- **Missing settings rows added**: `scanScheme` (Auto-Advance vs Two-Switch menu navigation) and `isSettingsLocked` (Caregiver section) now have UI rows in the settings panel. Previously they existed in GameSettings but had no UI.
+- **FailedScene overlay text**: `GameOverState` now enumerates the overlay for a label with text "Failed" and replaces it with "Round Over" (normal mode) or "Well Done!" (calm mode). Aligns with the "nothing punishes" design principle.
+- **PrivacyInfo.xcprivacy**: created at `Helichopter/PrivacyInfo.xcprivacy` with `NSPrivacyAccessedAPICategoryUserDefaults` / `CA92.1`. **Needs to be added to the Xcode target** via File → Add Files to "Helichopter" before App Store submission.
+- Zero warnings. Clean build.
+
+### 2026-09-03 — Live settings theming + pipes-on-first-click
+- **Settings theme live update**: When the theme segmented control is tapped, the settings panel now rebuilds itself with the new theme colors using a 0.25 s cross-fade. Scroll position is preserved. The SpriteKit background behind the panel also updates immediately.
+- **Pipes wait for first click**: `HelicopterNode` now has an `onFirstInput: (() -> Void)?` hook that fires and self-clears on the player's first touch/switch input. `PlayingState.didEnter` sets this hook to (a) start the pipe-spawn action and (b) fade the "CLICK ME TO FLY" hint. Result: helicopter floats with the hint visible, no pipes appear until the player actually taps.
+- Resume-from-pause is unaffected — the pipe action resumes automatically via the scene's `isPaused = false` and no hook is set in the pause-resume path.
+- Zero warnings. Clean build.

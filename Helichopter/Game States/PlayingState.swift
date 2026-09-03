@@ -36,7 +36,9 @@ class PlayingState: GKState {
         super.didEnter(from: previousState)
 
         adapter.playerCharacter?.isAffectedByGravity = false
-        adapter.scene?.run(infinitePipeProducer, withKey: infinitePipeProducerKey)
+        // Pipes are NOT started here for fresh starts/retries — they wait for first input below.
+        // For resume from pause, the pipe action was already running and resumes automatically
+        // when PausedState.willExit sets isPaused = false.
 
         if adapter.isMusicOn {
             adapter.scene?.addChild(adapter.playingAudio)
@@ -58,14 +60,16 @@ class PlayingState: GKState {
             }
         }
 
-        // Fade out the tap-to-fly hint a few seconds after the game starts.
-        // The label lives inside the "world" node; try the explicit path first,
-        // then fall back to a full-tree search in case the hierarchy ever changes.
-        let hint = scene.childNode(withName: "world/CLICK ME TO FLY")
-            ?? scene.childNode(withName: "//CLICK ME TO FLY")
-        if let hint {
-            hint.alpha = 1
-            hint.run(.sequence([.wait(forDuration: 3.0), .fadeOut(withDuration: 0.5)]))
+        // Pipes and the hint both wait for the player's first input.
+        // The helicopter floats at the center with gravity off until the player acts.
+        (adapter.playerCharacter as? HelicopterNode)?.onFirstInput = { [weak self] in
+            guard let self = self else { return }
+            self.adapter.scene?.run(self.infinitePipeProducer, withKey: self.infinitePipeProducerKey)
+            scene.enumerateChildNodes(withName: "//*") { node, stop in
+                guard let label = node as? SKLabelNode, label.text == "CLICK ME TO FLY" else { return }
+                label.run(.fadeOut(withDuration: 0.5))
+                stop.pointee = true
+            }
         }
 
         let character = PlayableCharacter.helicopter

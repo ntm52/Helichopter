@@ -32,19 +32,32 @@ private final class SegTarget: NSObject {
 
 // MARK: - SettingsOverlayView
 // Full UIKit settings panel shown on top of the SpriteKit scene.
-// Replaces the .sks-bound toggle/triggle buttons with labeled sliders and switches.
+// Colors are derived from the active UITheme so the panel follows the user's chosen theme.
 
 private final class SettingsOverlayView: UIView {
 
     var onBack: (() -> Void)?
+    var onThemeChanged: (() -> Void)?
 
-    // MARK: Color tokens
-    private static let bg     = UIColor(red: 0.063, green: 0.047, blue: 0.039, alpha: 0.97)
-    private static let accent = UIColor(red: 1.0,   green: 0.843, blue: 0.0,   alpha: 1.0)
-    private static let text   = UIColor.white
-    private static let sub    = UIColor(white: 0.65, alpha: 1.0)
-    private static let rowBg  = UIColor(white: 0.13, alpha: 1.0)
-    private static let div    = UIColor(white: 0.22, alpha: 1.0)
+    var scrollPosition: CGPoint { scrollView.contentOffset }
+
+    func restoreScrollPosition(_ offset: CGPoint) {
+        // Defer one run loop so Auto Layout has computed the content size first.
+        DispatchQueue.main.async { [weak self] in
+            self?.scrollView.contentOffset = offset
+        }
+    }
+
+    // MARK: Theme-derived color tokens
+    private let bg:              UIColor   // panel background
+    private let accent:          UIColor   // section headers, back button, slider/switch track
+    private let text:            UIColor   // primary label text
+    private let sub:             UIColor   // secondary / detail text
+    private let rowBg:           UIColor   // individual row backgrounds
+    private let div:             UIColor   // hairline separators
+    private let segBg:           UIColor   // segmented control tray background
+    private let selectedSegText: UIColor   // text on the highlighted segment chip
+    private let swatchBg:        UIColor   // palette swatch card background
 
     // Retain targets so addTarget's weak reference doesn't dangle.
     private var controlTargets: [NSObject] = []
@@ -53,15 +66,69 @@ private final class SettingsOverlayView: UIView {
     private let scrollView = UIScrollView()
     private let stack      = UIStackView()
 
-    override init(frame: CGRect) { super.init(frame: frame); buildUI() }
-    required init?(coder: NSCoder) { super.init(coder: coder); buildUI() }
+    // MARK: - Initialization
+
+    init(frame: CGRect, theme: UITheme) {
+        let light = SettingsOverlayView.isLightColor(theme.sceneBackgroundColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        theme.sceneBackgroundColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+
+        bg     = theme.sceneBackgroundColor.withAlphaComponent(0.97)
+        accent = theme.titleTextColor
+        text   = light ? theme.titleTextColor : .white
+        sub    = light ? theme.titleTextColor.withAlphaComponent(0.6) : UIColor(white: 0.65, alpha: 1.0)
+        // For dark themes: nudge the row bg slightly brighter while preserving hue.
+        // For light themes: shade it slightly darker so rows read off the panel bg.
+        rowBg  = light
+            ? UIColor(red: r * 0.93, green: g * 0.93, blue: b * 0.93, alpha: 1.0)
+            : UIColor(red: min(1, r + 0.08), green: min(1, g + 0.08), blue: min(1, b + 0.08), alpha: 1.0)
+        div    = light ? UIColor(white: 0.75, alpha: 1.0) : UIColor(white: 0.22, alpha: 1.0)
+        segBg  = light ? UIColor(white: 0.82, alpha: 1.0) : UIColor(white: 0.20, alpha: 1.0)
+        // Selected segment text must contrast against `accent` (the tint color on the chip).
+        // Light themes use a dark accent (navy) → white text reads well on it.
+        // Dark themes use a light accent (sky-blue/cyan) → black text reads well on it.
+        selectedSegText = light ? .white : .black
+        swatchBg = light ? UIColor(white: 0.88, alpha: 1.0) : UIColor(white: 0.10, alpha: 1.0)
+
+        super.init(frame: frame)
+        buildUI()
+    }
+
+    required init?(coder: NSCoder) {
+        let theme = GameSettings.shared.selectedTheme
+        let light = SettingsOverlayView.isLightColor(theme.sceneBackgroundColor)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        theme.sceneBackgroundColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+
+        bg     = theme.sceneBackgroundColor.withAlphaComponent(0.97)
+        accent = theme.titleTextColor
+        text   = light ? theme.titleTextColor : .white
+        sub    = light ? theme.titleTextColor.withAlphaComponent(0.6) : UIColor(white: 0.65, alpha: 1.0)
+        rowBg  = light
+            ? UIColor(red: r * 0.93, green: g * 0.93, blue: b * 0.93, alpha: 1.0)
+            : UIColor(red: min(1, r + 0.08), green: min(1, g + 0.08), blue: min(1, b + 0.08), alpha: 1.0)
+        div    = light ? UIColor(white: 0.75, alpha: 1.0) : UIColor(white: 0.22, alpha: 1.0)
+        segBg  = light ? UIColor(white: 0.82, alpha: 1.0) : UIColor(white: 0.20, alpha: 1.0)
+        selectedSegText = light ? .white : .black
+        swatchBg = light ? UIColor(white: 0.88, alpha: 1.0) : UIColor(white: 0.10, alpha: 1.0)
+
+        super.init(coder: coder)
+        buildUI()
+    }
+
+    // Returns true when the relative luminance of `color` exceeds 0.5 (i.e. it reads as a light color).
+    private static func isLightColor(_ color: UIColor) -> Bool {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        color.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5
+    }
 
     private func buildUI() {
-        backgroundColor = Self.bg
+        backgroundColor = bg
 
-        let backBtn  = plainButton("◀  Back", color: Self.accent, target: self,
+        let backBtn  = plainButton("◀  Back", color: accent, target: self,
                                    action: #selector(backTapped))
-        let titleLbl = makeLabel("Settings", size: 26, weight: .bold, color: Self.text)
+        let titleLbl = makeLabel("Settings", size: 26, weight: .bold, color: text)
         titleLbl.textAlignment = .center
 
         let header = UIView()
@@ -75,7 +142,7 @@ private final class SettingsOverlayView: UIView {
         let headerDiv = hairline()
         header.addSubview(headerDiv)
 
-        scrollView.alwaysBounceVertical      = true
+        scrollView.alwaysBounceVertical        = true
         scrollView.showsVerticalScrollIndicator = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
@@ -127,7 +194,7 @@ private final class SettingsOverlayView: UIView {
         presetButtons()
 
         sectionHeader("Gameplay")
-        // Gap: gentle midpoint≈475, standard≈310, challenge≈230.  Wider = easier.
+        // Gap: gentle midpoint≈475, standard≈310, challenge≈230. Wider = easier.
         sliderRow("Gap Size",
                   detail: "How wide the opening between pipes is",
                   lo: "Narrow", hi: "Wide",
@@ -135,8 +202,7 @@ private final class SettingsOverlayView: UIView {
                   value: Float((gs.gapMin + gs.gapMax) / 2)) { [weak self] v in
             self?.applyGap(CGFloat(v))
         }
-        // Pipe speed: inverted so that slider-right = faster pipes.
-        // gentle=10 s duration → value 4, standard=7→7, challenge=4→10.
+        // Pipe speed: inverted so slider-right = faster pipes.
         sliderRow("Pipe Speed",
                   detail: "How fast pipes cross the screen",
                   lo: "Slow", hi: "Fast",
@@ -144,7 +210,6 @@ private final class SettingsOverlayView: UIView {
                   value: Float(14 - gs.pipeMoveDuration)) { v in
             gs.pipeMoveDuration = TimeInterval(14 - Double(v))
         }
-        // Hitbox: low fraction = forgiving (small physics body), high = sprite boundary.
         sliderRow("Hitbox Size",
                   detail: "How closely collisions follow the helicopter's visual edge",
                   lo: "Generous", hi: "Exact",
@@ -177,6 +242,12 @@ private final class SettingsOverlayView: UIView {
         toggleRow("Auto-Scan Menus",
                   detail: "Menus cycle through buttons automatically — press your switch to select",
                   isOn: gs.scanningEnabled) { v in gs.scanningEnabled = v }
+        segmentedRow("Menu Scan Mode",
+                     detail: "Auto-Advance cycles on a timer; Two-Switch requires a second switch press to step",
+                     items: ["Auto-Advance", "Two-Switch"],
+                     selectedIndex: gs.scanScheme.rawValue) { idx in
+            if let scheme = ScanScheme(rawValue: idx) { gs.scanScheme = scheme }
+        }
         sliderRow("Scan Dwell Time",
                   detail: "How long the scanner pauses on each button before moving on",
                   lo: "0.5 s", hi: "10 s",
@@ -184,10 +255,24 @@ private final class SettingsOverlayView: UIView {
                   value: Float(gs.scanDwellTime)) { v in
             gs.scanDwellTime = TimeInterval(v)
         }
-        controlSchemeRow()
+        segmentedRow("In-Game Control",
+                     detail: "How you control the helicopter's altitude while playing",
+                     items: ["Tap to Flap", "Hold to Hover", "Auto Hover", "Two-Switch"],
+                     selectedIndex: gs.controlScheme.rawValue) { idx in
+            if let scheme = ControlScheme(rawValue: idx) { gs.controlScheme = scheme }
+        }
 
         sectionHeader("Visual Theme")
-        themeRow()
+        let themes = GameSettings.allThemes
+        let themeIdx = themes.firstIndex { $0.id == gs.selectedThemeID } ?? 0
+        segmentedRow("Menu Theme",
+                     detail: "Personal colour preference for menus and the title screen",
+                     items: themes.map { $0.name },
+                     selectedIndex: themeIdx) { [weak self] idx in
+            guard idx < themes.count else { return }
+            gs.selectedThemeID = themes[idx].id
+            self?.onThemeChanged?()
+        }
 
         sectionHeader("Colour Accessibility")
         paletteRow()
@@ -203,6 +288,11 @@ private final class SettingsOverlayView: UIView {
                   isOn: UserDefaults.standard.bool(for: .isMusicOn)) { v in
             UserDefaults.standard.set(v, for: .isMusicOn)
         }
+
+        sectionHeader("Caregiver")
+        toggleRow("Lock Settings",
+                  detail: "Disables the settings button on the title screen — open settings again to unlock",
+                  isOn: gs.isSettingsLocked) { v in gs.isSettingsLocked = v }
     }
 
     // MARK: - Row builders
@@ -213,7 +303,7 @@ private final class SettingsOverlayView: UIView {
         stack.addArrangedSubview(spacer)
 
         let attrStr = NSAttributedString(string: title.uppercased(), attributes: [
-            .foregroundColor: Self.accent,
+            .foregroundColor: accent,
             .font: UIFont.systemFont(ofSize: 12, weight: .bold),
             .kern: 1.5,
         ])
@@ -234,7 +324,7 @@ private final class SettingsOverlayView: UIView {
 
     private func presetButtons() {
         let row = UIView()
-        row.backgroundColor = Self.rowBg
+        row.backgroundColor = rowBg
 
         let hs = UIStackView()
         hs.axis         = .horizontal
@@ -277,26 +367,26 @@ private final class SettingsOverlayView: UIView {
                             min: Float, max: Float, value: Float,
                             onChange: @escaping (Float) -> Void) {
         let row = UIView()
-        row.backgroundColor = Self.rowBg
+        row.backgroundColor = rowBg
 
-        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: Self.text)
-        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: Self.sub)
+        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: text)
+        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: sub)
         detailL.numberOfLines = 0
 
         let slider = UISlider()
         slider.minimumValue          = min
         slider.maximumValue          = max
         slider.value                 = value
-        slider.minimumTrackTintColor = Self.accent
+        slider.minimumTrackTintColor = accent
         slider.maximumTrackTintColor = UIColor(white: 0.3, alpha: 1.0)
-        slider.thumbTintColor        = Self.accent
+        slider.thumbTintColor        = accent
 
         let t = SliderTarget(onChange)
         controlTargets.append(t)
         slider.addTarget(t, action: #selector(SliderTarget.changed(_:)), for: .valueChanged)
 
-        let loL = makeLabel(lo, size: 11, weight: .regular, color: Self.sub)
-        let hiL = makeLabel(hi, size: 11, weight: .regular, color: Self.sub)
+        let loL = makeLabel(lo, size: 11, weight: .regular, color: sub)
+        let hiL = makeLabel(hi, size: 11, weight: .regular, color: sub)
         hiL.textAlignment = .right
 
         let rangeRow = UIStackView(arrangedSubviews: [loL, hiL])
@@ -321,10 +411,10 @@ private final class SettingsOverlayView: UIView {
     private func toggleRow(_ title: String, detail: String, isOn: Bool,
                             onChange: @escaping (Bool) -> Void) {
         let row = UIView()
-        row.backgroundColor = Self.rowBg
+        row.backgroundColor = rowBg
 
-        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: Self.text)
-        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: Self.sub)
+        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: text)
+        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: sub)
         detailL.numberOfLines = 0
 
         let lStack = UIStackView(arrangedSubviews: [titleL, detailL])
@@ -334,7 +424,7 @@ private final class SettingsOverlayView: UIView {
 
         let sw = UISwitch()
         sw.isOn        = isOn
-        sw.onTintColor = Self.accent
+        sw.onTintColor = accent
         sw.translatesAutoresizingMaskIntoConstraints = false
 
         let t = SwitchTarget(onChange)
@@ -355,73 +445,27 @@ private final class SettingsOverlayView: UIView {
         appendRow(row)
     }
 
-    private func controlSchemeRow() {
+    private func segmentedRow(_ title: String, detail: String,
+                               items: [String], selectedIndex: Int,
+                               onChange: @escaping (Int) -> Void) {
         let row = UIView()
-        row.backgroundColor = Self.rowBg
+        row.backgroundColor = rowBg
 
-        let titleL  = makeLabel("In-Game Control", size: 16, weight: .semibold, color: Self.text)
-        let detailL = makeLabel("How you control the helicopter's altitude while playing",
-                                size: 12, weight: .regular, color: Self.sub)
+        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: text)
+        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: sub)
         detailL.numberOfLines = 0
 
-        let seg = UISegmentedControl(items: ["Tap to Flap", "Hold to Hover", "Auto Hover", "Two-Switch"])
-        seg.selectedSegmentIndex     = GameSettings.shared.controlScheme.rawValue
-        seg.backgroundColor          = UIColor(white: 0.20, alpha: 1.0)
-        seg.selectedSegmentTintColor = Self.accent
-        seg.setTitleTextAttributes([.foregroundColor: Self.sub], for: .normal)
+        let seg = UISegmentedControl(items: items)
+        seg.selectedSegmentIndex     = selectedIndex
+        seg.backgroundColor          = segBg
+        seg.selectedSegmentTintColor = accent
+        seg.setTitleTextAttributes([.foregroundColor: sub], for: .normal)
         seg.setTitleTextAttributes([
-            .foregroundColor: UIColor.black,
+            .foregroundColor: selectedSegText,
             .font: UIFont.systemFont(ofSize: 12, weight: .semibold),
         ], for: .selected)
 
-        let t = SegTarget { idx in
-            if let scheme = ControlScheme(rawValue: idx) {
-                GameSettings.shared.controlScheme = scheme
-            }
-        }
-        controlTargets.append(t)
-        seg.addTarget(t, action: #selector(SegTarget.changed(_:)), for: .valueChanged)
-
-        let vs = UIStackView(arrangedSubviews: [titleL, detailL, seg])
-        vs.axis    = .vertical
-        vs.spacing = 8
-        vs.translatesAutoresizingMaskIntoConstraints = false
-
-        row.addSubview(vs)
-        NSLayoutConstraint.activate([
-            vs.topAnchor.constraint(equalTo: row.topAnchor, constant: 14),
-            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -14),
-            vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 20),
-            vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -20),
-        ])
-        appendRow(row)
-    }
-
-    private func themeRow() {
-        let row = UIView()
-        row.backgroundColor = Self.rowBg
-
-        let titleL  = makeLabel("Menu Theme",              size: 16, weight: .semibold, color: Self.text)
-        let detailL = makeLabel("Personal colour preference for menus and the title screen",
-                                size: 12, weight: .regular,  color: Self.sub)
-        detailL.numberOfLines = 0
-
-        let themes = GameSettings.allThemes
-        let seg = UISegmentedControl(items: themes.map { $0.name })
-        let currentIdx = themes.firstIndex { $0.id == GameSettings.shared.selectedThemeID } ?? 0
-        seg.selectedSegmentIndex     = currentIdx
-        seg.backgroundColor          = UIColor(white: 0.20, alpha: 1.0)
-        seg.selectedSegmentTintColor = Self.accent
-        seg.setTitleTextAttributes([.foregroundColor: Self.sub], for: .normal)
-        seg.setTitleTextAttributes([
-            .foregroundColor: UIColor.black,
-            .font: UIFont.systemFont(ofSize: 12, weight: .semibold),
-        ], for: .selected)
-
-        let t = SegTarget { idx in
-            guard idx < themes.count else { return }
-            GameSettings.shared.selectedThemeID = themes[idx].id
-        }
+        let t = SegTarget(onChange)
         controlTargets.append(t)
         seg.addTarget(t, action: #selector(SegTarget.changed(_:)), for: .valueChanged)
 
@@ -441,13 +485,12 @@ private final class SettingsOverlayView: UIView {
     }
 
     private func paletteRow() {
-        // Description row — explains this section is for colour vision needs, not visual preference
         let descRow = UIView()
-        descRow.backgroundColor = Self.rowBg
+        descRow.backgroundColor = rowBg
         let descL = makeLabel(
             "Adjusts helicopter and pipe colours to suit different colour vision needs. " +
             "Independent of the menu theme above.",
-            size: 12, weight: .regular, color: Self.sub)
+            size: 12, weight: .regular, color: sub)
         descL.numberOfLines = 0
         descL.translatesAutoresizingMaskIntoConstraints = false
         descRow.addSubview(descL)
@@ -461,7 +504,7 @@ private final class SettingsOverlayView: UIView {
         stack.addArrangedSubview(hairline())
 
         let row = UIView()
-        row.backgroundColor = Self.rowBg
+        row.backgroundColor = rowBg
 
         let hScroll = UIScrollView()
         hScroll.showsHorizontalScrollIndicator = false
@@ -505,8 +548,8 @@ private final class SettingsOverlayView: UIView {
         btn.widthAnchor.constraint(equalToConstant: 72).isActive = true
         btn.layer.cornerRadius = 12
         btn.layer.borderWidth  = selected ? 3.0 : 1.5
-        btn.layer.borderColor  = selected ? Self.accent.cgColor : Self.div.cgColor
-        btn.backgroundColor    = UIColor(white: 0.10, alpha: 1.0)
+        btn.layer.borderColor  = selected ? accent.cgColor : div.cgColor
+        btn.backgroundColor    = swatchBg
         btn.accessibilityLabel = palette.name
 
         let heliDot = colorDot(palette.helicopterColor, size: 26)
@@ -519,7 +562,7 @@ private final class SettingsOverlayView: UIView {
 
         let nameL = UILabel()
         nameL.text          = palette.name
-        nameL.textColor     = Self.sub
+        nameL.textColor     = sub
         nameL.font          = .systemFont(ofSize: 9, weight: .medium)
         nameL.numberOfLines = 2
         nameL.textAlignment = .center
@@ -555,16 +598,16 @@ private final class SettingsOverlayView: UIView {
         for (i, (view, _)) in paletteViews.enumerated() {
             let chosen = (i == index)
             view.layer.borderWidth = chosen ? 3.0 : 1.5
-            view.layer.borderColor = chosen ? Self.accent.cgColor : Self.div.cgColor
+            view.layer.borderColor = chosen ? accent.cgColor : div.cgColor
         }
     }
 
     // MARK: - Factory helpers
 
-    private func makeLabel(_ text: String, size: CGFloat,
+    private func makeLabel(_ labelText: String, size: CGFloat,
                             weight: UIFont.Weight, color: UIColor) -> UILabel {
         let l = UILabel()
-        l.text      = text
+        l.text      = labelText
         l.textColor = color
         l.font      = .systemFont(ofSize: size, weight: weight)
         l.translatesAutoresizingMaskIntoConstraints = false
@@ -583,7 +626,7 @@ private final class SettingsOverlayView: UIView {
 
     private func hairline() -> UIView {
         let v = UIView()
-        v.backgroundColor = Self.div
+        v.backgroundColor = div
         v.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
@@ -626,7 +669,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
         // Immediately hide all .sks content so it doesn't flash through the SpriteKit
         // push transition before the UIKit overlay appears.
         children.forEach { $0.isHidden = true }
-        backgroundColor = UIColor(red: 0.063, green: 0.047, blue: 0.039, alpha: 1.0)
+        backgroundColor = GameSettings.shared.selectedTheme.sceneBackgroundColor
         // Stop the SpriteKit scanner — the UIKit overlay owns all interaction here.
         focusScanner?.stop()
         showOverlay(in: view)
@@ -641,14 +684,33 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
     // MARK: - Overlay management
 
     private func showOverlay(in view: SKView) {
-        let overlay = SettingsOverlayView(frame: view.bounds)
-        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        // alpha stays at 1.0 — the SpriteKit push transition already animates the arrival
-        overlay.onBack = { [weak self, weak view] in
-            self?.navigateBack(from: view)
-        }
+        let overlay = makeOverlay(in: view)
         view.addSubview(overlay)
         settingsOverlay = overlay
+    }
+
+    private func makeOverlay(in view: SKView) -> SettingsOverlayView {
+        let overlay = SettingsOverlayView(frame: view.bounds,
+                                          theme: GameSettings.shared.selectedTheme)
+        overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        overlay.onBack = { [weak self, weak view] in self?.navigateBack(from: view) }
+        overlay.onThemeChanged = { [weak self, weak view, weak overlay] in
+            guard let self = self, let view = view else { return }
+            let savedOffset = overlay?.scrollPosition ?? .zero
+            let newOverlay = self.makeOverlay(in: view)
+            newOverlay.alpha = 0
+            view.addSubview(newOverlay)
+            newOverlay.restoreScrollPosition(savedOffset)
+            self.backgroundColor = GameSettings.shared.selectedTheme.sceneBackgroundColor
+            UIView.animate(withDuration: 0.25) {
+                newOverlay.alpha = 1
+                overlay?.alpha = 0
+            } completion: { _ in
+                overlay?.removeFromSuperview()
+                self.settingsOverlay = newOverlay
+            }
+        }
+        return overlay
     }
 
     private func navigateBack(from view: SKView?) {

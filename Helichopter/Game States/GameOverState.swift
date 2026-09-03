@@ -36,6 +36,7 @@ class GameOverState: GKState {
         levelScene.playerCharacter?.shouldAcceptTouches = false
         updateScores()
         updateOverlayPresentation()
+        softenFailedLabel()
         overlay.applyUITheme(GameSettings.shared.selectedTheme)
 
         levelScene.overlay = overlay
@@ -72,6 +73,15 @@ class GameOverState: GKState {
 }
 
 extension GameOverState {
+
+    fileprivate func softenFailedLabel() {
+        overlay.contentNode.enumerateChildNodes(withName: "//*") { node, stop in
+            guard let label = node as? SKLabelNode,
+                  label.text?.lowercased() == "failed" else { return }
+            label.text = GameSettings.shared.calmMode ? "Well Done!" : "Round Over"
+            stop.pointee = true
+        }
+    }
 
     fileprivate func updateScores() {
         let bestScore = UserDefaults.standard.integer(for: .bestScore)

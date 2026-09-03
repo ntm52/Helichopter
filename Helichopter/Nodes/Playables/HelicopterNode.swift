@@ -33,6 +33,10 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
 
     var collisionBitMask: UInt32 = PhysicsCategories.pipe.rawValue | PhysicsCategories.boundary.rawValue
 
+    /// Set by PlayingState at the start of each run. Called and self-cleared on the player's
+    /// first input so that pipe spawning (and the hint fade) is deferred until the player acts.
+    var onFirstInput: (() -> Void)?
+
     // MARK: - Phase 5: Invulnerability
 
     /// True while the helicopter is in a no-fail invulnerability window.
@@ -217,6 +221,9 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
     }
 
     private func handleInputBegan(primary: Bool) {
+        // Fire the first-input hook (starts pipe spawning, fades hint) exactly once per run.
+        if let cb = onFirstInput { onFirstInput = nil; cb() }
+
         switch GameSettings.shared.controlScheme {
         case .tapFlap:
             if primary { flap() }
