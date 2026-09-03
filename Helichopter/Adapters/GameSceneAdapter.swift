@@ -87,8 +87,9 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
             if let world = self.scene?.childNode(withName: "world") {
                 // Score is hidden when HUD is hidden OR when the player has disabled score display.
                 world.childNode(withName: "Score Node")?.isHidden = newValue || !GameSettings.shared.showScore
-                world.childNode(withName: "Pause")?.isHidden = newValue
             }
+            // "Pause" is a direct child of the scene, not under "world".
+            self.scene?.childNode(withName: "Pause")?.isHidden = newValue
         }
     }
 
@@ -133,18 +134,10 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         scoreLabel?.text = "Score 0"
     }
 
-    /// Called from GameScene.didMove(to:) once the view is live.
-    /// Uses convertPoint(fromView:) so the position is correct for any scene anchor or active camera.
-    func anchorBackgroundToScreenBottom(scene: SKScene, view: SKView) {
-        guard let node = infiniteBackgroundNode else { return }
-        let sceneBottomLeft = scene.convertPoint(fromView: CGPoint(x: 0, y: view.bounds.height))
-        node.position = sceneBottomLeft
-    }
-
     func removePipes() {
         var nodes = [SKNode]()
 
-        infiniteBackgroundNode?.children.forEach({ node in
+        scene?.children.forEach({ node in
             let nodeName = node.name
             if let doesContainNodeName = nodeName?.contains("pipe"), doesContainNodeName { nodes += [node] }
         })
@@ -181,6 +174,12 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
             speed: GameSettings.shared.backgroundScrollSpeed
         )
         infiniteBackgroundNode!.zPosition = 0
+
+        // Pin the tile's top edge to the scene top so the starry portion of the texture
+        // fills the play area. The tile is taller than the scene, keeping the plain dark
+        // bottom of the image below the visible area.
+        let tileHeight = SKTexture(imageNamed: backgroundResourceName).size().height * CGFloat(scaleFactor)
+        infiniteBackgroundNode!.position.y = scene.size.height - tileHeight
 
         scene.addChild(infiniteBackgroundNode!)
         updatables.append(infiniteBackgroundNode!)

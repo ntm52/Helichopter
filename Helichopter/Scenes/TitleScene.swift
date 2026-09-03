@@ -14,7 +14,22 @@ class TitleScene: RoutingUtilityScene {
     }
 
     private func centerBackground() {
-        (childNode(withName: "Background 01") as? SKSpriteNode)?.position = .zero
+        // The .sks-placed sprite has an incorrect squished size (487×281 instead of the
+        // texture's 512×1500), so repositioning alone can't avoid the dark bottom zone.
+        // Replace it: scale uniformly to fill the scene width and pin the top to the
+        // scene top so the starry portion fills the screen.
+        childNode(withName: "Background 01")?.removeFromParent()
+
+        let texture = SKTexture(imageNamed: "Background")
+        let bg = SKSpriteNode(texture: texture)
+        bg.name = "Background 01"
+        bg.anchorPoint = CGPoint(x: 0.5, y: 1.0)
+        let scale = size.width / texture.size().width
+        bg.xScale = scale
+        bg.yScale = scale
+        bg.position = CGPoint(x: 0, y: size.height / 2)
+        bg.zPosition = -1
+        addChild(bg)
     }
 
     // MARK: - Private helpers

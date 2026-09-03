@@ -25,8 +25,8 @@ class PlayingState: GKState {
         }
         preparePlayer(for: scene)
 
-        if let scene = adapter.scene, let target = adapter.infiniteBackgroundNode {
-            infinitePipeProducer = PipeFactory.launch(for: scene, targetNode: target)
+        if let scene = adapter.scene {
+            infinitePipeProducer = PipeFactory.launch(for: scene, targetNode: scene)
         }
     }
 
