@@ -82,7 +82,7 @@ struct PipeFactory {
         }
 
         // Gap from GameSettings — B2 fixed: values now directly represent gap size (wider = easier)
-        var minimum = settings.gapMin
+        let minimum = settings.gapMin
         var maximum = settings.gapMax
 
         // Clamp gap so the top pipe always has at least minPipeHeight

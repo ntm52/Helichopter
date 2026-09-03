@@ -133,6 +133,14 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         scoreLabel?.text = "Score 0"
     }
 
+    /// Called from GameScene.didMove(to:) once the view is live.
+    /// Uses convertPoint(fromView:) so the position is correct for any scene anchor or active camera.
+    func anchorBackgroundToScreenBottom(scene: SKScene, view: SKView) {
+        guard let node = infiniteBackgroundNode else { return }
+        let sceneBottomLeft = scene.convertPoint(fromView: CGPoint(x: 0, y: view.bounds.height))
+        node.position = sceneBottomLeft
+    }
+
     func removePipes() {
         var nodes = [SKNode]()
 

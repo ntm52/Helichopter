@@ -41,6 +41,9 @@ class GameOverState: GKState {
 
         levelScene.overlay = overlay
         levelScene.isHUDHidden = true
+        if !GameSettings.shared.noFailMode {
+            levelScene.scene?.childNode(withName: "world")?.childNode(withName: "Pause")?.isHidden = true
+        }
         levelScene.playerCharacter?.shouldUpdate = false
         levelScene.scene?.removeAllActions()
         levelScene.score = 0
@@ -64,6 +67,7 @@ class GameOverState: GKState {
             levelScene.overlay = nil
             levelScene.isHUDHidden = false
             levelScene.playerCharacter?.shouldAcceptTouches = true
+            levelScene.scene?.childNode(withName: "world")?.childNode(withName: "Pause")?.isHidden = false
         }
     }
 

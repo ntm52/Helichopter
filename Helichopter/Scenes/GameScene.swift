@@ -43,6 +43,7 @@ class GameScene: SKScene {
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         GameScene.viewportSize = view.bounds.size
+        sceneAdapter?.anchorBackgroundToScreenBottom(scene: self, view: view)
         let theme = GameSettings.shared.selectedTheme
         backgroundColor = theme.sceneBackgroundColor
         applyUITheme(theme)

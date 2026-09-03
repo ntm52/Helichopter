@@ -7,9 +7,14 @@ class TitleScene: RoutingUtilityScene {
 
     override func didMove(to view: SKView) {
         super.didMove(to: view)
+        centerBackground()
         loadSelectedPlayer()
         setupAudio()
         applyContrastStyling()
+    }
+
+    private func centerBackground() {
+        (childNode(withName: "Background 01") as? SKSpriteNode)?.position = .zero
     }
 
     // MARK: - Private helpers

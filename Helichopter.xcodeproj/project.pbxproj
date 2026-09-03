@@ -56,6 +56,7 @@
 		D8986E553048ADD800B4D8C4 /* MainTheme.caf in Resources */ = {isa = PBXBuildFile; fileRef = D8986E533048ADD800B4D8C4 /* MainTheme.caf */; };
 		D8986E573048EC2800B4D8C4 /* SKNode+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E563048EC2800B4D8C4 /* SKNode+Theme.swift */; };
 		D8986E5930499C6600B4D8C4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D8986E5830499C6600B4D8C4 /* PrivacyInfo.xcprivacy */; };
+		D8986E5B304A2A3600B4D8C4 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E5A304A2A3600B4D8C4 /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -110,6 +111,7 @@
 		D8986E533048ADD800B4D8C4 /* MainTheme.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = MainTheme.caf; sourceTree = "<group>"; };
 		D8986E563048EC2800B4D8C4 /* SKNode+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SKNode+Theme.swift"; sourceTree = "<group>"; };
 		D8986E5830499C6600B4D8C4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		D8986E5A304A2A3600B4D8C4 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +203,7 @@
 				A9ACB98E2099F11900966991 /* Utils */,
 				A9ACB9892099F0C100966991 /* Protocols */,
 				A9ACB9882099F0B600966991 /* Nodes */,
+				D8986E5A304A2A3600B4D8C4 /* SceneDelegate.swift */,
 			);
 			path = Helichopter;
 			sourceTree = "<group>";
@@ -507,6 +510,7 @@
 				A92E72E4209D81820015F647 /* GameOverState.swift in Sources */,
 				A9ACB99C209A0DE100966991 /* CGFloat+MathUtils.swift in Sources */,
 				A9ACB9992099F1D200966991 /* PhysicsCategories.swift in Sources */,
+				D8986E5B304A2A3600B4D8C4 /* SceneDelegate.swift in Sources */,
 				A9ACB91D2099A1F200966991 /* AppDelegate.swift in Sources */,
 				A92E72E2209D815B0015F647 /* PlayingState.swift in Sources */,
 				A9EC756420A6D3E9007C42EC /* SettingsScene.swift in Sources */,
