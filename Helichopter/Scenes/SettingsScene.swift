@@ -669,7 +669,9 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
         // Immediately hide all .sks content so it doesn't flash through the SpriteKit
         // push transition before the UIKit overlay appears.
         children.forEach { $0.isHidden = true }
-        backgroundColor = GameSettings.shared.selectedTheme.sceneBackgroundColor
+        let theme = GameSettings.shared.selectedTheme
+        backgroundColor = theme.sceneBackgroundColor
+        view.backgroundColor = theme.sceneBackgroundColor
         // Stop the SpriteKit scanner — the UIKit overlay owns all interaction here.
         focusScanner?.stop()
         showOverlay(in: view)
@@ -701,7 +703,9 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
             newOverlay.alpha = 0
             view.addSubview(newOverlay)
             newOverlay.restoreScrollPosition(savedOffset)
-            self.backgroundColor = GameSettings.shared.selectedTheme.sceneBackgroundColor
+            let newTheme = GameSettings.shared.selectedTheme
+            self.backgroundColor = newTheme.sceneBackgroundColor
+            view.backgroundColor = newTheme.sceneBackgroundColor
             UIView.animate(withDuration: 0.25) {
                 newOverlay.alpha = 1
                 overlay?.alpha = 0

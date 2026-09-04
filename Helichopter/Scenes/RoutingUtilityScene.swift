@@ -5,7 +5,11 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
     // MARK: - Properties
 
     let selection = UISelectionFeedbackGenerator()
-    static let sceneScaleMode: SKSceneScaleMode = .aspectFill
+    // Computed so that scenes loaded during iPad landscape use aspectFit (pillarbox),
+    // keeping the full portrait game visible regardless of mount orientation.
+    static var sceneScaleMode: SKSceneScaleMode {
+        GameViewController.scaleMode(forSize: UIScreen.main.bounds.size)
+    }
     private static var lastPushTransitionDirection: SKTransitionDirection?
 
     // Focus scanner drives the ButtonNode focus-ring for switch / keyboard / controller navigation.

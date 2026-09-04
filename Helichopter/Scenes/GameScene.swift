@@ -45,6 +45,7 @@ class GameScene: SKScene {
         GameScene.viewportSize = view.bounds.size
         let theme = GameSettings.shared.selectedTheme
         backgroundColor = theme.sceneBackgroundColor
+        view.backgroundColor = theme.sceneBackgroundColor
         applyUITheme(theme)
     }
 

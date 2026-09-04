@@ -74,5 +74,8 @@ class TitleScene: RoutingUtilityScene {
         }
 
         applyUITheme(theme)
+        // Keep the SKView background in sync so pillarbox bars on iPad landscape
+        // match the theme rather than showing as black.
+        view?.backgroundColor = theme.sceneBackgroundColor
     }
 }

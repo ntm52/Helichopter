@@ -73,12 +73,11 @@ class GameViewController: UIViewController {
         super.viewDidLoad()
 
         let sceneName = Scenes.title.getName()
-        if let scene = SKScene(fileNamed: sceneName) as? TitleScene {
-            scene.scaleMode = .aspectFill
-            if let view = self.view as? SKView {
-                view.presentScene(scene)
-                view.ignoresSiblingOrder = true
-            }
+        if let scene = SKScene(fileNamed: sceneName) as? TitleScene,
+           let skView = self.view as? SKView {
+            scene.scaleMode = GameViewController.scaleMode(forSize: skView.bounds.size)
+            skView.presentScene(scene)
+            skView.ignoresSiblingOrder = true
         }
 
         setupGameControllerObservers()
@@ -94,9 +93,31 @@ class GameViewController: UIViewController {
 
     override var shouldAutorotate: Bool { true }
 
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        UIDevice.current.userInterfaceIdiom == .pad ? .allButUpsideDown : .portrait
+    }
 
     override var prefersStatusBarHidden: Bool { true }
+
+    // MARK: - Orientation
+
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+        coordinator.animate(alongsideTransition: { [weak self] _ in
+            guard let skView = self?.view as? SKView, let scene = skView.scene else { return }
+            scene.scaleMode = GameViewController.scaleMode(forSize: size)
+            skView.backgroundColor = scene.backgroundColor
+        })
+    }
+
+    /// Returns the appropriate scene scale mode for the given view size.
+    /// iPad landscape uses aspectFit (pillarboxed portrait game) so the full scene
+    /// is always visible regardless of mount orientation — critical for switch users.
+    static func scaleMode(forSize size: CGSize) -> SKSceneScaleMode {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { return .aspectFill }
+        return size.width > size.height ? .aspectFit : .aspectFill
+    }
 
     // MARK: - Accessibility (VoiceOver + iOS Switch Control)
 
