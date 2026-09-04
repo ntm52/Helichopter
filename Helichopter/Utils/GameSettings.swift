@@ -23,13 +23,12 @@ extension GameSettings {
 
     // MARK: - Palettes
 
-    /// Default: gold helicopter (#FFD700, L≈0.724) vs grass-green pipe (#33BB00, L≈0.168).
-    /// Contrast ≈ 5.2:1 helicopter-vs-pipe; background is warm charcoal (not blue) so green
-    /// pipes are clearly distinct from both the background and the gold helicopter.
+    /// Gold helicopter (#FFD700, L≈0.714) vs forest-green pipe (#006600, L≈0.095).
+    /// Contrast ≈ 5.25:1 helicopter-vs-pipe.
     static let paletteDefault = ColorPalette(
         id: "default", name: "Default",
         helicopterColor: UIColor(red: 1.0,   green: 0.855, blue: 0.0,   alpha: 1.0),
-        pipeColor:       UIColor(red: 0.2,   green: 0.733, blue: 0.0,   alpha: 1.0),
+        pipeColor:       UIColor(red: 0.0,   green: 0.4,   blue: 0.0,   alpha: 1.0),
         colorBlendFactor: 1.0
     )
 

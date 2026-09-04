@@ -38,6 +38,17 @@
                ReferencedContainer = "container:Helichopter.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D8986F0A304A7A0100B4D8C4"
+               BuildableName = "HelichopterTests.xctest"
+               BlueprintName = "HelichopterTests"
+               ReferencedContainer = "container:Helichopter.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

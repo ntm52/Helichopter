@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -59,6 +59,16 @@
 		D8986E5B304A2A3600B4D8C4 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E5A304A2A3600B4D8C4 /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D8986F0F304A7A0100B4D8C4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A9ACB9112099A1F200966991 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A9ACB9182099A1F200966991;
+			remoteInfo = Helichopter;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		A90192FA21F1BDF40020C612 /* PhysicsContactable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicsContactable.swift; sourceTree = "<group>"; };
 		A903943320AD94F000376CC3 /* UserDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaults.swift; sourceTree = "<group>"; };
@@ -112,10 +122,22 @@
 		D8986E563048EC2800B4D8C4 /* SKNode+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SKNode+Theme.swift"; sourceTree = "<group>"; };
 		D8986E5830499C6600B4D8C4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D8986E5A304A2A3600B4D8C4 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		D8986F0B304A7A0100B4D8C4 /* HelichopterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HelichopterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D8986F0C304A7A0100B4D8C4 /* HelichopterTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = HelichopterTests; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A9ACB9162099A1F200966991 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8986F08304A7A0100B4D8C4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -174,6 +196,7 @@
 			children = (
 				D8986E5830499C6600B4D8C4 /* PrivacyInfo.xcprivacy */,
 				A9ACB91B2099A1F200966991 /* Helichopter */,
+				D8986F0C304A7A0100B4D8C4 /* HelichopterTests */,
 				A9ACB91A2099A1F200966991 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -182,6 +205,7 @@
 			isa = PBXGroup;
 			children = (
 				A9ACB9192099A1F200966991 /* Helichopter.app */,
+				D8986F0B304A7A0100B4D8C4 /* HelichopterTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -419,6 +443,29 @@
 			productReference = A9ACB9192099A1F200966991 /* Helichopter.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D8986F0A304A7A0100B4D8C4 /* HelichopterTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D8986F13304A7A0100B4D8C4 /* Build configuration list for PBXNativeTarget "HelichopterTests" */;
+			buildPhases = (
+				D8986F07304A7A0100B4D8C4 /* Sources */,
+				D8986F08304A7A0100B4D8C4 /* Frameworks */,
+				D8986F09304A7A0100B4D8C4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D8986F10304A7A0100B4D8C4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D8986F0C304A7A0100B4D8C4 /* HelichopterTests */,
+			);
+			name = HelichopterTests;
+			packageProductDependencies = (
+			);
+			productName = HelichopterTests;
+			productReference = D8986F0B304A7A0100B4D8C4 /* HelichopterTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -426,13 +473,17 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastSwiftUpdateCheck = 0930;
+				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				ORGANIZATIONNAME = "Nathan Mayo";
 				TargetAttributes = {
 					A9ACB9182099A1F200966991 = {
 						CreatedOnToolsVersion = 9.3;
 						LastSwiftMigration = 1020;
+					};
+					D8986F0A304A7A0100B4D8C4 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = A9ACB9182099A1F200966991;
 					};
 				};
 			};
@@ -450,6 +501,7 @@
 			projectRoot = "";
 			targets = (
 				A9ACB9182099A1F200966991 /* Helichopter */,
+				D8986F0A304A7A0100B4D8C4 /* HelichopterTests */,
 			);
 		};
 /* End PBXProject section */
@@ -477,6 +529,13 @@
 				A9A3139D20B0226D00B36175 /* SettingsScene iPad.sks in Resources */,
 				A9A313A520B026E000B36175 /* FailedScene iPad.sks in Resources */,
 				A9CC5C3D20A030A900040E61 /* FailedScene.sks in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8986F09304A7A0100B4D8C4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -522,7 +581,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D8986F07304A7A0100B4D8C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D8986F10304A7A0100B4D8C4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A9ACB9182099A1F200966991 /* Helichopter */;
+			targetProxy = D8986F0F304A7A0100B4D8C4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		A9ACB9262099A1F200966991 /* Main.storyboard */ = {
@@ -714,6 +788,60 @@
 			};
 			name = Release;
 		};
+		D8986F11304A7A0100B4D8C4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9HJ5466NL8;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nathanmayo.HelichopterTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Helichopter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Helichopter";
+			};
+			name = Debug;
+		};
+		D8986F12304A7A0100B4D8C4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 9HJ5466NL8;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nathanmayo.HelichopterTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Helichopter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Helichopter";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -731,6 +859,15 @@
 			buildConfigurations = (
 				A9ACB93D2099A1F300966991 /* Debug */,
 				A9ACB93E2099A1F300966991 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D8986F13304A7A0100B4D8C4 /* Build configuration list for PBXNativeTarget "HelichopterTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D8986F11304A7A0100B4D8C4 /* Debug */,
+				D8986F12304A7A0100B4D8C4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
