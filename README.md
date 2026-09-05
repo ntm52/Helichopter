@@ -25,6 +25,12 @@ This project is an active remodel of the original 2021 build, bringing it to cur
 - iOS 13.0+ (current project deployment target; oldest-device validation pending)
 - iPhone and iPad
 
+## Switch controls in Settings
+
+Press Space, Enter, 1, Up Arrow, or the controller's primary button to start scanning or select the highlighted control. Auto-Advance moves focus on a timer; in Two-Switch mode, use 2, an arrow mapped to secondary input, or the secondary controller button to advance.
+
+Select a slider to open Decrease, Increase, and Done; each adjustment changes 5% of its range. Select a segmented control to scan its choices. Settings scrolls focused controls into view and preserves focus after theme, preset, or lock changes. When locked, Back and Lock Settings remain reachable.
+
 ## Status
 
 Active development; not yet ready for App Store submission. See [the September 5 audit](Audit/REVIEW_2026-09-05.md) for tested fixes and remaining release blockers. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.

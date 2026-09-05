@@ -107,11 +107,8 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
         tx.pausesOutgoingScene = false
         view?.presentScene(scene, transition: tx)
     }
-}
 
-// MARK: - SwitchInputReceivable
-
-extension RoutingUtilityScene: SwitchInputReceivable {
+    // Switch handlers live in the class so UIKit-based scenes can override routing.
 
     func switchPrimaryBegan() {
         focusScanner?.primaryActivate()
@@ -125,3 +122,5 @@ extension RoutingUtilityScene: SwitchInputReceivable {
 
     func switchSecondaryEnded() { }
 }
+
+extension RoutingUtilityScene: SwitchInputReceivable { }

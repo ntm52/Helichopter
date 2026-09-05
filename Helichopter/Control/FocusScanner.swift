@@ -12,9 +12,17 @@ protocol SwitchInputReceivable: AnyObject {
     func switchSecondaryEnded()
 }
 
+protocol FocusScannable: AnyObject {
+    var isFocused: Bool { get set }
+    var accessibilityScanLabel: String { get }
+    func scannerActivate()
+}
+
+extension ButtonNode: FocusScannable { }
+
 // MARK: - FocusScanner
 
-/// Drives the ButtonNode focus-ring scanning loop for accessible menu navigation.
+/// Drives focus and spoken labels for accessible SpriteKit and UIKit menu navigation.
 ///
 /// Auto-scan: a dwell timer advances through buttons automatically; primary switch activates.
 /// Two-switch: primary switch activates; secondary switch advances manually (no timer).
@@ -23,8 +31,8 @@ protocol SwitchInputReceivable: AnyObject {
 /// If scanning is not yet active, the first primary-switch press will start it automatically.
 final class FocusScanner {
 
-    /// Ordered list of buttons to scan through. Set before calling `start()`.
-    var items: [ButtonNode] = []
+    /// Ordered list of controls to scan through. Set before calling `start()`.
+    var items: [FocusScannable] = []
 
     private(set) var isActive = false
     private(set) var currentIndex: Int = 0
@@ -39,12 +47,12 @@ final class FocusScanner {
 
     // MARK: - Public API
 
-    func start() {
+    func start(at index: Int = 0) {
         stop()
         guard !items.isEmpty else { return }
         isActive = true
-        currentIndex = 0
-        focusItem(at: 0)
+        currentIndex = items.indices.contains(index) ? index : 0
+        focusItem(at: currentIndex)
         if settings.scanScheme == .autoScan {
             scheduleTimer()
         }
@@ -66,7 +74,11 @@ final class FocusScanner {
             return
         }
         guard items.indices.contains(currentIndex) else { return }
-        items[currentIndex].scannerActivate()
+        let activatedItem = items[currentIndex]
+        activatedItem.scannerActivate()
+        if isActive, items.indices.contains(currentIndex), items[currentIndex] === activatedItem {
+            speak(activatedItem.accessibilityScanLabel)
+        }
         if isActive && settings.scanScheme == .autoScan {
             scheduleTimer()  // reset dwell so the next item gets a full interval
         }

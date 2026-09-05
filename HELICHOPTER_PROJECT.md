@@ -212,3 +212,10 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Normalized auto-hover/two-switch damping to elapsed time and reset helicopter timing on pause/new run.
 - Added four regression tests. All 42 tests passed on iPhone 17 Pro (iOS 26.5); build succeeded and diff whitespace checks passed.
 - Physical-device validation remains outstanding. Next priorities are UIKit Settings switch navigation, a one-switch gameplay Pause route, VoiceOver flight interaction, rendered contrast, and Dynamic Type. See the updated audit for details and test artifacts.
+
+### 2026-09-05 — UIKit Settings switch navigation
+- Committed and pushed the earlier work in four sections: settings fixes, scanner fixes, gameplay/lifecycle fixes, and audit documentation.
+- Reused FocusScanner through a shared focusable-item protocol for SpriteKit and UIKit. Settings now overrides inherited switch routing and keeps the hidden legacy scanner stopped.
+- Added control highlighting, automatic vertical/horizontal scrolling, slider adjustment panels, segmented-choice panels, and focus restoration after theme/preset/lock rebuilds. Back and unlock remain scannable when Settings is locked.
+- Added six Settings regression tests: reachability, bounded adjustments, rebuild/lock behavior, palette/scan-mode changes, a timed primary-switch-only session, and rendered small-phone/landscape-tablet layouts. All 48 suite tests passed on iPhone 17 Pro (iOS 26.5).
+- Reviewed rendered layouts; made the adjustment panel opaque to eliminate distracting underlying text. Physical switch/controller and system accessibility testing remains outstanding. One-switch Pause during gameplay is still the next functional switch-access gap.

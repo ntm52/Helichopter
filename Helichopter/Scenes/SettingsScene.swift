@@ -30,22 +30,229 @@ private final class SegTarget: NSObject {
     @objc func changed(_ sender: UISegmentedControl) { f(sender.selectedSegmentIndex) }
 }
 
+private final class SettingsScanItem: FocusScannable {
+    weak var control: UIControl?
+    private let focus: (UIControl, Bool) -> Void
+    private let activate: (UIControl) -> Void
+
+    init(control: UIControl, focus: @escaping (UIControl, Bool) -> Void,
+         activate: @escaping (UIControl) -> Void) {
+        self.control = control
+        self.focus = focus
+        self.activate = activate
+    }
+
+    var isFocused = false {
+        didSet { if let control = control { focus(control, isFocused) } }
+    }
+
+    var accessibilityScanLabel: String {
+        guard let control = control else { return "" }
+        let label = control.accessibilityLabel ?? (control as? UIButton)?.currentTitle ?? ""
+        if let toggle = control as? UISwitch { return "\(label), \(toggle.isOn ? "On" : "Off")" }
+        if let slider = control as? UISlider { return "\(label), \(String(format: "%.2g", slider.value)). Select to adjust." }
+        if let segment = control as? UISegmentedControl {
+            let value = segment.titleForSegment(at: segment.selectedSegmentIndex) ?? ""
+            return "\(label), \(value). Select to choose."
+        }
+        return label
+    }
+
+    func scannerActivate() {
+        if let control = control { activate(control) }
+    }
+}
+
 // MARK: - SettingsOverlayView
 // Full UIKit settings panel shown on top of the SpriteKit scene.
 // Colors are derived from the active UITheme so the panel follows the user's chosen theme.
 
-private final class SettingsOverlayView: UIView {
+final class SettingsOverlayView: UIView {
 
     var onBack: (() -> Void)?
     var onThemeChanged: (() -> Void)?
 
+    let switchScanner = FocusScanner()
+    private let focusRing = UIView()
+    private weak var focusedControl: UIControl?
+    private var adjustmentPanel: UIView?
+    private var adjustmentTargets: [NSObject] = []
+    private var returnControlLabel: String?
+    private var navigationItems: [FocusScannable] = []
+
+    var focusedSetting: String? {
+        returnControlLabel ?? focusedControl?.accessibilityLabel ?? (focusedControl as? UIButton)?.currentTitle
+    }
+
+    func startScanning(focusing label: String? = nil) {
+        switchScanner.stop()
+        navigationItems = controls(in: self).map { scanItem(for: $0) }
+        switchScanner.items = navigationItems
+        let index = navigationItems.firstIndex {
+            let control = ($0 as? SettingsScanItem)?.control
+            return label != nil && (control?.accessibilityLabel ?? (control as? UIButton)?.currentTitle) == label
+        } ?? 0
+        switchScanner.start(at: index)
+    }
+
+    func stopScanning() { switchScanner.stop() }
+
+    func primaryActivate() {
+        if !switchScanner.isActive { startScanning() }
+        else { switchScanner.primaryActivate() }
+    }
+
+    func secondaryAdvance() {
+        if !switchScanner.isActive { startScanning() }
+        else { switchScanner.secondaryAdvance() }
+    }
+
+    private func controls(in view: UIView) -> [UIControl] {
+        guard !view.isHidden, view.isUserInteractionEnabled else { return [] }
+        if let control = view as? UIControl { return control.isEnabled ? [control] : [] }
+        return view.subviews.flatMap { controls(in: $0) }
+    }
+
+    private func scanItem(for control: UIControl) -> SettingsScanItem {
+        SettingsScanItem(control: control, focus: { [weak self] control, focused in
+            guard let self = self else { return }
+            self.focusRing.isHidden = !focused
+            if focused {
+                self.focusedControl = control
+                self.layoutIfNeeded()
+                // Scroll both the palette strip and the outer panel when necessary.
+                var ancestor = control.superview
+                while let view = ancestor {
+                    if let scroll = view as? UIScrollView {
+                        scroll.scrollRectToVisible(control.convert(control.bounds.insetBy(dx: -6, dy: -6), to: scroll), animated: false)
+                    }
+                    ancestor = view.superview
+                }
+                self.updateFocusRing()
+            }
+        }, activate: { [weak self] control in
+            guard let self = self else { return }
+            if control is UISlider || control is UISegmentedControl {
+                self.showAdjustment(for: control)
+            } else if let toggle = control as? UISwitch {
+                toggle.setOn(!toggle.isOn, animated: false)
+                toggle.sendActions(for: .valueChanged)
+            } else {
+                control.sendActions(for: .touchUpInside)
+            }
+        })
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateFocusRing()
+    }
+
+    private func updateFocusRing() {
+        guard let control = focusedControl, switchScanner.isActive else { return }
+        focusRing.frame = control.convert(control.bounds, to: self).insetBy(dx: -4, dy: -4)
+        bringSubviewToFront(focusRing)
+    }
+
+    private func showAdjustment(for control: UIControl) {
+        returnControlLabel = control.accessibilityLabel
+        switchScanner.stop()
+        let panel = UIView()
+        panel.backgroundColor = bg.withAlphaComponent(1)
+        panel.accessibilityViewIsModal = true
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(panel)
+        adjustmentPanel = panel
+        NSLayoutConstraint.activate([
+            panel.topAnchor.constraint(equalTo: topAnchor), panel.bottomAnchor.constraint(equalTo: bottomAnchor),
+            panel.leadingAnchor.constraint(equalTo: leadingAnchor), panel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+        let title = makeLabel(control.accessibilityLabel ?? "Adjust", size: 22, weight: .bold, color: text)
+        title.numberOfLines = 0
+        let choices = UIStackView(arrangedSubviews: [title])
+        choices.axis = .vertical
+        choices.spacing = 16
+        choices.translatesAutoresizingMaskIntoConstraints = false
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(scroll)
+        scroll.addSubview(choices)
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.topAnchor, constant: 20),
+            scroll.bottomAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            scroll.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 20),
+            scroll.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -20),
+            choices.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 8),
+            choices.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -8),
+            choices.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 8),
+            choices.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -8),
+            choices.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -16)
+        ])
+        func addChoice(_ name: String, action: @escaping () -> Void) {
+            let target = ButtonTarget(action)
+            adjustmentTargets.append(target)
+            let button = plainButton(name, color: accent, target: target, action: #selector(ButtonTarget.tapped))
+            button.titleLabel?.numberOfLines = 0
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+            choices.addArrangedSubview(button)
+        }
+        if let slider = control as? UISlider {
+            let value = makeLabel("", size: 20, weight: .medium, color: text)
+            func updateValue() {
+                value.text = String(format: "Value: %.2g", slider.value)
+                for case let button as UIButton in choices.arrangedSubviews {
+                    if let name = button.currentTitle, name != "Done" {
+                        button.accessibilityLabel = "\(name). \(value.text ?? "")"
+                    }
+                }
+            }
+            updateValue()
+            choices.addArrangedSubview(value)
+            for (name, direction) in [("Decrease", Float(-1)), ("Increase", Float(1))] {
+                addChoice(name) { [weak slider] in
+                    guard let slider = slider else { return }
+                    let step = (slider.maximumValue - slider.minimumValue) / 20
+                    slider.value = min(slider.maximumValue, max(slider.minimumValue, slider.value + step * direction))
+                    slider.sendActions(for: .valueChanged)
+                    updateValue()
+                    UIAccessibility.post(notification: .announcement, argument: value.text)
+                }
+            }
+            updateValue()
+        } else if let segment = control as? UISegmentedControl {
+            for index in 0..<segment.numberOfSegments where segment.isEnabledForSegment(at: index) {
+                addChoice(segment.titleForSegment(at: index) ?? "Option \(index + 1)") { [weak self, weak segment] in
+                    self?.closeAdjustment()
+                    segment?.selectedSegmentIndex = index
+                    segment?.sendActions(for: .valueChanged)
+                    // Scan mode may just have changed; apply it immediately.
+                    if self?.switchScanner.isActive == true { self?.startScanning(focusing: control.accessibilityLabel) }
+                }
+            }
+        }
+        addChoice("Done") { [weak self] in self?.closeAdjustment() }
+        switchScanner.items = controls(in: panel).map { scanItem(for: $0) }
+        switchScanner.start()
+        UIAccessibility.post(notification: .screenChanged, argument: title)
+    }
+
+    private func closeAdjustment() {
+        switchScanner.stop()
+        adjustmentPanel?.removeFromSuperview()
+        adjustmentPanel = nil
+        adjustmentTargets.removeAll()
+        let label = returnControlLabel
+        returnControlLabel = nil
+        startScanning(focusing: label)
+        UIAccessibility.post(notification: .screenChanged, argument: focusedControl)
+    }
+
     var scrollPosition: CGPoint { scrollView.contentOffset }
 
     func restoreScrollPosition(_ offset: CGPoint) {
-        // Defer one run loop so Auto Layout has computed the content size first.
-        DispatchQueue.main.async { [weak self] in
-            self?.scrollView.contentOffset = offset
-        }
+        layoutIfNeeded()
+        let maxY = max(0, scrollView.contentSize.height - scrollView.bounds.height)
+        scrollView.contentOffset = CGPoint(x: 0, y: min(max(0, offset.y), maxY))
     }
 
     // MARK: Theme-derived color tokens
@@ -181,6 +388,13 @@ private final class SettingsOverlayView: UIView {
         ])
 
         buildSections()
+        focusRing.isUserInteractionEnabled = false
+        focusRing.accessibilityElementsHidden = true
+        focusRing.layer.borderWidth = 3
+        focusRing.layer.borderColor = accent.cgColor
+        focusRing.layer.cornerRadius = 8
+        focusRing.isHidden = true
+        addSubview(focusRing)
     }
 
     @objc private func backTapped() { onBack?() }
@@ -681,7 +895,7 @@ private final class SettingsOverlayView: UIView {
 
 class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, TriggleButtonNodeResponderType {
 
-    private weak var settingsOverlay: SettingsOverlayView?
+    private(set) weak var settingsOverlay: SettingsOverlayView?
 
     // MARK: - Lifecycle
 
@@ -699,6 +913,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
     }
 
     override func willMove(from view: SKView) {
+        settingsOverlay?.stopScanning()
         settingsOverlay?.removeFromSuperview()
         settingsOverlay = nil
         super.willMove(from: view)
@@ -706,10 +921,14 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
 
     // MARK: - Overlay management
 
+    override func switchPrimaryBegan() { settingsOverlay?.primaryActivate() }
+    override func switchSecondaryBegan() { settingsOverlay?.secondaryAdvance() }
+
     private func showOverlay(in view: SKView) {
         let overlay = makeOverlay(in: view)
         view.addSubview(overlay)
         settingsOverlay = overlay
+        if GameSettings.shared.scanningEnabled { overlay.startScanning() }
         UIAccessibility.post(notification: .screenChanged, argument: overlay)
     }
 
@@ -722,11 +941,18 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
         overlay.onThemeChanged = { [weak self, weak view, weak overlay] in
             guard let self = self, let view = view else { return }
             let savedOffset = overlay?.scrollPosition ?? .zero
+            let wasScanning = overlay?.switchScanner.isActive == true
+            let focusedSetting = overlay?.focusedSetting
+            overlay?.stopScanning()
+            overlay?.isUserInteractionEnabled = false
             let newOverlay = self.makeOverlay(in: view)
             self.settingsOverlay = newOverlay
             newOverlay.alpha = 0
             view.addSubview(newOverlay)
             newOverlay.restoreScrollPosition(savedOffset)
+            if wasScanning || GameSettings.shared.scanningEnabled {
+                newOverlay.startScanning(focusing: focusedSetting)
+            }
             let newTheme = GameSettings.shared.selectedTheme
             self.backgroundColor = newTheme.sceneBackgroundColor
             view.backgroundColor = newTheme.sceneBackgroundColor
@@ -743,6 +969,8 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
 
     private func navigateBack(from view: SKView?) {
         guard let view = view else { return }
+        settingsOverlay?.stopScanning()
+        settingsOverlay?.isUserInteractionEnabled = false
         UIView.animate(withDuration: 0.15) { [weak self] in
             self?.settingsOverlay?.alpha = 0
         } completion: { [weak self, weak view] _ in

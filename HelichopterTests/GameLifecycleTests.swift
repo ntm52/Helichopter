@@ -211,4 +211,209 @@ struct GameLifecycleTests {
             }
         }
     }
+
+    private func settingsScene() throws -> (SKView, SettingsScene) {
+        GameSettings.shared.isSettingsLocked = false
+        GameSettings.shared.scanScheme = .twoSwitch
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let scene = try #require(SettingsScene(fileNamed: "SettingsScene"))
+        view.presentScene(scene)
+        return (view, scene)
+    }
+
+    private func focusSetting(_ label: String, in scene: SettingsScene) throws {
+        let overlay = try #require(scene.settingsOverlay)
+        let input: SwitchInputReceivable = scene
+        if !overlay.switchScanner.isActive { input.switchPrimaryBegan() }
+        for _ in 0..<overlay.switchScanner.items.count {
+            let scanner = overlay.switchScanner
+            if scanner.items[scanner.currentIndex].accessibilityScanLabel.hasPrefix(label) { return }
+            input.switchSecondaryBegan()
+        }
+        Issue.record("Setting not reachable by switch: \(label)")
+    }
+
+    @Test func settingsSwitchReachesControlsAndBackWithoutLegacyScanner() throws {
+        try withSettings {
+            let (view, scene) = try settingsScene()
+            defer { view.presentScene(nil) }
+            let overlay = try #require(scene.settingsOverlay)
+            let expected = ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size",
+                            "Background Scroll", "No-Fail Mode", "Calm Mode", "Show Score", "Auto-Scan Menus",
+                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "Menu Theme",
+                            "Sound Effects", "Music", "Lock Settings"] + GameSettings.allPalettes.map { $0.name }
+            for label in expected { try focusSetting(label, in: scene) }
+            #expect(overlay.scrollPosition.y > 0)
+            #expect(scene.focusScanner?.isActive == false)
+            try focusSetting("No-Fail Mode", in: scene)
+            let previous = GameSettings.shared.noFailMode
+            scene.switchPrimaryBegan()
+            #expect(GameSettings.shared.noFailMode != previous)
+            var backActivated = false
+            overlay.onBack = { backActivated = true }
+            try focusSetting("◀  Back", in: scene)
+            scene.switchPrimaryBegan()
+            #expect(backActivated)
+            view.presentScene(nil)
+            #expect(!overlay.switchScanner.isActive)
+        }
+    }
+
+    @Test func settingsSwitchAdjustsSliderBothWaysAndReturnsToRow() throws {
+        try withSettings {
+            GameSettings.shared.backgroundScrollSpeed = 100
+            let (view, scene) = try settingsScene()
+            defer { view.presentScene(nil) }
+            try focusSetting("Background Scroll", in: scene)
+            let overlay = try #require(scene.settingsOverlay)
+            scene.switchPrimaryBegan()
+            #expect(overlay.switchScanner.items.count == 3)
+            scene.switchPrimaryBegan() // Decrease.
+            #expect(GameSettings.shared.backgroundScrollSpeed == 90)
+            for _ in 0..<30 { scene.switchPrimaryBegan() }
+            #expect(GameSettings.shared.backgroundScrollSpeed == 0)
+            scene.switchSecondaryBegan() // Increase.
+            for _ in 0..<30 { scene.switchPrimaryBegan() }
+            #expect(GameSettings.shared.backgroundScrollSpeed == 200)
+            scene.switchSecondaryBegan() // Done.
+            scene.switchPrimaryBegan()
+            #expect(overlay.focusedSetting == "Background Scroll")
+            #expect(overlay.switchScanner.items.count > 3)
+        }
+    }
+
+    @Test func settingsSwitchPreservesFocusAcrossThemePresetAndLockRebuilds() throws {
+        try withSettings {
+            let (view, scene) = try settingsScene()
+            defer { view.presentScene(nil) }
+            try focusSetting("Menu Theme", in: scene)
+            let oldOverlay = try #require(scene.settingsOverlay)
+            scene.switchPrimaryBegan()
+            scene.switchSecondaryBegan() // Parchment.
+            scene.switchPrimaryBegan()
+            let themed = try #require(scene.settingsOverlay)
+            #expect(themed !== oldOverlay)
+            #expect(!oldOverlay.switchScanner.isActive)
+            #expect(themed.focusedSetting == "Menu Theme")
+            #expect(GameSettings.shared.selectedThemeID == GameSettings.allThemes[1].id)
+            try focusSetting("Gentle", in: scene)
+            scene.switchPrimaryBegan()
+            #expect(scene.settingsOverlay?.focusedSetting == "Gentle")
+            #expect(GameSettings.shared.gapMin == GameSettings.gentlePreset.gapMin)
+            try focusSetting("Lock Settings", in: scene)
+            scene.switchPrimaryBegan()
+            #expect(GameSettings.shared.isSettingsLocked)
+            #expect(scene.settingsOverlay?.switchScanner.items.count == 2)
+            #expect(scene.settingsOverlay?.focusedSetting == "Lock Settings")
+            scene.switchPrimaryBegan()
+            #expect(!GameSettings.shared.isSettingsLocked)
+            #expect((scene.settingsOverlay?.switchScanner.items.count ?? 0) > 2)
+        }
+    }
+
+    @Test func settingsSwitchSelectsPaletteAndChangesScanMode() throws {
+        try withSettings {
+            let (view, scene) = try settingsScene()
+            defer { view.presentScene(nil) }
+            let palette = try #require(GameSettings.allPalettes.last)
+            try focusSetting(palette.name, in: scene)
+            scene.switchPrimaryBegan()
+            #expect(GameSettings.shared.selectedPaletteID == palette.id)
+            try focusSetting("Menu Scan Mode", in: scene)
+            scene.switchPrimaryBegan()
+            scene.switchPrimaryBegan() // Auto-Advance.
+            #expect(GameSettings.shared.scanScheme == .autoScan)
+            #expect(scene.settingsOverlay?.focusedSetting == "Menu Scan Mode")
+            scene.switchPrimaryBegan()
+            scene.switchSecondaryBegan()
+            scene.switchPrimaryBegan() // Two-Switch.
+            #expect(GameSettings.shared.scanScheme == .twoSwitch)
+        }
+    }
+
+
+    @Test func settingsOneSwitchCanAdjustAndReturnUsingTimedScanning() async throws {
+        let gs = GameSettings.shared
+        let savedScheme = gs.scanScheme
+        let savedDwell = gs.scanDwellTime
+        let savedEnabled = gs.scanningEnabled
+        let savedLocked = gs.isSettingsLocked
+        let savedSpeed = gs.backgroundScrollSpeed
+        defer {
+            gs.scanScheme = savedScheme
+            gs.scanDwellTime = savedDwell
+            gs.scanningEnabled = savedEnabled
+            gs.isSettingsLocked = savedLocked
+            gs.backgroundScrollSpeed = savedSpeed
+        }
+        gs.scanningEnabled = false
+        gs.backgroundScrollSpeed = 100
+        let (view, scene) = try settingsScene()
+        defer { view.presentScene(nil) }
+        gs.scanScheme = .autoScan
+        gs.scanDwellTime = 0.1
+        let overlay = try #require(scene.settingsOverlay)
+        let input: SwitchInputReceivable = scene
+        input.switchPrimaryBegan()
+
+        func activateWhenScanned(_ label: String) async throws {
+            let deadline = Date().addingTimeInterval(6)
+            while Date() < deadline {
+                let scanner = overlay.switchScanner
+                if scanner.items[scanner.currentIndex].accessibilityScanLabel.hasPrefix(label) {
+                    input.switchPrimaryBegan()
+                    return
+                }
+                try await Task.sleep(nanoseconds: 10_000_000)
+            }
+            Issue.record("Auto-scan did not reach \(label)")
+        }
+
+        try await activateWhenScanned("Background Scroll")
+        #expect(overlay.switchScanner.items.count == 3)
+        try await activateWhenScanned("Increase")
+        #expect(gs.backgroundScrollSpeed == 110)
+        try await activateWhenScanned("Done")
+        #expect(overlay.focusedSetting == "Background Scroll")
+        var returned = false
+        overlay.onBack = { returned = true }
+        try await activateWhenScanned("◀  Back")
+        #expect(returned)
+        view.presentScene(nil)
+        let stoppedIndex = overlay.switchScanner.currentIndex
+        try await Task.sleep(nanoseconds: 150_000_000)
+        #expect(!overlay.switchScanner.isActive)
+        #expect(overlay.switchScanner.currentIndex == stoppedIndex)
+    }
+
+
+    @Test func settingsAdjustmentLayoutsOnSmallPhoneAndLandscapeTablet() throws {
+        try withSettings {
+            for size in [CGSize(width: 320, height: 568), CGSize(width: 1024, height: 768)] {
+                let (view, scene) = try settingsScene()
+                defer { view.presentScene(nil) }
+                view.frame.size = size
+                let overlay = try #require(scene.settingsOverlay)
+                overlay.frame = view.bounds
+                try focusSetting("Menu Theme", in: scene)
+                overlay.layoutIfNeeded()
+                let renderer = UIGraphicsImageRenderer(bounds: overlay.bounds)
+                Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
+                                  named: "Settings-focus-\(Int(size.width)).png")
+                scene.switchPrimaryBegan()
+                overlay.layoutIfNeeded()
+                Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
+                                  named: "Settings-choices-\(Int(size.width)).png")
+                #expect(overlay.switchScanner.items.count == GameSettings.allThemes.count + 1)
+                for _ in GameSettings.allThemes { scene.switchSecondaryBegan() }
+                scene.switchPrimaryBegan() // Done.
+                try focusSetting("Background Scroll", in: scene)
+                scene.switchPrimaryBegan()
+                overlay.layoutIfNeeded()
+                Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
+                                  named: "Settings-slider-\(Int(size.width)).png")
+            }
+        }
+    }
+
 }
