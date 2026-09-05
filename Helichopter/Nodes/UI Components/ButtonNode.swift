@@ -74,20 +74,27 @@ class ButtonNode: SKSpriteNode {
 
     var isFocused = false {
         didSet {
-            if isFocused {
-                run(SKAction.scale(to: 1.08, duration: 0.20))
-                focusRing?.alpha = 0.0
-                focusRing?.isHidden = false
-                focusRing?.run(SKAction.fadeIn(withDuration: 0.2))
-            } else {
-                run(SKAction.scale(to: 1.0, duration: 0.20))
-                focusRing?.isHidden = true
-            }
+            // Apply immediately: SKActions do not advance while the game is paused.
+            focusRing.isHidden = !isFocused
+            focusRing.alpha = 1
         }
     }
 
-    // B8 fix: optional — not every button in a .sks file has a focusRing child node
-    lazy var focusRing: SKNode? = childNode(withName: "focusRing")
+    lazy var focusRing: SKNode = {
+        if let existing = childNode(withName: "focusRing") { return existing }
+        let ring = SKShapeNode(rect: CGRect(
+            x: -size.width * anchorPoint.x - 6,
+            y: -size.height * anchorPoint.y - 6,
+            width: size.width + 12, height: size.height + 12), cornerRadius: 8)
+        ring.name = "focusRing"
+        ring.strokeColor = GameSettings.shared.selectedTheme.titleTextColor
+        ring.lineWidth = 4
+        ring.fillColor = .clear
+        ring.zPosition = 100
+        ring.isHidden = true
+        addChild(ring)
+        return ring
+    }()
 
     // MARK: Initializers
 
@@ -107,7 +114,7 @@ class ButtonNode: SKSpriteNode {
         defaultTexture  = texture
         selectedTexture = texture
 
-        focusRing?.isHidden = true
+        focusRing.isHidden = true
         isUserInteractionEnabled = true
     }
 

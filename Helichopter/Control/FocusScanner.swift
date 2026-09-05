@@ -31,14 +31,21 @@ final class FocusScanner {
     private var scanTimer: Timer?
     private let synthesizer = AVSpeechSynthesizer()
 
+    private let settings: GameSettings
+
+    init(settings: GameSettings = .shared) { self.settings = settings }
+
+    deinit { scanTimer?.invalidate() }
+
     // MARK: - Public API
 
     func start() {
+        stop()
         guard !items.isEmpty else { return }
         isActive = true
         currentIndex = 0
         focusItem(at: 0)
-        if GameSettings.shared.scanScheme == .autoScan {
+        if settings.scanScheme == .autoScan {
             scheduleTimer()
         }
     }
@@ -60,7 +67,7 @@ final class FocusScanner {
         }
         guard items.indices.contains(currentIndex) else { return }
         items[currentIndex].scannerActivate()
-        if GameSettings.shared.scanScheme == .autoScan {
+        if isActive && settings.scanScheme == .autoScan {
             scheduleTimer()  // reset dwell so the next item gets a full interval
         }
     }
@@ -73,7 +80,7 @@ final class FocusScanner {
             return
         }
         advanceToNext()
-        if GameSettings.shared.scanScheme == .autoScan {
+        if settings.scanScheme == .autoScan {
             scheduleTimer()  // reset dwell after manual advance
         }
     }
@@ -81,7 +88,7 @@ final class FocusScanner {
     // MARK: - Private
 
     private func advanceToNext() {
-        guard !items.isEmpty else { return }
+        guard isActive, !items.isEmpty else { return }
         items[safe: currentIndex]?.isFocused = false
         currentIndex = (currentIndex + 1) % items.count
         focusItem(at: currentIndex)
@@ -103,7 +110,7 @@ final class FocusScanner {
 
     private func scheduleTimer() {
         scanTimer?.invalidate()
-        let interval = GameSettings.shared.scanDwellTime
+        let interval = settings.scanDwellTime
         scanTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.advanceToNext()
         }

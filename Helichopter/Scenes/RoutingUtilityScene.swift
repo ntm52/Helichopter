@@ -67,7 +67,6 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
             transition = SKTransition.fade(withDuration: 1.0)
 
         case .settings:
-            guard !GameSettings.shared.isSettingsLocked else { return }
             sceneToPresent = SettingsScene(fileNamed: Scenes.setting.getName())
             if reduceMotion {
                 transition = SKTransition.fade(withDuration: 0.4)
