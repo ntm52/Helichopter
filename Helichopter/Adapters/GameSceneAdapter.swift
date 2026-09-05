@@ -5,7 +5,14 @@ extension SKScene {
 
     func findAllButtonsInScene() -> [ButtonNode] {
         return ButtonIdentifier.allButtonIdentifiers.compactMap { buttonIdentifier in
-            childNode(withName: "//\(buttonIdentifier.rawValue)") as? ButtonNode
+            guard let button = childNode(withName: "//\(buttonIdentifier.rawValue)") as? ButtonNode,
+                  button.isUserInteractionEnabled else { return nil }
+            var ancestor: SKNode? = button
+            while let node = ancestor {
+                if node.isHidden || node.alpha == 0 { return nil }
+                ancestor = node.parent
+            }
+            return button
         }
     }
 }
@@ -65,9 +72,10 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         didSet {
             buttons = []
 
-            oldValue?.backgroundNode.run(SKAction.fadeOut(withDuration: overlayDuration)) {
-                oldValue?.backgroundNode.removeFromParent()
-            }
+            // Remove synchronously: a paused scene cannot finish a fade-out action,
+            // and outgoing buttons must stop accepting input immediately.
+            oldValue?.backgroundNode.removeAllActions()
+            oldValue?.backgroundNode.removeFromParent()
 
             if let overlay = overlay, let scene = scene {
                 overlay.backgroundNode.removeFromParent()
@@ -190,10 +198,16 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
 extension GameSceneAdapter: SKPhysicsContactDelegate {
 
     func didBegin(_ contact: SKPhysicsContact) {
+        guard stateMachine?.currentState is PlayingState else { return }
         let collision: UInt32 = (contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask)
         let player = PhysicsCategories.player.rawValue
 
         if collision == (player | PhysicsCategories.gap.rawValue) {
+            let threshold = contact.bodyA.categoryBitMask == PhysicsCategories.gap.rawValue
+                ? contact.bodyA : contact.bodyB
+            guard threshold.node?.userData?["scored"] as? Bool != true else { return }
+            if threshold.node?.userData == nil { threshold.node?.userData = NSMutableDictionary() }
+            threshold.node?.userData?["scored"] = true
             score += 1
             scoreLabel?.text = "Score \(score)"
 
@@ -202,7 +216,7 @@ extension GameSceneAdapter: SKPhysicsContactDelegate {
             notification.notificationOccurred(.success)
 
             // Announce score to VoiceOver — only when it's running to avoid interrupting audio.
-            if UIAccessibility.isVoiceOverRunning {
+            if GameSettings.shared.showScore && UIAccessibility.isVoiceOverRunning {
                 UIAccessibility.post(notification: .announcement, argument: "Score \(score)")
             }
         }
@@ -240,12 +254,13 @@ extension GameSceneAdapter: SKPhysicsContactDelegate {
 
     private func deadState() {
         if stateMachine?.currentState is GameOverState { return }
+        let finalScore = score
         stateMachine?.enter(GameOverState.self)
         onGameOverEntered?()
 
-        if UIAccessibility.isVoiceOverRunning {
+        if GameSettings.shared.showScore && UIAccessibility.isVoiceOverRunning {
             UIAccessibility.post(notification: .announcement,
-                                 argument: "Game over. Score \(score)")
+                                 argument: "Game over. Score \(finalScore)")
         }
     }
 

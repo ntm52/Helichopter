@@ -55,7 +55,9 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
             SKAction.fadeAlpha(to: 0.25, duration: 0.15),
             SKAction.fadeAlpha(to: 1.0,  duration: 0.15)
         ]))
-        run(flash, withKey: "invulnerabilityFlash")
+        if !UIAccessibility.isReduceMotionEnabled && !GameSettings.shared.calmMode {
+            run(flash, withKey: "invulnerabilityFlash")
+        }
 
         let duration = GameSettings.shared.invulnerabilityDuration
         run(SKAction.sequence([
@@ -122,8 +124,8 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
     }
 
     @objc private func reduceMotionStatusChanged() {
-        removeAllActions()
-        animate(with: animationTimeInterval)
+        removeAction(forKey: "rotorAnimation")
+        if shouldUpdate { animate(with: animationTimeInterval) }
     }
 
     // MARK: - Setup
@@ -144,21 +146,20 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
 
     private func animate(with timing: TimeInterval) {
         guard let textures = flyTextures, !textures.isEmpty else { return }
-        // 20-frame rotor atlas at 0.05 s/frame = 20 Hz (1-second loop, well under 3 Hz flicker threshold).
+        // 20-frame rotor atlas at 0.05 s/frame gives a 1-second animation loop.
         // Reduce Motion shows a single static frame to eliminate all motion.
         guard !UIAccessibility.isReduceMotionEnabled else {
             texture = textures.first
             return
         }
         let anim = SKAction.animate(with: textures, timePerFrame: timing, resize: false, restore: false)
-        run(SKAction.repeatForever(anim))
+        run(SKAction.repeatForever(anim), withKey: "rotorAnimation")
     }
 
     // MARK: - Updatable
 
     func update(_ timeInterval: CFTimeInterval) {
-        delta           = lastUpdateTime == 0.0 ? 0.0 : timeInterval - lastUpdateTime
-        lastUpdateTime  = timeInterval
+        (delta, lastUpdateTime) = computeUpdatable(currentTime: timeInterval)
 
         guard let body = physicsBody else { return }
 
@@ -185,17 +186,19 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
             break  // standard impulse + gravity; nothing to do per-frame
 
         case .holdHover:
+            let counterGravity = abs(GameSettings.shared.gravity) * cachedMass
             if isHoveringHeld {
-                // Counter gravity and add a gentle climb force.
-                // Factor of 2.2 gives net upward acceleration ≈ 1.2× gravity.
-                let climbForce = abs(GameSettings.shared.gravity) * cachedMass * 2.2
-                body.applyForce(CGVector(dx: 0, dy: climbForce))
+                // Net upward acceleration ≈ 1.2× gravity.
+                body.applyForce(CGVector(dx: 0, dy: counterGravity * 2.2))
+            } else if isAffectedByGravity {
+                // Net downward acceleration ≈ 0.3× gravity — slow fall so the player can recover.
+                body.applyForce(CGVector(dx: 0, dy: counterGravity * 0.7))
             }
 
         case .autoHover:
             // isAffectedByGravity remains false (set by PlayingState).
             // Dampen any velocity from nudge impulses so the helicopter settles.
-            body.velocity.dy *= 0.92
+            body.velocity.dy *= CGFloat(pow(0.92, delta * 60))
             if abs(body.velocity.dy) < 2 { body.velocity.dy = 0 }
 
         case .twoSwitchUD:
@@ -206,10 +209,20 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
             } else if isTwoSwitchDownHeld {
                 body.velocity.dy = -speed
             } else {
-                body.velocity.dy *= 0.85
+                body.velocity.dy *= CGFloat(pow(0.85, delta * 60))
                 if abs(body.velocity.dy) < 5 { body.velocity.dy = 0 }
             }
         }
+    }
+
+    // MARK: - Run lifecycle
+
+    func prepareForNewRun() {
+        lastUpdateTime = 0
+        delta = 0
+        isHoveringHeld = false
+        isTwoSwitchUpHeld = false
+        isTwoSwitchDownHeld = false
     }
 
     // MARK: - Private input helpers

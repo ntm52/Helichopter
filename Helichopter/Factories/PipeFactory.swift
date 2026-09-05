@@ -18,14 +18,11 @@ struct PipeFactory {
         let pipeName = "pipe"
         let settings = GameSettings.shared
 
-        let cleanUpAction = SKAction.run {
-            targetNode.childNode(withName: pipeName)?.removeFromParent()
-        }
-
         let waitAction = SKAction.wait(forDuration: settings.pipeSpawnInterval)
         let pipeMoveDuration = settings.pipeMoveDuration
 
-        let producePipeAction = SKAction.run {
+        let producePipeAction = SKAction.run { [weak scene, weak targetNode] in
+            guard let scene = scene, let targetNode = targetNode else { return }
             guard let standardPipe = PipeFactory.produceStandardPipe(sceneSize: scene.size) else {
                 return
             }
@@ -34,7 +31,7 @@ struct PipeFactory {
             targetNode.addChild(pipe)
 
             let moveAction = SKAction.move(to: CGPoint(x: -(pipe.size.width + scene.size.width), y: pipe.position.y), duration: pipeMoveDuration)
-            let sequence = SKAction.sequence([moveAction, cleanUpAction])
+            let sequence = SKAction.sequence([moveAction, .removeFromParent()])
             pipe.run(sequence)
         }
 

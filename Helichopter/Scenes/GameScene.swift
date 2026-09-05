@@ -56,10 +56,20 @@ class GameScene: SKScene {
 
     // MARK: - Accessibility
 
+    /// Interruptions leave the run paused until the player explicitly resumes.
+    func pauseForInterruption() {
+        helicopter?.prepareForNewRun()
+        lastUpdateTime = 0
+        guard stateMachine.currentState is PlayingState else { return }
+        if stateMachine.enter(PausedState.self) {
+            setupOverlayScanner()
+        }
+    }
+
     /// Score string exposed to the UIKit accessibility tree via GameViewController.
     /// Returns nil when not in PlayingState so the element is absent from VoiceOver's list.
     var currentScoreText: String? {
-        guard stateMachine.currentState is PlayingState else { return nil }
+        guard stateMachine.currentState is PlayingState, GameSettings.shared.showScore else { return nil }
         return "Score: \(sceneAdapter?.score ?? 0)"
     }
 
@@ -107,8 +117,7 @@ class GameScene: SKScene {
         super.update(currentTime)
         guard view != nil else { return }
 
-        var deltaTime = currentTime - lastUpdateTime
-        deltaTime = deltaTime > lastUpdateTime ? maximumUpdateDeltaTime : deltaTime
+        let deltaTime = lastUpdateTime == 0 ? 0 : min(max(currentTime - lastUpdateTime, 0), maximumUpdateDeltaTime)
         lastUpdateTime = currentTime
 
         if isPaused { return }

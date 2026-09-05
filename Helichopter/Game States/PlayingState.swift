@@ -8,7 +8,7 @@ class PlayingState: GKState {
     unowned var adapter: GameSceneAdapter
 
     private let playerScale = CGPoint(x: 0.4, y: 0.4)
-    // 10 frames × 0.05 s = 0.5 s per full rotor rotation (2 Hz — well under the 3 Hz flicker threshold).
+    // 20 frames × 0.05 s = 1 second per animation loop.
     private let animationTimeInterval: TimeInterval = 0.05
 
     private(set) var infinitePipeProducer: SKAction! = nil
@@ -35,7 +35,6 @@ class PlayingState: GKState {
     override func didEnter(from previousState: GKState?) {
         super.didEnter(from: previousState)
 
-        adapter.playerCharacter?.isAffectedByGravity = false
         // Pipes are NOT started here for fresh starts/retries — they wait for first input below.
         // For resume from pause, the pipe action was already running and resumes automatically
         // when PausedState.willExit sets isPaused = false.
@@ -50,6 +49,9 @@ class PlayingState: GKState {
             return
         }
 
+        adapter.playerCharacter?.isAffectedByGravity = false
+        (adapter.playerCharacter as? HelicopterNode)?.prepareForNewRun()
+
         guard let scene = adapter.scene, let player = adapter.playerCharacter else {
             return
         }
@@ -60,10 +62,17 @@ class PlayingState: GKState {
             }
         }
 
+        scene.enumerateChildNodes(withName: "//*") { node, _ in
+            guard let label = node as? SKLabelNode, label.text == "CLICK ME TO FLY" else { return }
+            label.removeAllActions()
+            label.alpha = 1
+        }
+        adapter.isHUDHidden = false
+
         // Pipes and the hint both wait for the player's first input.
         // The helicopter floats at the center with gravity off until the player acts.
-        (adapter.playerCharacter as? HelicopterNode)?.onFirstInput = { [weak self] in
-            guard let self = self else { return }
+        (adapter.playerCharacter as? HelicopterNode)?.onFirstInput = { [weak self, weak scene] in
+            guard let self = self, let scene = scene else { return }
             self.adapter.scene?.run(self.infinitePipeProducer, withKey: self.infinitePipeProducerKey)
             scene.enumerateChildNodes(withName: "//*") { node, stop in
                 guard let label = node as? SKLabelNode, label.text == "CLICK ME TO FLY" else { return }

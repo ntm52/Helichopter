@@ -67,6 +67,17 @@ private final class ButtonAccessibilityElement: UIAccessibilityElement {
 
 class GameViewController: UIViewController {
 
+    private var inputSuspended = false
+
+    func suspendInput() {
+        inputSuspended = true
+        ((viewIfLoaded as? SKView)?.scene as? GameScene)?.pauseForInterruption()
+    }
+
+    func resumeInput() {
+        inputSuspended = false
+    }
+
     // MARK: - Lifecycle
 
     override func viewDidLoad() {
@@ -127,6 +138,7 @@ class GameViewController: UIViewController {
     override var accessibilityElements: [Any]? {
         get {
             guard let skView = view as? SKView, let scene = skView.scene else { return nil }
+            if scene is SettingsScene { return nil }
             var elements: [Any] = []
 
             // Score element — present when GameScene is playing
@@ -182,6 +194,7 @@ class GameViewController: UIViewController {
 
     @discardableResult
     private func forwardPresses(_ presses: Set<UIPress>, ended: Bool) -> Bool {
+        guard !inputSuspended else { return true }
         guard let skView = view as? SKView,
               let scene = skView.scene as? SwitchInputReceivable else { return false }
         var handled = false
@@ -221,10 +234,11 @@ class GameViewController: UIViewController {
     }
 
     @objc private func controllerDisconnected(_ notification: Notification) {
-        // Handler closures are retained by the controller; release happens automatically
+        ((viewIfLoaded as? SKView)?.scene as? GameScene)?.pauseForInterruption()
     }
 
     private func setupController(_ controller: GCController) {
+        controller.handlerQueue = .main
         if let pad = controller.extendedGamepad {
             // Primary: A, Right Shoulder
             pad.buttonA.pressedChangedHandler          = { [weak self] _, _, p in self?.forwardController(primary: true,  pressed: p) }
@@ -239,6 +253,7 @@ class GameViewController: UIViewController {
     }
 
     private func forwardController(primary: Bool, pressed: Bool) {
+        guard !inputSuspended else { return }
         guard let skView = view as? SKView,
               let scene = skView.scene as? SwitchInputReceivable else { return }
         if primary {

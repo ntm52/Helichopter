@@ -27,6 +27,8 @@ class PausedState: GKState {
     override func didEnter(from previousState: GKState?) {
         super.didEnter(from: previousState)
 
+        (adapter.playerCharacter as? HelicopterNode)?.prepareForNewRun()
+        adapter.playerCharacter?.shouldAcceptTouches = false
         levelScene.isPaused = true
         overlay.applyUITheme(GameSettings.shared.selectedTheme)
         adapter.overlay = overlay
@@ -36,6 +38,7 @@ class PausedState: GKState {
     override func willExit(to nextState: GKState) {
         super.willExit(to: nextState)
         
+        adapter.playerCharacter?.shouldAcceptTouches = true
         levelScene.isPaused = false
         adapter.overlay = nil
         adapter.isHUDHidden = false

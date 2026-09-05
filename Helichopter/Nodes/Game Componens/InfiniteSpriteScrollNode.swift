@@ -33,7 +33,7 @@ class InfiniteSpriteScrollNode: SKNode {
         let width = texture.size().width
         
         
-        for x in 0...maxNumOfTiles {
+        for x in 0..<maxNumOfTiles {
             let tile = SKSpriteNode(texture: texture)
             tile.xScale = scale.x
             tile.yScale = scale.y

@@ -16,7 +16,7 @@ protocol Updatable: AnyObject {
 extension Updatable {
 
     func computeUpdatable(currentTime: TimeInterval) -> (delta: TimeInterval, lastUpdateTime: TimeInterval) {
-        let delta = (self.lastUpdateTime == 0.0) ? 0.0 : currentTime - self.lastUpdateTime
+        let delta = (self.lastUpdateTime == 0.0) ? 0.0 : min(max(currentTime - self.lastUpdateTime, 0), 1.0 / 15.0)
         let lastUpdateTime = currentTime
         return (delta: delta, lastUpdateTime: lastUpdateTime)
     }
