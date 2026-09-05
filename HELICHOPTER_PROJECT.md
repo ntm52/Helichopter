@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status:** Phases 0–6 complete. UI theme system added post-Phase 6. Phase 7 (testing) is next.
+**Status (2026-09-05 audit):** Phase 7 is in progress. Automated tests pass, but accessibility implementation gaps remain. Not ready for App Store submission. See [the audit report](Audit/REVIEW_2026-09-05.md). Historical phase notes below are not release certification.
 
 > **Start a new session:** *"Read HELICHOPTER_PROJECT.md and continue from where it left off."*
 > **Rule:** Update the Progress Log before the session ends. If code and doc disagree, trust the code.
@@ -11,13 +11,13 @@
 
 Helichopter is a Flappy Bird–style iOS/SpriteKit accessibility game. It was broken and unmaintained (2021). Phases 0–6 have brought it to a clean build, full switch access, color palette system, art refresh, and a UIKit settings overlay. The game ships white/grayscale art that gets tinted at runtime via SpriteKit `colorBlendFactor`.
 
-**Immediately playable.** No known crash bugs. One UX bug (see below).
+The project builds. Full gameplay and assistive-technology validation remain outstanding; see the audit report for confirmed issues and coverage.
 
 ---
 
 ## Known Bugs / Outstanding Issues
 
-*No known bugs.* The "CLICK ME TO FLY" hint fade is now fixed (see Progress Log 2026-09-03).
+Open release issues include hardware-switch Settings navigation and pause access, VoiceOver flight interaction, rendered contrast, and Dynamic Type. See [the current audit](Audit/REVIEW_2026-09-05.md).
 
 ---
 
@@ -198,3 +198,17 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - **Pipes wait for first click**: `HelicopterNode` now has an `onFirstInput: (() -> Void)?` hook that fires and self-clears on the player's first touch/switch input. `PlayingState.didEnter` sets this hook to (a) start the pipe-spawn action and (b) fade the "CLICK ME TO FLY" hint. Result: helicopter floats with the hint visible, no pipes appear until the player actually taps.
 - Resume-from-pause is unaffected — the pipe action resumes automatically via the scene's `isPaused = false` and no hook is set in the pause-resume path.
 - Zero warnings. Clean build.
+
+### 2026-09-05 — Independent code audit and regression testing
+- Reviewed source, scene archives, assets, build settings, and tests. Preserved existing flight-control edits.
+- Fixed pause gravity, stale held inputs, scene retention, background zero-speed persistence, pipe cleanup, hidden-button scanning, paused focus feedback, score visibility/announcement, timer cancellation, Settings lockout, and stale preset controls.
+- Added injectable settings storage and lifecycle/migration regression coverage. Original 29 tests passed; expanded 38 tests passed on both iPhone 17 Pro and iPad mini simulators (76 executions, iOS 26.5).
+- Unsigned optimized iOS Release build succeeded. Privacy manifest inclusion verified. Actual version is 2.0 (1), app minimum iOS 13.0; earlier notes about version/manifest were stale.
+- App Store readiness claim rejected: functional accessibility gaps and device/manual validation remain. Full evidence, limitations, and release gate: `Audit/REVIEW_2026-09-05.md`.
+
+### 2026-09-05 — Gameplay interruption and frame-rate bug fixes
+- Continued from the audit, preserving its existing uncommitted fixes.
+- App deactivation and controller disconnection now pause active gameplay and clear held flight controls. App reactivation requires explicit gameplay resume; controller callbacks run on the main queue.
+- Normalized auto-hover/two-switch damping to elapsed time and reset helicopter timing on pause/new run.
+- Added four regression tests. All 42 tests passed on iPhone 17 Pro (iOS 26.5); build succeeded and diff whitespace checks passed.
+- Physical-device validation remains outstanding. Next priorities are UIKit Settings switch navigation, a one-switch gameplay Pause route, VoiceOver flight interaction, rendered contrast, and Dynamic Type. See the updated audit for details and test artifacts.

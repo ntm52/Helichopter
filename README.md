@@ -22,9 +22,9 @@ This project is an active remodel of the original 2021 build, bringing it to cur
 ## Tech
 
 - Swift / SpriteKit / GameplayKit
-- iOS 17.0+
+- iOS 13.0+ (current project deployment target; oldest-device validation pending)
 - iPhone and iPad
 
 ## Status
 
-Active development. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.
+Active development; not yet ready for App Store submission. See [the September 5 audit](Audit/REVIEW_2026-09-05.md) for tested fixes and remaining release blockers. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.
