@@ -177,7 +177,10 @@ final class GameSettings {
 
     static let shared = GameSettings()
 
-    private init() {
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         migrateFromLegacySettingsIfNeeded()
     }
 
@@ -249,11 +252,11 @@ final class GameSettings {
     }
 
     private func read(_ key: Key) -> Double {
-        UserDefaults.standard.double(forKey: key.rawValue)
+        defaults.double(forKey: key.rawValue)
     }
 
     private func write(_ value: Double, for key: Key) {
-        UserDefaults.standard.set(value, forKey: key.rawValue)
+        defaults.set(value, forKey: key.rawValue)
     }
 
     // MARK: - Parameters (each independently persisted)
@@ -330,8 +333,8 @@ final class GameSettings {
 
     /// When true the focus scanner auto-starts in menus and announces items aloud.
     var scanningEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "gs_scanningEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "gs_scanningEnabled") }
+        get { defaults.bool(forKey: "gs_scanningEnabled") }
+        set { defaults.set(newValue, forKey: "gs_scanningEnabled") }
     }
 
     // MARK: - Phase 4: Vision and motion parameters
@@ -340,14 +343,18 @@ final class GameSettings {
     /// Presets do NOT write this value — it can be tuned without affecting difficulty.
     /// Defaults to 80 pt/s. Set to 0 to stop background motion entirely.
     var backgroundScrollSpeed: Double {
-        get { let v = read(.backgroundScrollSpeed); return v >= 0 && v != 0 ? v : 80.0 }
+        get {
+            guard defaults.object(forKey: Key.backgroundScrollSpeed.rawValue) != nil else { return 80 }
+            let value = read(.backgroundScrollSpeed)
+            return value.isFinite && value >= 0 ? value : 80
+        }
         set { write(newValue, for: .backgroundScrollSpeed) }
     }
 
     /// Persisted ID of the active color palette.
     var selectedPaletteID: String {
-        get { UserDefaults.standard.string(forKey: "gs_selectedPaletteID") ?? "default" }
-        set { UserDefaults.standard.set(newValue, forKey: "gs_selectedPaletteID") }
+        get { defaults.string(forKey: "gs_selectedPaletteID") ?? "default" }
+        set { defaults.set(newValue, forKey: "gs_selectedPaletteID") }
     }
 
     var selectedPalette: ColorPalette {
@@ -356,8 +363,8 @@ final class GameSettings {
 
     /// Persisted ID of the active UI theme (menus / title screen). Defaults to "nightSky".
     var selectedThemeID: String {
-        get { UserDefaults.standard.string(forKey: "gs_selectedThemeID") ?? "nightSky" }
-        set { UserDefaults.standard.set(newValue, forKey: "gs_selectedThemeID") }
+        get { defaults.string(forKey: "gs_selectedThemeID") ?? "nightSky" }
+        set { defaults.set(newValue, forKey: "gs_selectedThemeID") }
     }
 
     var selectedTheme: UITheme {
@@ -371,10 +378,10 @@ final class GameSettings {
     var noFailMode: Bool {
         get {
             let key = Key.noFailMode.rawValue
-            guard UserDefaults.standard.object(forKey: key) != nil else { return true }
-            return UserDefaults.standard.bool(forKey: key)
+            guard defaults.object(forKey: key) != nil else { return true }
+            return defaults.bool(forKey: key)
         }
-        set { UserDefaults.standard.set(newValue, forKey: Key.noFailMode.rawValue) }
+        set { defaults.set(newValue, forKey: Key.noFailMode.rawValue) }
     }
 
     /// When false, the score HUD and end-of-run score labels are hidden.
@@ -382,17 +389,17 @@ final class GameSettings {
     var showScore: Bool {
         get {
             let key = Key.showScore.rawValue
-            guard UserDefaults.standard.object(forKey: key) != nil else { return true }
-            return UserDefaults.standard.bool(forKey: key)
+            guard defaults.object(forKey: key) != nil else { return true }
+            return defaults.bool(forKey: key)
         }
-        set { UserDefaults.standard.set(newValue, forKey: Key.showScore.rawValue) }
+        set { defaults.set(newValue, forKey: Key.showScore.rawValue) }
     }
 
     /// When true, suppresses the collision hit sound and impact haptic.
     /// The game still plays normally — it just removes the startling audio/haptic stinger.
     var calmMode: Bool {
-        get { UserDefaults.standard.bool(forKey: Key.calmMode.rawValue) }
-        set { UserDefaults.standard.set(newValue, forKey: Key.calmMode.rawValue) }
+        get { defaults.bool(forKey: Key.calmMode.rawValue) }
+        set { defaults.set(newValue, forKey: Key.calmMode.rawValue) }
     }
 
     /// Duration (seconds) of the invulnerability window after a no-fail collision. Default 1.5s.
@@ -404,8 +411,8 @@ final class GameSettings {
     /// When true, the Settings button is disabled so the active configuration can't be changed
     /// accidentally mid-session. Useful in classroom / caregiver setups.
     var isSettingsLocked: Bool {
-        get { UserDefaults.standard.bool(forKey: Key.isSettingsLocked.rawValue) }
-        set { UserDefaults.standard.set(newValue, forKey: Key.isSettingsLocked.rawValue) }
+        get { defaults.bool(forKey: Key.isSettingsLocked.rawValue) }
+        set { defaults.set(newValue, forKey: Key.isSettingsLocked.rawValue) }
     }
 
     // MARK: - Preset Application
@@ -430,16 +437,16 @@ final class GameSettings {
     // MARK: - Migration from legacy UserDefaults keys
 
     private func migrateFromLegacySettingsIfNeeded() {
-        guard !UserDefaults.standard.bool(forKey: Key.hasMigrated.rawValue) else { return }
+        guard !defaults.bool(forKey: Key.hasMigrated.rawValue) else { return }
 
         // Map old Difficulty setting to the nearest preset so existing users
         // experience the same gameplay feel they had before.
-        switch UserDefaults.standard.getDifficultyLevel() {
+        switch defaults.getDifficultyLevel() {
         case .easy:   applyGentle()
         case .medium: applyStandard()
         case .hard:   applyChallenge()
         }
 
-        UserDefaults.standard.set(true, forKey: Key.hasMigrated.rawValue)
+        defaults.set(true, forKey: Key.hasMigrated.rawValue)
     }
 }

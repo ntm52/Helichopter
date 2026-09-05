@@ -289,10 +289,20 @@ private final class SettingsOverlayView: UIView {
             UserDefaults.standard.set(v, for: .isMusicOn)
         }
 
+        if gs.isSettingsLocked {
+            // Keep the panel and Back reachable, while preventing accidental edits.
+            for row in stack.arrangedSubviews {
+                row.isUserInteractionEnabled = false
+                row.alpha = 0.5
+            }
+        }
         sectionHeader("Caregiver")
         toggleRow("Lock Settings",
-                  detail: "Disables the settings button on the title screen — open settings again to unlock",
-                  isOn: gs.isSettingsLocked) { v in gs.isSettingsLocked = v }
+                  detail: "Prevents changes to the controls above. Turn this off to edit settings.",
+                  isOn: gs.isSettingsLocked) { [weak self] v in
+            gs.isSettingsLocked = v
+            self?.onThemeChanged?()
+        }
     }
 
     // MARK: - Row builders
@@ -338,7 +348,10 @@ private final class SettingsOverlayView: UIView {
             ("Challenge", UIColor(red: 0.90, green: 0.20, blue: 0.20, alpha: 1), { GameSettings.shared.applyChallenge() }),
         ]
         for (name, color, action) in presets {
-            let t = ButtonTarget(action)
+            let t = ButtonTarget { [weak self] in
+                action()
+                self?.onThemeChanged?()
+            }
             controlTargets.append(t)
             let btn = UIButton(type: .system)
             btn.setTitle(name, for: .normal)
@@ -374,6 +387,8 @@ private final class SettingsOverlayView: UIView {
         detailL.numberOfLines = 0
 
         let slider = UISlider()
+        slider.accessibilityLabel = title
+        slider.accessibilityHint = detail
         slider.minimumValue          = min
         slider.maximumValue          = max
         slider.value                 = value
@@ -423,6 +438,8 @@ private final class SettingsOverlayView: UIView {
         lStack.translatesAutoresizingMaskIntoConstraints = false
 
         let sw = UISwitch()
+        sw.accessibilityLabel = title
+        sw.accessibilityHint = detail
         sw.isOn        = isOn
         sw.onTintColor = accent
         sw.translatesAutoresizingMaskIntoConstraints = false
@@ -456,6 +473,7 @@ private final class SettingsOverlayView: UIView {
         detailL.numberOfLines = 0
 
         let seg = UISegmentedControl(items: items)
+        seg.accessibilityLabel = title
         seg.selectedSegmentIndex     = selectedIndex
         seg.backgroundColor          = segBg
         seg.selectedSegmentTintColor = accent
@@ -551,6 +569,7 @@ private final class SettingsOverlayView: UIView {
         btn.layer.borderColor  = selected ? accent.cgColor : div.cgColor
         btn.backgroundColor    = swatchBg
         btn.accessibilityLabel = palette.name
+        if selected { btn.accessibilityTraits.insert(.selected) }
 
         let heliDot = colorDot(palette.helicopterColor, size: 26)
         let pipeDot = colorDot(palette.pipeColor,       size: 26)
@@ -597,6 +616,8 @@ private final class SettingsOverlayView: UIView {
         GameSettings.shared.selectedPaletteID = GameSettings.allPalettes[index].id
         for (i, (view, _)) in paletteViews.enumerated() {
             let chosen = (i == index)
+            if chosen { view.accessibilityTraits.insert(.selected) }
+            else { view.accessibilityTraits.remove(.selected) }
             view.layer.borderWidth = chosen ? 3.0 : 1.5
             view.layer.borderColor = chosen ? accent.cgColor : div.cgColor
         }
@@ -689,17 +710,20 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
         let overlay = makeOverlay(in: view)
         view.addSubview(overlay)
         settingsOverlay = overlay
+        UIAccessibility.post(notification: .screenChanged, argument: overlay)
     }
 
     private func makeOverlay(in view: SKView) -> SettingsOverlayView {
         let overlay = SettingsOverlayView(frame: view.bounds,
                                           theme: GameSettings.shared.selectedTheme)
+        overlay.accessibilityViewIsModal = true
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.onBack = { [weak self, weak view] in self?.navigateBack(from: view) }
         overlay.onThemeChanged = { [weak self, weak view, weak overlay] in
             guard let self = self, let view = view else { return }
             let savedOffset = overlay?.scrollPosition ?? .zero
             let newOverlay = self.makeOverlay(in: view)
+            self.settingsOverlay = newOverlay
             newOverlay.alpha = 0
             view.addSubview(newOverlay)
             newOverlay.restoreScrollPosition(savedOffset)
@@ -711,7 +735,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
                 overlay?.alpha = 0
             } completion: { _ in
                 overlay?.removeFromSuperview()
-                self.settingsOverlay = newOverlay
+                UIAccessibility.post(notification: .screenChanged, argument: newOverlay)
             }
         }
         return overlay

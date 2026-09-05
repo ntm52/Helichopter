@@ -4,7 +4,8 @@ import Foundation
 
 @Suite("GameSettings UserDefaults Round-Trips", .serialized) struct GameSettingsTests {
 
-    private var gs: GameSettings { GameSettings.shared }
+    private let defaults = UserDefaults(suiteName: "HelichopterTests.\(UUID().uuidString)")!
+    private var gs: GameSettings { GameSettings(defaults: defaults) }
 
     // MARK: - Numeric round-trips
 
@@ -67,17 +68,17 @@ import Foundation
 
     @Test func noFailModeDefaultsTrue() {
         let key = "gs_noFailMode"
-        let saved = UserDefaults.standard.object(forKey: key)
+        let saved = defaults.object(forKey: key)
         defer { restoreObject(saved, forKey: key) }
-        UserDefaults.standard.removeObject(forKey: key)
+        defaults.removeObject(forKey: key)
         #expect(gs.noFailMode == true)
     }
 
     @Test func showScoreDefaultsTrue() {
         let key = "gs_showScore"
-        let saved = UserDefaults.standard.object(forKey: key)
+        let saved = defaults.object(forKey: key)
         defer { restoreObject(saved, forKey: key) }
-        UserDefaults.standard.removeObject(forKey: key)
+        defaults.removeObject(forKey: key)
         #expect(gs.showScore == true)
     }
 
@@ -85,17 +86,17 @@ import Foundation
 
     @Test func scanDwellTimeDefaultsTwoSeconds() {
         let key = "gs_scanDwellTime"
-        let saved = UserDefaults.standard.object(forKey: key)
+        let saved = defaults.object(forKey: key)
         defer { restoreObject(saved, forKey: key) }
-        UserDefaults.standard.removeObject(forKey: key)
+        defaults.removeObject(forKey: key)
         #expect(gs.scanDwellTime == 2.0)
     }
 
     @Test func backgroundScrollSpeedDefaults80() {
         let key = "gs_backgroundScrollSpeed"
-        let saved = UserDefaults.standard.object(forKey: key)
+        let saved = defaults.object(forKey: key)
         defer { restoreObject(saved, forKey: key) }
-        UserDefaults.standard.removeObject(forKey: key)
+        defaults.removeObject(forKey: key)
         #expect(gs.backgroundScrollSpeed == 80.0)
     }
 
@@ -182,11 +183,26 @@ import Foundation
         #expect(gs.selectedTheme.id == "nightSky")
     }
 
+    @Test func backgroundCanBeStopped() {
+        gs.backgroundScrollSpeed = 0
+        #expect(gs.backgroundScrollSpeed == 0)
+    }
+
+    @Test func migrationRunsOnceAndPreservesEdits() {
+        defaults.set(difficultyLevel: .hard)
+        let first = GameSettings(defaults: defaults)
+        #expect(first.gapMin == GameSettings.challengePreset.gapMin)
+        first.gapMin = 333
+        defaults.set(difficultyLevel: .easy)
+        let reloaded = GameSettings(defaults: defaults)
+        #expect(reloaded.gapMin == 333)
+    }
+
     // MARK: - Helpers
 
     private func restoreObject(_ value: Any?, forKey key: String) {
-        if let value { UserDefaults.standard.set(value, forKey: key) }
-        else { UserDefaults.standard.removeObject(forKey: key) }
+        if let value { defaults.set(value, forKey: key) }
+        else { defaults.removeObject(forKey: key) }
     }
 
     private typealias PresetSnapshot = (
