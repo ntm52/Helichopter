@@ -50,5 +50,11 @@ frame. The title mascot has no flight input or physics.
 Source artwork and the Pillow converter live in `Tools/helicopter-kit/`. Run
 `python3 Tools/helicopter-kit/make_frames.py` to regenerate the bundled 1x/2x/3x
 atlas and local animated preview. See [the kit notes](Tools/helicopter-kit/README.txt)
-for details. The helicopter uses a light palette/theme tint to retain its shading;
-rendered accessibility contrast still requires validation.
+for details. The helicopter uses a light palette/theme tint to retain its shading.
+
+Gameplay uses an opaque black-and-white flight marker and matching pipe borders to
+keep object boundaries visible across palettes and textured backgrounds. No-fail
+feedback pulses the artwork tint without fading the marker. These borders preserve
+the existing hitboxes; they are visual guides, not collision outlines. Rendered
+regression tests cover all 18 theme/palette combinations. This does not certify
+all artwork pixels or replace testing with players who have low vision.

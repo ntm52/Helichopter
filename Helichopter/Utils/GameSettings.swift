@@ -4,11 +4,9 @@ import UIKit
 
 // MARK: - Phase 4: Color palette system
 
-/// A validated color palette applied to game sprites via SpriteKit's colorBlendFactor.
-/// Phase 6 art is white/grayscale; colorBlendFactor = 1.0 gives clean runtime tinting.
-///
-/// Contrast invariant (enforced by Phase 7 unit tests):
-///   helicopterColor vs pipeColor ≥ 4.5:1 WCAG relative-luminance ratio for all palettes.
+/// Base tint swatches; texture shading and theme overrides change the rendered colors.
+/// Swatch tests enforce helicopterColor vs pipeColor ≥ 4.5:1, but do not certify artwork.
+/// Opaque black/white gameplay boundaries provide visibility independently of these tints.
 struct ColorPalette: Equatable {
     let id: String
     let name: String

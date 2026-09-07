@@ -42,6 +42,28 @@ class PipeNode: SKSpriteNode {
         cap.zPosition = 5
         addChild(cap)
 
+        // Trace the combined body/cap silhouette so no seam crosses the opening.
+        let halfBody = size.width / 2
+        let halfCap = capWidth / 2
+        let halfHeight = size.height / 2
+        let shoulder = halfHeight - capHeight
+        let points = [CGPoint(x: -halfBody, y: -halfHeight),
+                      CGPoint(x: halfBody, y: -halfHeight),
+                      CGPoint(x: halfBody, y: shoulder),
+                      CGPoint(x: halfCap, y: shoulder),
+                      CGPoint(x: halfCap, y: halfHeight),
+                      CGPoint(x: -halfCap, y: halfHeight),
+                      CGPoint(x: -halfCap, y: shoulder),
+                      CGPoint(x: -halfBody, y: shoulder)]
+        let path = CGMutablePath()
+        path.addLines(between: points.map { CGPoint(x: $0.x, y: side ? -$0.y : $0.y) })
+        path.closeSubpath()
+        let boundary = SKNode()
+        boundary.name = "pipeBoundary"
+        boundary.zPosition = 10
+        boundary.addGameplayBoundary(path: path)
+        addChild(boundary)
+
         physicsBody = SKPhysicsBody(rectangleOf: size)
         physicsBody?.categoryBitMask    = PhysicsCategories.pipe.rawValue
         physicsBody?.contactTestBitMask = PhysicsCategories.player.rawValue

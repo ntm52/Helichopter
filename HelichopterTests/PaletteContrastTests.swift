@@ -22,10 +22,21 @@ private func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
 
     // Enforces the invariant declared in GameSettings.swift:
     // helicopterColor vs pipeColor >= 4.5:1 for every palette.
-    @Test func allPalettesPassWCAGAA() {
+    @Test func paletteSwatchesHaveDistinctLuminance() {
         for palette in GameSettings.allPalettes {
             let ratio = contrastRatio(palette.helicopterColor, palette.pipeColor)
             #expect(ratio >= 4.5, "\(palette.id): ratio \(String(format: "%.2f", ratio)) < 4.5:1")
         }
     }
+    @Test func dualBoundaryCoversEveryBackdropLuminance() {
+        #expect(contrastRatio(.black, .white) == 21)
+        // The worst case is where (L + .05)/.05 == 1.05/(L + .05).
+        let worstCaseLuminance = sqrt(0.05 * 1.05) - 0.05
+        #expect((worstCaseLuminance + 0.05) / 0.05 > 4.5)
+        for theme in GameSettings.allThemes {
+            #expect(max(contrastRatio(.black, theme.sceneBackgroundColor),
+                        contrastRatio(.white, theme.sceneBackgroundColor)) >= 4.5)
+        }
+    }
+
 }

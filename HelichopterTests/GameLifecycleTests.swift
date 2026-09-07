@@ -215,6 +215,61 @@ struct GameLifecycleTests {
         }
     }
 
+    @Test func renderedGameplayBoundariesAcrossEveryThemeAndPalette() throws {
+        try withSettings {
+            let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            for theme in GameSettings.allThemes {
+                for palette in GameSettings.allPalettes {
+                    GameSettings.shared.selectedThemeID = theme.id
+                    GameSettings.shared.selectedPaletteID = palette.id
+                    let scene = try #require(GameScene(fileNamed: "GameScene"))
+                    scene.scaleMode = .aspectFit
+                    view.presentScene(scene)
+                    defer { view.presentScene(nil) }
+                    let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+                    heli.removeAllActions()
+                    heli.physicsBody?.isDynamic = false
+                    // Include actual sky, theme overrides, shaded art and both cap directions.
+                    for side in [false, true] {
+                        let pipe = try #require(PipeNode(textures: ("pipe-yellow", "cap-yellow"),
+                            of: CGSize(width: 110, height: 200), side: side,
+                            tintColor: palette.pipeColor, blendFactor: palette.colorBlendFactor))
+                        pipe.position = CGPoint(x: scene.frame.minX + scene.size.width * 0.7,
+                                                y: side ? scene.frame.maxY - 100 : scene.frame.minY + 100)
+                        scene.addChild(pipe)
+                        try assertRenderedBoundary(pipe, in: view)
+                    }
+                    try assertRenderedBoundary(heli, in: view)
+                    heli.triggerInvulnerability()
+                    #expect(heli.alpha == 1)
+                    heli.endInvulnerability()
+                    #expect(heli.alpha == 1 && abs(heli.colorBlendFactor - 0.35) < 0.0001)
+                    let texture = try #require(view.texture(from: scene, crop: scene.frame))
+                    Attachment.record(try #require(UIImage(cgImage: texture.cgImage()).pngData()),
+                                      named: "Gameplay-\(theme.id)-\(palette.id).png")
+                }
+            }
+        }
+    }
+
+    private func assertRenderedBoundary(_ node: SKNode, in view: SKView) throws {
+        let rendered = try #require(view.texture(from: node)).cgImage()
+        let width = rendered.width, height = rendered.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let context = try #require(CGContext(data: &pixels, width: width, height: height,
+            bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(rendered, in: CGRect(x: 0, y: 0, width: width, height: height))
+        var black = 0, white = 0
+        for i in stride(from: 0, to: pixels.count, by: 4) where pixels[i + 3] == 255 {
+            if pixels[i] < 5 && pixels[i + 1] < 5 && pixels[i + 2] < 5 { black += 1 }
+            if pixels[i] > 250 && pixels[i + 1] > 250 && pixels[i + 2] > 250 { white += 1 }
+        }
+        #expect(black > width, "Opaque black boundary must survive SpriteKit rendering")
+        #expect(white > width, "Opaque white boundary must survive SpriteKit rendering")
+    }
+
     @Test func bundledScenesAndAtlasLoad() throws {
         try withSettings {
             for name in ["TitleScene", "SettingsScene", "GameScene", "PauseScene", "FailedScene"] {

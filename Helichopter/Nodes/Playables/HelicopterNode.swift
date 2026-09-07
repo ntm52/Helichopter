@@ -45,15 +45,16 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
 
     /// Begins a no-fail invulnerability window. Pipe collision is disabled so the helicopter
     /// passes through pipes; boundary collision is kept so it stays on screen.
-    /// The helicopter flashes for the duration, then full physics are restored.
+    /// The helicopter tint pulses for the duration, then full physics are restored.
     func triggerInvulnerability() {
         guard !isInvulnerable else { return }
         isInvulnerable = true
         physicsBody?.collisionBitMask = PhysicsCategories.boundary.rawValue
 
+        // Pulse the artwork tint, never the opacity of its contrast boundary.
         let flash = SKAction.repeatForever(SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.25, duration: 0.15),
-            SKAction.fadeAlpha(to: 1.0,  duration: 0.15)
+            SKAction.colorize(withColorBlendFactor: 0.75, duration: 0.15),
+            SKAction.colorize(withColorBlendFactor: 0.35, duration: 0.15)
         ]))
         if !UIAccessibility.isReduceMotionEnabled && !GameSettings.shared.calmMode {
             run(flash, withKey: "invulnerabilityFlash")
@@ -72,6 +73,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         removeAction(forKey: "invulnerabilityFlash")
         removeAction(forKey: "invulnerabilityTimer")
         alpha = 1.0
+        colorBlendFactor = 0.35
     }
 
     // MARK: - Properties
@@ -114,6 +116,19 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         let palette = GameSettings.shared.selectedPalette
         color = theme.helicopterTintColor ?? palette.helicopterColor
         colorBlendFactor = 0.35
+
+        // A stable rounded flight marker surrounds all rotor frames. It remains opaque
+        // during no-fail feedback and does not alter the forgiving circular hitbox.
+        let boundary = SKNode()
+        boundary.name = "flightBoundary"
+        boundary.zPosition = -2
+        let rect = CGRect(x: -size.width / 2, y: -size.height / 2,
+                          width: size.width, height: size.height)
+        boundary.addGameplayBoundary(path: CGPath(roundedRect: rect,
+                                                  cornerWidth: size.height / 2,
+                                                  cornerHeight: size.height / 2,
+                                                  transform: nil), filled: true)
+        addChild(boundary)
 
         animate(with: animationTimeInterval)
 

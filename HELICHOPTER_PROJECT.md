@@ -17,7 +17,7 @@ The project builds. Full gameplay and assistive-technology validation remain out
 
 ## Known Bugs / Outstanding Issues
 
-Open implementation issues include VoiceOver flight interaction, rendered contrast, and Dynamic Type. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
+Open implementation issues include VoiceOver flight interaction and Dynamic Type; gameplay contrast boundaries are implemented, with low-vision device validation pending. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
 
 ---
 
@@ -105,7 +105,7 @@ Theme application:
 
 ## Phase 7 — Testing and Validation
 
-- [ ] **Palette contrast unit tests** — test that fails the build if any palette drops below 4.5:1 on any of the three pairings (helicopter vs pipe, helicopter vs background, pipe vs background). Use the Testing framework.
+- [x] **Gameplay contrast boundaries** — opaque black/white borders separate the flight marker and pipe silhouettes from textured backgrounds. Validate rendered output for every theme/palette, alongside swatch tests. This replaces the unrealized three-way 4.5:1 fill-color target; artwork pixels are not individually certified. Low-vision device testing remains required.
 - [ ] **GameSettings model tests** — verify presets write correct values, migration runs once, UserDefaults round-trips.
 - [ ] **Scanner timing tests** — verify dwell fires at the configured interval, primaryActivate triggers the correct button.
 - [ ] **Accessibility Inspector audit** — Xcode → Open Developer Tool → Accessibility Inspector → audit every scene. Zero issues target.
@@ -234,3 +234,10 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Added five regression tests covering all flight schemes, one-switch Resume/Retry/Home, manual two-switch scanning, cancellation, repeat suppression, and bounded/persisted delay. Existing Settings reachability coverage includes the new control.
 - Validation: all **54 tests passed**, zero failures/skips, on iPhone 17 Pro (iOS 26.5 simulator). Build and diff whitespace checks passed. Result: `/tmp/helichopter-switch-pause-complete.xcresult`; log: `/tmp/helichopter-switch-pause-complete.log`.
 - Physical keyboard-emulating switches, adaptive controllers, and system Switch Control remain unverified. VoiceOver flight, rendered contrast, and Dynamic Type remain open.
+
+## Follow-up — September 7, 2026: Gameplay contrast boundaries
+- Added opaque black/white borders around a stable helicopter flight marker and the combined pipe body/cap silhouettes. Artwork and theme tints remain intact; visibility no longer depends solely on their fill colors.
+- No-fail feedback pulses artwork tint instead of fading the player and its boundary. Reduce Motion and Calm Mode still suppress the pulse. Existing collision geometry is unchanged.
+- Kept palette swatch tests and added a boundary luminance check plus SpriteKit pixel checks and scene captures for all 18 theme/palette combinations, including both pipe orientations.
+- Validation: **56 tests passed**, zero failures/skips, on iPhone 17 Pro (iOS 26.5 simulator). Reviewed the 18 rendered gameplay captures. Results: `/tmp/helichopter-contrast-final.xcresult`; log: `/tmp/helichopter-contrast-final.log`.
+- This implements boundary visibility, not certification of every artwork pixel or all vision conditions. Physical-device and low-vision player evaluation remain outstanding.
