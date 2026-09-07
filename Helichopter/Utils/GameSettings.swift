@@ -319,6 +319,19 @@ final class GameSettings {
         set { write(Double(newValue.rawValue), for: .controlScheme) }
     }
 
+    /// A deliberate primary-switch hold pauses flight. Longer delays allow sustained hover.
+    var switchPauseHoldDuration: TimeInterval {
+        get {
+            guard let value = defaults.object(forKey: "gs_switchPauseHoldDuration") as? Double,
+                  value.isFinite else { return 3.0 }
+            return min(max(value, 2.0), 10.0)
+        }
+        set {
+            defaults.set(newValue.isFinite ? min(max(newValue, 2.0), 10.0) : 3.0,
+                         forKey: "gs_switchPauseHoldDuration")
+        }
+    }
+
     /// Whether menu scanning auto-advances (timer) or requires a second switch to step.
     var scanScheme: ScanScheme {
         get { ScanScheme(rawValue: Int(read(.scanScheme))) ?? .autoScan }

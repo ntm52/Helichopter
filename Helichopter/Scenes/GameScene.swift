@@ -25,7 +25,17 @@ class GameScene: SKScene {
     let selection = UISelectionFeedbackGenerator()
 
     // Drives focus-ring scanning in pause / game-over overlays.
-    private var overlayScanner: FocusScanner?
+    private(set) var overlayScanner: FocusScanner?
+    private var switchPauseTimer: Timer?
+    private var primarySwitchHeld = false
+
+    deinit { switchPauseTimer?.invalidate() }
+
+    /// Cancel the pending gesture whenever gameplay ends, including direct state changes.
+    func cancelSwitchPauseHold() {
+        switchPauseTimer?.invalidate()
+        switchPauseTimer = nil
+    }
 
     // MARK: - Lifecycle
 
@@ -52,12 +62,16 @@ class GameScene: SKScene {
     override func willMove(from view: SKView) {
         super.willMove(from: view)
         overlayScanner?.stop()
+        cancelSwitchPauseHold()
+        primarySwitchHeld = false
     }
 
     // MARK: - Accessibility
 
     /// Interruptions leave the run paused until the player explicitly resumes.
     func pauseForInterruption() {
+        cancelSwitchPauseHold()
+        primarySwitchHeld = false
         helicopter?.prepareForNewRun()
         lastUpdateTime = 0
         guard stateMachine.currentState is PlayingState else { return }
@@ -76,12 +90,12 @@ class GameScene: SKScene {
     // MARK: - Overlay scanner management
 
     /// Called when PausedState or GameOverState presents an overlay.
-    func setupOverlayScanner() {
+    func setupOverlayScanner(forceStart: Bool = false) {
         overlayScanner?.stop()
         let scanner = FocusScanner()
         scanner.items = findAllButtonsInScene()
         overlayScanner = scanner
-        if GameSettings.shared.scanningEnabled {
+        if forceStart || GameSettings.shared.scanningEnabled {
             scanner.start()
         }
         UIAccessibility.post(notification: .screenChanged, argument: nil)
@@ -147,10 +161,10 @@ extension GameScene: ButtonNodeResponderType {
         case .home:
             guard let titleScene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
             titleScene.scaleMode = RoutingUtilityScene.sceneScaleMode
-            let transition = SKTransition.fade(withDuration: 1.0)
-            transition.pausesIncomingScene = false
-            transition.pausesOutgoingScene = false
-            view?.presentScene(titleScene, transition: transition)
+            // A paused scene must not depend on render-loop progress to leave its menu.
+            teardownOverlayScanner()
+            cancelSwitchPauseHold()
+            view?.presentScene(titleScene)
 
         case .retry:
             sceneAdapter?.stateMachine?.enter(PlayingState.self)
@@ -167,15 +181,30 @@ extension GameScene: ButtonNodeResponderType {
 extension GameScene: SwitchInputReceivable {
 
     func switchPrimaryBegan() {
+        // Ignore key repeat and the still-held pause gesture until its release.
+        guard !primarySwitchHeld else { return }
+        primarySwitchHeld = true
         if stateMachine.currentState is PlayingState {
-            // Forward to helicopter based on its active control scheme
             helicopter?.switchPrimaryBegan()
+            let timer = Timer(timeInterval: GameSettings.shared.switchPauseHoldDuration, repeats: false) { [weak self] _ in
+                guard let self = self, self.primarySwitchHeld,
+                      self.stateMachine.currentState is PlayingState else { return }
+                self.cancelSwitchPauseHold()
+                if self.stateMachine.enter(PausedState.self) {
+                    // Switch entry always enables navigation, even if menu auto-start is off.
+                    self.setupOverlayScanner(forceStart: true)
+                }
+            }
+            switchPauseTimer = timer
+            RunLoop.main.add(timer, forMode: .common)
         } else {
             overlayScanner?.primaryActivate()
         }
     }
 
     func switchPrimaryEnded() {
+        primarySwitchHeld = false
+        cancelSwitchPauseHold()
         if stateMachine.currentState is PlayingState {
             helicopter?.switchPrimaryEnded()
         }

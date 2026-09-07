@@ -31,6 +31,12 @@ Press Space, Enter, 1, Up Arrow, or the controller's primary button to start sca
 
 Select a slider to open Decrease, Increase, and Done; each adjustment changes 5% of its range. Select a segmented control to scan its choices. Settings scrolls focused controls into view and preserves focus after theme, preset, or lock changes. When locked, Back and Lock Settings remain reachable.
 
+## Switch controls during gameplay
+
+Hold the primary keyboard/controller switch for **3 seconds** to pause in any flight mode. Release it, then press again to select a highlighted menu button. The pause menu starts scanning even when Auto-Scan Menus is off; Menu Scan Mode still chooses timed one-switch or manual two-switch navigation.
+
+Settings → Switch Access → **Hold Switch to Pause** adjusts the delay from 2–10 seconds. In Hold to Hover and Two-Switch flight, release and press again before the delay to keep flying without pausing, or increase the delay for longer holds. Touch flight is unchanged. Physical switch/controller validation is still pending.
+
 ## Status
 
 Active development; not yet ready for App Store submission. See [the September 5 audit](Audit/REVIEW_2026-09-05.md) for tested fixes and remaining release blockers. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.

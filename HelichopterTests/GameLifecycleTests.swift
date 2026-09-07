@@ -22,6 +22,199 @@ struct GameLifecycleTests {
         try work()
     }
 
+    private func withAsyncSettings(_ work: () async throws -> Void) async rethrows {
+        let defaults = UserDefaults.standard
+        let saved = defaults.dictionaryRepresentation()
+        defer {
+            for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn"].contains(key) {
+                defaults.removeObject(forKey: key)
+            }
+            for (key, value) in saved where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn"].contains(key) {
+                defaults.set(value, forKey: key)
+            }
+        }
+        defaults.set(false, for: .isMusicOn)
+        GameSettings.shared.scanningEnabled = false
+        try await work()
+    }
+
+    private func activateGameItem(_ identifier: ButtonIdentifier, in scene: GameScene) async throws {
+        for _ in 0..<150 {
+            if let scanner = scene.overlayScanner, scanner.isActive,
+               let button = scanner.items[scanner.currentIndex] as? ButtonNode,
+               button.buttonIdentifier == identifier {
+                scene.switchPrimaryBegan()
+                scene.switchPrimaryEnded()
+                return
+            }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        Issue.record("Switch menu item not reachable: \(identifier)")
+    }
+
+    @Test func heldPrimaryPausesEveryFlightSchemeAndResumesWithOneSwitch() async throws {
+        try await withAsyncSettings {
+            let gs = GameSettings.shared
+            gs.switchPauseHoldDuration = 2
+            gs.scanScheme = .autoScan
+            gs.scanDwellTime = 0.5
+            gs.noFailMode = true
+            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover, .twoSwitchUD] {
+                gs.controlScheme = scheme
+                let scene = try #require(GameScene(fileNamed: "GameScene"))
+                let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+                scene.switchPrimaryBegan()
+                let gravityBeforePause = heli.isAffectedByGravity
+                scene.sceneAdapter?.score = 5
+                // Keyboard repeat must neither re-flap nor restart the hold deadline.
+                try await Task.sleep(nanoseconds: 1_100_000_000)
+                scene.switchPrimaryBegan()
+                try await Task.sleep(nanoseconds: 1_100_000_000)
+                #expect(scene.stateMachine.currentState is PausedState)
+                #expect(scene.isPaused)
+                #expect(scene.overlayScanner?.isActive == true)
+                #expect(!heli.isHoveringHeld && !heli.isTwoSwitchUpHeld && !heli.isTwoSwitchDownHeld)
+                scene.switchPrimaryBegan() // Still held: cannot activate the overlay.
+                #expect(scene.stateMachine.currentState is PausedState)
+                scene.switchPrimaryEnded()
+                try await activateGameItem(.resume, in: scene)
+                #expect(scene.stateMachine.currentState is PlayingState)
+                #expect(!scene.isPaused)
+                #expect(scene.sceneAdapter?.score == 5)
+                #expect(heli.isAffectedByGravity == gravityBeforePause)
+                #expect(scene.action(forKey: "Pipe Action") != nil)
+                #expect(scene.overlayScanner == nil)
+            }
+        }
+    }
+
+    @Test func releasedOrInterruptedHoldsCannotPauseLaterRuns() async throws {
+        try await withAsyncSettings {
+            GameSettings.shared.switchPauseHoldDuration = 2
+            let released = try #require(GameScene(fileNamed: "GameScene"))
+            released.switchPrimaryBegan()
+            released.switchPrimaryEnded()
+            let interrupted = try #require(GameScene(fileNamed: "GameScene"))
+            interrupted.switchPrimaryBegan()
+            interrupted.pauseForInterruption()
+            #expect(interrupted.stateMachine.enter(PlayingState.self))
+            let ended = try #require(GameScene(fileNamed: "GameScene"))
+            ended.switchPrimaryBegan()
+            #expect(ended.stateMachine.enter(GameOverState.self))
+            ended.switchPrimaryEnded()
+            #expect(ended.stateMachine.enter(PlayingState.self))
+            let scenes = [released, interrupted, ended]
+            // An unpresented SpriteKit archive can already report isPaused.
+            let pausedBeforeWait = scenes.map { $0.isPaused }
+            try await Task.sleep(nanoseconds: 2_200_000_000)
+            for (scene, wasPaused) in zip(scenes, pausedBeforeWait) {
+                #expect(scene.stateMachine.currentState is PlayingState)
+                #expect(scene.isPaused == wasPaused)
+            }
+        }
+    }
+
+    @Test func oneSwitchCanRetryAndReturnHome() async throws {
+        try await withAsyncSettings {
+            let gs = GameSettings.shared
+            gs.switchPauseHoldDuration = 2
+            gs.scanScheme = .autoScan
+            gs.scanDwellTime = 0.5
+            gs.scanningEnabled = true
+            gs.noFailMode = true
+            let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            let windowScene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+            let window = UIWindow(windowScene: windowScene)
+            let controller = UIViewController()
+            controller.view = view
+            window.rootViewController = controller
+            window.isHidden = false
+            let scene = try #require(GameScene(fileNamed: "GameScene"))
+            scene.scaleMode = .aspectFit
+            view.presentScene(scene)
+            defer {
+                view.presentScene(nil)
+                window.isHidden = true
+                window.rootViewController = nil
+            }
+            scene.switchPrimaryBegan()
+            scene.switchPrimaryEnded()
+            scene.sceneAdapter?.score = 6
+            #expect(scene.stateMachine.enter(GameOverState.self))
+            scene.setupOverlayScanner()
+            try await activateGameItem(.retry, in: scene)
+            #expect(scene.stateMachine.currentState is PlayingState)
+            #expect(scene.sceneAdapter?.score == 0)
+            #expect(scene.action(forKey: "Pipe Action") == nil)
+            scene.switchPrimaryBegan()
+            try await Task.sleep(nanoseconds: 2_200_000_000)
+            #expect(scene.stateMachine.currentState is PausedState)
+            scene.switchPrimaryEnded()
+            let scanner = try #require(scene.overlayScanner)
+            try await activateGameItem(.home, in: scene)
+            #expect(view.scene is TitleScene)
+            #expect(!scanner.isActive)
+        }
+    }
+
+    @Test func switchPausePreservesManualScanningAndCancelsOnSceneRemoval() async throws {
+        try await withAsyncSettings {
+            let gs = GameSettings.shared
+            gs.controlScheme = .twoSwitchUD
+            gs.scanScheme = .twoSwitch
+            gs.switchPauseHoldDuration = 2
+            let scene = try #require(GameScene(fileNamed: "GameScene"))
+            scene.switchSecondaryBegan()
+            scene.switchPrimaryBegan()
+            try await Task.sleep(nanoseconds: 2_200_000_000)
+            #expect(scene.stateMachine.currentState is PausedState)
+            let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+            #expect(!heli.isTwoSwitchUpHeld && !heli.isTwoSwitchDownHeld)
+            scene.switchPrimaryEnded()
+            scene.switchSecondaryEnded()
+            let scanner = try #require(scene.overlayScanner)
+            let originalIndex = scanner.currentIndex
+            try await Task.sleep(nanoseconds: 150_000_000)
+            #expect(scanner.currentIndex == originalIndex)
+            for _ in scanner.items.indices {
+                if (scanner.items[scanner.currentIndex] as? ButtonNode)?.buttonIdentifier == .resume { break }
+                scene.switchSecondaryBegan()
+                scene.switchSecondaryEnded()
+            }
+            scene.switchPrimaryBegan()
+            // A repeated menu activation must not become flight input after Resume.
+            scene.switchPrimaryBegan()
+            #expect(!heli.isTwoSwitchUpHeld)
+            scene.switchPrimaryEnded()
+            #expect(scene.stateMachine.currentState is PlayingState)
+
+            let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            let removed = try #require(GameScene(fileNamed: "GameScene"))
+            view.presentScene(removed)
+            removed.switchPrimaryBegan()
+            view.presentScene(nil)
+            try await Task.sleep(nanoseconds: 2_200_000_000)
+            #expect(removed.stateMachine.currentState is PlayingState)
+            #expect(removed.overlayScanner == nil)
+        }
+    }
+
+    @Test func switchPauseDelayIsBoundedAndPersisted() {
+        withSettings {
+            let settings = GameSettings.shared
+            UserDefaults.standard.removeObject(forKey: "gs_switchPauseHoldDuration")
+            #expect(settings.switchPauseHoldDuration == 3)
+            settings.switchPauseHoldDuration = 7
+            #expect(GameSettings(defaults: .standard).switchPauseHoldDuration == 7)
+            settings.switchPauseHoldDuration = -1
+            #expect(settings.switchPauseHoldDuration == 2)
+            settings.switchPauseHoldDuration = 50
+            #expect(settings.switchPauseHoldDuration == 10)
+            settings.switchPauseHoldDuration = .nan
+            #expect(settings.switchPauseHoldDuration == 3)
+        }
+    }
+
     @Test func bundledScenesAndAtlasLoad() throws {
         try withSettings {
             for name in ["TitleScene", "SettingsScene", "GameScene", "PauseScene", "FailedScene"] {
@@ -262,7 +455,7 @@ struct GameLifecycleTests {
             let overlay = try #require(scene.settingsOverlay)
             let expected = ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size",
                             "Background Scroll", "No-Fail Mode", "Calm Mode", "Show Score", "Auto-Scan Menus",
-                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "Menu Theme",
+                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "Hold Switch to Pause", "Menu Theme",
                             "Sound Effects", "Music", "Lock Settings"] + GameSettings.allPalettes.map { $0.name }
             for label in expected { try focusSetting(label, in: scene) }
             #expect(overlay.scrollPosition.y > 0)

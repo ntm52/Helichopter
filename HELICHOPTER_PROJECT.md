@@ -17,7 +17,7 @@ The project builds. Full gameplay and assistive-technology validation remain out
 
 ## Known Bugs / Outstanding Issues
 
-Open release issues include hardware-switch Settings navigation and pause access, VoiceOver flight interaction, rendered contrast, and Dynamic Type. See [the current audit](Audit/REVIEW_2026-09-05.md).
+Open implementation issues include VoiceOver flight interaction, rendered contrast, and Dynamic Type. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
 
 ---
 
@@ -226,3 +226,11 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Fixed the title placeholder lookup: both iPhone and iPad archives name it `Animated Bird`, so the previous lookup for `Animated Helicopter` silently left the archived four-frame action running. Both now replace that placeholder with the complete repeating atlas animation.
 - The title mascot has no physics or flight input, and repeated scene presentation does not create another mascot.
 - Added a regression covering both title archives, all 60 frames, playback timing, Reduce Motion behavior, and repeat presentation. All 49 tests passed on the iPhone 17 Pro simulator (iOS 26.5), including the new test loading both iPhone and iPad title archives. Build and `git diff --check` passed. Test result: `/tmp/helichopter-title-loop-tests.xcresult`. Physical-device playback remains unverified.
+
+### 2026-09-07 — One-switch gameplay pause and Home navigation
+- Added primary-switch hold-to-pause for all four flight schemes. Default delay is 3 seconds; Settings → Switch Access → Hold Switch to Pause adjusts it from 2–10 seconds. Sustained hover users can increase the delay or release/re-press before it expires.
+- Switch-triggered Pause starts menu scanning even when automatic menu startup is off. The selected timed/manual scan mode is preserved. Release is required before the next menu activation, and keyboard repeat cannot restart the hold timer or activate a menu/resumed flight accidentally.
+- Pending gestures are cancelled on release, gameplay exit, interruption, and scene removal; held flight controls are cleared by pause. Home now stops the outgoing scanner and returns immediately, avoiding a transition that can stall while the game is paused.
+- Added five regression tests covering all flight schemes, one-switch Resume/Retry/Home, manual two-switch scanning, cancellation, repeat suppression, and bounded/persisted delay. Existing Settings reachability coverage includes the new control.
+- Validation: all **54 tests passed**, zero failures/skips, on iPhone 17 Pro (iOS 26.5 simulator). Build and diff whitespace checks passed. Result: `/tmp/helichopter-switch-pause-complete.xcresult`; log: `/tmp/helichopter-switch-pause-complete.log`.
+- Physical keyboard-emulating switches, adaptive controllers, and system Switch Control remain unverified. VoiceOver flight, rendered contrast, and Dynamic Type remain open.

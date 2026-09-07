@@ -88,6 +88,7 @@ class PlayingState: GKState {
 
     override func willExit(to nextState: GKState) {
         super.willExit(to: nextState)
+        (adapter.scene as? GameScene)?.cancelSwitchPauseHold()
 
         if adapter.isMusicOn {
             adapter.playingAudio.removeFromParent()

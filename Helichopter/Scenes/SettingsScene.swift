@@ -476,6 +476,14 @@ final class SettingsOverlayView: UIView {
             if let scheme = ControlScheme(rawValue: idx) { gs.controlScheme = scheme }
         }
 
+        sliderRow("Hold Switch to Pause",
+                  detail: "Hold the primary switch to pause, then release before choosing a menu item. For longer hover holds, increase this delay.",
+                  lo: "2 s", hi: "10 s",
+                  min: 2, max: 10,
+                  value: Float(gs.switchPauseHoldDuration)) { v in
+            gs.switchPauseHoldDuration = TimeInterval(v)
+        }
+
         sectionHeader("Visual Theme")
         let themes = GameSettings.allThemes
         let themeIdx = themes.firstIndex { $0.id == gs.selectedThemeID } ?? 0
