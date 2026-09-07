@@ -30,7 +30,29 @@ struct GameLifecycleTests {
                 }
             }
             let frames = try SKTextureAtlas.upload(named: "Helicopter Player") { _, index in "r_player\(index)" }
-            #expect(frames.count == 20)
+            #expect(frames.count == 60)
+            #expect(frames.allSatisfy { $0.size() == CGSize(width: 200, height: 200) })
+        }
+    }
+
+    @Test func titleReplacesLegacyFourFrameAnimationOnPhoneAndPad() throws {
+        try withSettings {
+            for suffix in ["", " iPad"] {
+                let scene = try #require(TitleScene(fileNamed: "TitleScene" + suffix))
+                let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+                scene.didMove(to: view)
+                #expect(scene.childNode(withName: "Animated Bird") == nil)
+                let helicopter = try #require(scene.childNode(withName: "Animated Helicopter") as? HelicopterNode)
+                #expect(helicopter.flyTextures?.count == 60)
+                #expect(helicopter.animationTimeInterval == HelicopterNode.rotorFrameInterval)
+                #expect(helicopter.physicsBody == nil)
+                #expect(!helicopter.shouldAcceptTouches)
+                #expect((helicopter.action(forKey: "rotorAnimation") != nil) == !UIAccessibility.isReduceMotionEnabled)
+                // Re-presenting the same scene must not duplicate or restart the mascot.
+                scene.didMove(to: view)
+                #expect(scene.children.compactMap { $0 as? HelicopterNode }.count == 1)
+                #expect(scene.childNode(withName: "Animated Helicopter") === helicopter)
+            }
         }
     }
 

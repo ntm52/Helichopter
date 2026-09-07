@@ -35,17 +35,22 @@ class TitleScene: RoutingUtilityScene {
     // MARK: - Private helpers
 
     private func loadSelectedPlayer() {
-        guard let targetNode = childNode(withName: "Animated Helicopter") else { return }
+        // Both shipped scene archives still use the original bird placeholder name.
+        guard childNode(withName: "Animated Helicopter") as? HelicopterNode == nil,
+              let targetNode = childNode(withName: "Animated Bird")
+                ?? childNode(withName: "Animated Helicopter") else { return }
 
         let helicopterNode = HelicopterNode(
-            animationTimeInterval: 0.05,
+            animationTimeInterval: HelicopterNode.rotorFrameInterval,
             withTextureAtlas: "Helicopter Player",
             size: CGSize(width: 200, height: 200)
         )
-        helicopterNode.isAffectedByGravity = false
+        helicopterNode.name = "Animated Helicopter"
+        helicopterNode.shouldAcceptTouches = false
+        helicopterNode.physicsBody = nil
         helicopterNode.position  = targetNode.position
         helicopterNode.zPosition = targetNode.zPosition
-        scene?.addChild(helicopterNode)
+        addChild(helicopterNode)
         targetNode.removeFromParent()
     }
 

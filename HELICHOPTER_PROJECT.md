@@ -9,7 +9,7 @@
 
 ## Current State at a Glance
 
-Helichopter is a Flappy Bird–style iOS/SpriteKit accessibility game. It was broken and unmaintained (2021). Phases 0–6 have brought it to a clean build, full switch access, color palette system, art refresh, and a UIKit settings overlay. The game ships white/grayscale art that gets tinted at runtime via SpriteKit `colorBlendFactor`.
+Helichopter is a Flappy Bird–style iOS/SpriteKit accessibility game. It was broken and unmaintained (2021). Phases 0–6 have brought it to a clean build, full switch access, color palette system, art refresh, and a UIKit settings overlay. The game ships detailed helicopter artwork with a light runtime tint (`colorBlendFactor = 0.35`); pipes retain their solid palette tint.
 
 The project builds. Full gameplay and assistive-technology validation remain outstanding; see the audit report for confirmed issues and coverage.
 
@@ -52,7 +52,7 @@ Open release issues include hardware-switch Settings navigation and pause access
 
 Two independent systems, both in `GameSettings.swift`:
 
-**`ColorPalette`** — game sprite colors (helicopter + pipes). Applied at runtime via `color` + `colorBlendFactor = 1.0` on white/grayscale art. 6 palettes: Default, High Contrast, Deuteranopia, Protanopia, Tritanopia, Low Luminance. Selected via `gs_selectedPaletteID`.
+**`ColorPalette`** — game sprite colors (helicopter + pipes). Applied at runtime via `color`: pipes use `colorBlendFactor = 1.0`, while the detailed helicopter uses `0.35`. Palette color tests do not certify rendered artwork contrast. 6 palettes: Default, High Contrast, Deuteranopia, Protanopia, Tritanopia, Low Luminance. Selected via `gs_selectedPaletteID`.
 
 **`UITheme`** — menu chrome (background, buttons, labels, helicopter override). 3 themes: Night Sky (default dark navy), Parchment (cream), Neon Night (teal-black). Selected via `gs_selectedThemeID`.
 
@@ -96,7 +96,7 @@ Theme application:
 | 3 — Switch access | ✅ Done | FocusScanner, keyboard/GCController/Switch Control, 4 control schemes |
 | 4 — Vision/motion/VoiceOver | ✅ Done | Palette system, Reduce Motion, VoiceOver announcements |
 | 5 — Cognitive/sensory | ✅ Done | No-fail mode, calm mode, score toggle, settings lock |
-| 6 — Art + audio | ✅ Done | New helicopter (20 frames), 9-slice pipes, background, icon, audio CAF |
+| 6 — Art + audio | ✅ Done | New helicopter (60 aligned frames), 9-slice pipes, background, icon, audio CAF |
 | Post-6 — UI theme system | ✅ Done | Night Sky/Parchment/Neon Night themes, SettingsOverlayView UIKit rewrite |
 | **7 — Testing** | ⬜ Next | See Phase 7 section below |
 | 8 — App Store | ⬜ Pending | Privacy manifest, screenshots, submission |
@@ -219,3 +219,10 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Added control highlighting, automatic vertical/horizontal scrolling, slider adjustment panels, segmented-choice panels, and focus restoration after theme/preset/lock rebuilds. Back and unlock remain scannable when Settings is locked.
 - Added six Settings regression tests: reachability, bounded adjustments, rebuild/lock behavior, palette/scan-mode changes, a timed primary-switch-only session, and rendered small-phone/landscape-tablet layouts. All 48 suite tests passed on iPhone 17 Pro (iOS 26.5).
 - Reviewed rendered layouts; made the adjustment panel opaque to eliminate distracting underlying text. Physical switch/controller and system accessibility testing remains outstanding. One-switch Pause during gameplay is still the next functional switch-access gap.
+
+### 2026-09-07 — Helicopter kit integration and complete home-screen loop
+- Integrated the supplied source artwork and reproducible Pillow converter into `Tools/helicopter-kit/`; regenerated the existing atlas at 1x/2x/3x with 60 aligned frames, a stationary body, and three rotor cycles per second. Near-transparent export noise is removed before calculating the shared crop.
+- Gameplay and title playback share a 1/60-second frame interval. A light theme/palette tint preserves the cockpit and shading. Reduce Motion retains a static frame; rendered contrast validation remains outstanding.
+- Fixed the title placeholder lookup: both iPhone and iPad archives name it `Animated Bird`, so the previous lookup for `Animated Helicopter` silently left the archived four-frame action running. Both now replace that placeholder with the complete repeating atlas animation.
+- The title mascot has no physics or flight input, and repeated scene presentation does not create another mascot.
+- Added a regression covering both title archives, all 60 frames, playback timing, Reduce Motion behavior, and repeat presentation. All 49 tests passed on the iPhone 17 Pro simulator (iOS 26.5), including the new test loading both iPhone and iPad title archives. Build and `git diff --check` passed. Test result: `/tmp/helichopter-title-loop-tests.xcresult`. Physical-device playback remains unverified.

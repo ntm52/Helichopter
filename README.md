@@ -34,3 +34,15 @@ Select a slider to open Decrease, Increase, and Done; each adjustment changes 5%
 ## Status
 
 Active development; not yet ready for App Store submission. See [the September 5 audit](Audit/REVIEW_2026-09-05.md) for tested fixes and remaining release blockers. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.
+
+## Helicopter artwork and animation
+
+The title screen and gameplay use the supplied helicopter kit: 60 aligned frames
+at 60 FPS, with a stationary body and a looping rotor. Reduce Motion shows a static
+frame. The title mascot has no flight input or physics.
+
+Source artwork and the Pillow converter live in `Tools/helicopter-kit/`. Run
+`python3 Tools/helicopter-kit/make_frames.py` to regenerate the bundled 1x/2x/3x
+atlas and local animated preview. See [the kit notes](Tools/helicopter-kit/README.txt)
+for details. The helicopter uses a light palette/theme tint to retain its shading;
+rendered accessibility contrast still requires validation.

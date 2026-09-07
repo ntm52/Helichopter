@@ -30,3 +30,7 @@ Carthage/Build/
 # Obj-C / Swift
 *.hmap
 *.ipa
+
+# Regenerated helicopter previews and intermediate exports
+Tools/helicopter-kit/output/
+Tools/helicopter-kit/__pycache__/

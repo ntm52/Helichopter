@@ -9,7 +9,7 @@ class PlayingState: GKState {
 
     private let playerScale = CGPoint(x: 0.4, y: 0.4)
     // 20 frames × 0.05 s = 1 second per animation loop.
-    private let animationTimeInterval: TimeInterval = 0.05
+    private let animationTimeInterval = HelicopterNode.rotorFrameInterval
 
     private(set) var infinitePipeProducer: SKAction! = nil
     let infinitePipeProducerKey = "Pipe Action"

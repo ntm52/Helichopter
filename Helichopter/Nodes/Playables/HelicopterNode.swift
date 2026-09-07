@@ -76,6 +76,8 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
 
     // MARK: - Properties
 
+    static let rotorFrameInterval: TimeInterval = 1.0 / 60.0
+
     var flyTextures: [SKTexture]? = nil
     private(set) var animationTimeInterval: TimeInterval = 0
     private let impact = UIImpactFeedbackGenerator(style: .medium)
@@ -107,11 +109,11 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         texture = textures.first
 
         // Theme overrides palette helicopter color when set (e.g. red on parchment).
-        // Art is white/grayscale; colorBlendFactor=1.0 gives a clean solid tint.
+        // A light tint preserves the supplied cockpit, outlines, and body shading.
         let theme = GameSettings.shared.selectedTheme
         let palette = GameSettings.shared.selectedPalette
         color = theme.helicopterTintColor ?? palette.helicopterColor
-        colorBlendFactor = 1.0
+        colorBlendFactor = 0.35
 
         animate(with: animationTimeInterval)
 
@@ -146,7 +148,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
 
     private func animate(with timing: TimeInterval) {
         guard let textures = flyTextures, !textures.isEmpty else { return }
-        // 20-frame rotor atlas at 0.05 s/frame gives a 1-second animation loop.
+        // 60 aligned frames at 60 Hz keep the body fixed through a seamless one-second loop.
         // Reduce Motion shows a single static frame to eliminate all motion.
         guard !UIAccessibility.isReduceMotionEnabled else {
             texture = textures.first
