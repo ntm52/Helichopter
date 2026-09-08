@@ -87,6 +87,86 @@ class GameScene: SKScene {
         return "Score: \(sceneAdapter?.score ?? 0)"
     }
 
+    /// VoiceOver activations have no release event, so sustained flight uses toggles.
+    @discardableResult
+    func accessibilityFly(down: Bool = false) -> Bool {
+        guard view != nil, stateMachine.currentState is PlayingState, let helicopter = helicopter else { return false }
+        switch GameSettings.shared.controlScheme {
+        case .tapFlap:
+            guard !down else { return false }
+            helicopter.switchPrimaryBegan()
+            helicopter.switchPrimaryEnded()
+        case .holdHover:
+            if helicopter.isHoveringHeld || down { helicopter.switchPrimaryEnded() }
+            else { helicopter.switchPrimaryBegan() }
+        case .autoHover:
+            if down { helicopter.switchSecondaryBegan(); helicopter.switchSecondaryEnded() }
+            else { helicopter.switchPrimaryBegan(); helicopter.switchPrimaryEnded() }
+        case .twoSwitchUD:
+            let wasHeld = down ? helicopter.isTwoSwitchDownHeld : helicopter.isTwoSwitchUpHeld
+            helicopter.switchPrimaryEnded()
+            helicopter.switchSecondaryEnded()
+            if !wasHeld {
+                if down { helicopter.switchSecondaryBegan() }
+                else { helicopter.switchPrimaryBegan() }
+            }
+        }
+        return true
+    }
+
+    var accessibilityFlightHint: String {
+        switch GameSettings.shared.controlScheme {
+        case .tapFlap: return "Double-tap to flap upward. Use the Pause action to pause."
+        case .holdHover: return "Double-tap to toggle rising and falling. Use the Pause action to pause."
+        case .autoHover: return "Double-tap to nudge up. Use the Move down action to nudge down, or Pause to pause."
+        case .twoSwitchUD: return "Double-tap to toggle rising and stopping. Use Move down to toggle descending and stopping, or Pause to pause."
+        }
+    }
+
+    var accessibilityFlightStatus: String {
+        guard let player = helicopter else { return "Ready" }
+        if player.onFirstInput != nil { return "Ready to fly" }
+        let motion: String
+        if player.isHoveringHeld || player.isTwoSwitchUpHeld { motion = "Rising" }
+        else if player.isTwoSwitchDownHeld { motion = "Descending" }
+        else { motion = "Altitude \(Int(max(0, min(1, player.position.y / size.height)) * 100)) percent" }
+        let radius = player.size.width / 2 * GameSettings.shared.hitboxFraction
+        let gaps = children.filter { $0.name == "pipe" }.flatMap { $0.children }
+            .compactMap { $0 as? SKSpriteNode }
+            .filter { $0.physicsBody?.categoryBitMask == PhysicsCategories.gap.rawValue }
+        let next = gaps.filter { $0.convert(CGPoint.zero, to: self).x + PipeFactory.pipeWidth / 2 >= player.position.x - radius }
+            .min { $0.convert(CGPoint.zero, to: self).x < $1.convert(CGPoint.zero, to: self).x }
+        guard let gap = next else { return "\(motion). Clear ahead" }
+        let center = gap.convert(CGPoint.zero, to: self)
+        let direction: String
+        if player.position.y < center.y - gap.size.height / 2 + radius { direction = "Move up" }
+        else if player.position.y > center.y + gap.size.height / 2 - radius { direction = "Move down" }
+        else { direction = "Aligned with gap" }
+        let near = center.x - player.position.x < size.width * 0.35
+        return "\(motion). Pipe \(near ? "near" : "ahead"). \(direction)"
+    }
+
+    private var lastVoiceGuidanceTime: TimeInterval = 0
+    private var lastVoiceGuidance: String?
+
+    private func updateVoiceGuidance(_ time: TimeInterval) {
+        guard UIAccessibility.isVoiceOverRunning, stateMachine.currentState is PlayingState,
+              helicopter?.onFirstInput == nil else {
+            lastVoiceGuidance = nil
+            lastVoiceGuidanceTime = 0
+            return
+        }
+        // Short, rate-limited speech avoids a queue of obsolete obstacle positions.
+        guard time - lastVoiceGuidanceTime >= 2 else { return }
+        // Keep automatic speech brief enough to finish between updates. Altitude
+        // remains available by focusing the flight control's live value.
+        let guidance = accessibilityFlightStatus.components(separatedBy: ". ").dropFirst().joined(separator: ". ")
+        guard guidance != lastVoiceGuidance else { return }
+        lastVoiceGuidance = guidance
+        lastVoiceGuidanceTime = time
+        UIAccessibility.post(notification: .announcement, argument: guidance)
+    }
+
     // MARK: - Overlay scanner management
 
     /// Called when PausedState or GameOverState presents an overlay.
@@ -136,6 +216,7 @@ class GameScene: SKScene {
 
         if isPaused { return }
 
+        updateVoiceGuidance(currentTime)
         stateMachine.update(deltaTime: deltaTime)
         sceneAdapter?.updatables.filter { $0.shouldUpdate }.forEach { $0.update(currentTime) }
     }

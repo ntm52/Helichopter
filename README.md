@@ -14,7 +14,7 @@ This project is an active remodel of the original 2021 build, bringing it to cur
 - Independent, continuous difficulty tuning — gap size, speed, gravity, flap strength, hitbox forgiveness, all separately adjustable
 - Hold-to-hover and auto-hover control schemes alongside tap-to-flap
 - VoiceOver support across every scene
-- Dynamic Type on all text
+- Dynamic Type for menus, gameplay text, and Settings
 - Validated contrast palettes including deuteranopia-safe, protanopia-safe, and low-luminance options
 - No-fail / practice mode
 - Picture-based settings comprehensible without reading
@@ -37,9 +37,33 @@ Hold the primary keyboard/controller switch for **3 seconds** to pause in any fl
 
 Settings → Switch Access → **Hold Switch to Pause** adjusts the delay from 2–10 seconds. In Hold to Hover and Two-Switch flight, release and press again before the delay to keep flying without pausing, or increase the delay for longer holds. Touch flight is unchanged. Physical switch/controller validation is still pending.
 
+## VoiceOver flight
+
+During play, focus **Helicopter flight control**. Double-tap to flap (Tap to Flap),
+toggle rising/falling (Hold to Hover), nudge up (Auto Hover), or toggle rising/stopping
+(Two-Switch). The **Move down** action releases hover, nudges down, or toggles
+descending/stopping for the corresponding scheme. **Pause** and the two-finger
+scrub open the pause menu. Switching VoiceOver on or off pauses the run.
+
+VoiceOver reads altitude, approaching pipes, and whether to move up, move down,
+or stay aligned with the next gap. Automatic guidance is limited to one update
+per two seconds and is separate from the game's sound-effects setting. These
+are spoken spatial cues, not continuous audio navigation; sound-only playability
+at every difficulty is not yet established.
+
+## Text size
+
+Text follows iOS Settings → Accessibility → Display & Text Size → Larger Text,
+including accessibility sizes and changes while the app is open. Title, pause,
+and round-over menus scroll vertically; gameplay score and instructions use
+UIKit text independent of the SpriteKit scene scale. Settings labels wrap,
+presets stack vertically, and choice controls and palette cards scroll horizontally.
+The switch scanner scrolls the selected menu button into view. Changing text size
+in Settings preserves the selected setting and an open adjustment panel.
+
 ## Status
 
-Active development; not yet ready for App Store submission. See [the September 5 audit](Audit/REVIEW_2026-09-05.md) for tested fixes and remaining release blockers. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.
+Active development; not yet ready for App Store submission. See [app overview and release preparation](Audit/APP_STORE_READINESS.md) for non-testing launch work. See [the September 5 audit](Audit/REVIEW_2026-09-05.md) for tested fixes and remaining release blockers. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.
 
 ## Helicopter artwork and animation
 

@@ -17,7 +17,7 @@ The project builds. Full gameplay and assistive-technology validation remain out
 
 ## Known Bugs / Outstanding Issues
 
-Open implementation issues include VoiceOver flight interaction and Dynamic Type; gameplay contrast boundaries are implemented, with low-vision device validation pending. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
+VoiceOver flight actions and spoken gap guidance are implemented; sound-only usability remains to be established; Dynamic Type is implemented with device validation pending; gameplay contrast boundaries are implemented, with low-vision device validation pending. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
 
 ---
 
@@ -37,6 +37,7 @@ Open implementation issues include VoiceOver flight interaction and Dynamic Type
 | `Scenes/GameScene.swift` | Main game scene; GKStateMachine; routes input to helicopter or overlay scanner. |
 | `Scenes/SettingsScene.swift` | Hides all .sks content; shows `SettingsOverlayView` (UIKit, full settings). |
 | `Scenes/RoutingUtilityScene.swift` | Base class for TitleScene/SettingsScene; handles button routing and FocusScanner. |
+| `Scenes/SceneTextOverlay.swift` | Scalable UIKit menu/HUD text, scrollable buttons bound to SpriteKit actions, and scanner focus. |
 | `Scenes/SceneOverlay.swift` | Wraps Pause/Failed .sks files as floating overlays over GameScene. |
 | `Game States/PlayingState.swift` | Active gameplay; spawns pipes; control-scheme dispatch. |
 | `Game States/GameOverState.swift` | Shows FailedScene overlay; updates scores. |
@@ -67,8 +68,8 @@ Theme application:
 ## Helicopter Sprite Atlas
 
 **Location:** `Assets/Assets.xcassets/Playable Characters/Helicopter Player.spriteatlas/`
-**Frames:** 20 × `r_player1`–`r_player20`, white/grayscale PNG, 1×/2×/3× each
-**Timing:** 0.05 s/frame = 20 FPS, 1.0 s loop
+**Frames:** 60 × `r_player1`–`r_player60`, white/grayscale PNG, 1×/2×/3× each
+**Timing:** 1/60 s/frame = 60 FPS, 1.0 s loop
 **Loading:** `SKTextureAtlas(named: "Helicopter Player")` via `SKTextureAtlas+FrameUploader.swift`
 
 ⚠️ **Gotcha:** The folder MUST keep the `.spriteatlas` extension. Renaming it to just `Helicopter Player` (no extension) causes `SKTextureAtlas` to return an empty atlas → crash in `PlayingState`. This happened once and was fixed by renaming back.
@@ -115,7 +116,7 @@ Theme application:
   - Keyboard emulation (Space/Enter) — flap and menu navigation
   - GCController — adaptive controller buttons work
   - Reduce Motion — background stops, transitions cross-fade
-  - Dynamic Type at max — text doesn't clip (note: Dynamic Type not yet implemented on SKLabelNodes)
+  - Dynamic Type at max — verify UIKit menu/HUD and Settings layouts on hardware (automated layout coverage added)
 - [ ] **Performance check** on oldest target device.
 - [ ] **Real-user testing** — via OT/SLP, school, or AT lab. Do this before App Store, not after.
 
@@ -125,24 +126,24 @@ Theme application:
 
 ## Phase 8 — App Store
 
-- [ ] `PrivacyInfo.xcprivacy` — UserDefaults requires `NSPrivacyAccessedAPICategoryUserDefaults` reason `CA92.1`
+- [x] Root `PrivacyInfo.xcprivacy` is bundled — UserDefaults declares `NSPrivacyAccessedAPICategoryUserDefaults` reason `CA92.1`
 - [ ] Accessibility Nutrition Labels in App Store Connect
 - [ ] Bundle ID `com.nathanmayo.helichopter`, Team `9HJ5466NL8` — confirm certificates current
 - [ ] Screenshots, description, age rating, export compliance
-- [ ] Bump `MARKETING_VERSION` from 1.1 and tag
+- [ ] Confirm release version/build (currently 2.0 (1)) and tag the release
 
 ---
 
 ## Open Items (not blocking Phase 7)
 
-- **Dynamic Type on SKLabelNodes** — recommended path is a UIKit overlay for all menu text. Deferred since SettingsScene is already UIKit; TitleScene/GameScene labels are next.
-- **FailedScene.sks visual redesign** — still says "Failed" in large text. Backing model for calm restart is in place; only the .sks edit is missing.
+- **Dynamic Type device validation** — UIKit owns visible menu/HUD text; Settings uses UIFontMetrics. Validate largest sizes with VoiceOver, Switch Control, and mounted iPad orientations on hardware.
+- **Round-over wording** — runtime already replaces the archive text with “Round Over” or “Well Done!” in Calm Mode.
 - **Guided first-run onboarding** — all backing parameters in GameSettings, no UI yet.
 - **Differentiate without color** (`UIAccessibility.shouldDifferentiateWithoutColor`) — pattern fills on pipes. Requires art work.
 - **Per-profile save/load** — GameSettings supports the pattern; only needs a profile selection UI layer.
 - **iPad .sks deduplication** — `*iPad.sks` files exist alongside phone versions. Deferred to Phase 4/5 rebuild.
 - **Audio cues** beyond existing Score/Dead — approaching pipe, near-miss, gap cleared.
-- **PrivacyInfo.xcprivacy** created at `Helichopter/PrivacyInfo.xcprivacy` — needs to be added to the Xcode target (File → Add Files to "Helichopter") before App Store submission.
+- **Privacy policy and support** — the root privacy manifest is already bundled. Add a public policy/support page and an accessible in-app policy link before submission.
 
 ---
 
@@ -241,3 +242,11 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Kept palette swatch tests and added a boundary luminance check plus SpriteKit pixel checks and scene captures for all 18 theme/palette combinations, including both pipe orientations.
 - Validation: **56 tests passed**, zero failures/skips, on iPhone 17 Pro (iOS 26.5 simulator). Reviewed the 18 rendered gameplay captures. Results: `/tmp/helichopter-contrast-final.xcresult`; log: `/tmp/helichopter-contrast-final.log`.
 - This implements boundary visibility, not certification of every artwork pixel or all vision conditions. Physical-device and low-vision player evaluation remain outstanding.
+
+### 2026-09-08 — VoiceOver flight and Dynamic Type integration
+- Preserved and integrated the existing uncommitted Dynamic Type implementation: UIKit menu/HUD text, wrapping Settings labels, scrollable menus/choices, and scanner focus preservation.
+- Added a stable VoiceOver flight element to the visible UIKit overlay, with scheme-specific double-tap actions, downward movement, Pause, and accessibility escape. Sustained controls toggle because accessibility activation has no release callback. Changing VoiceOver status pauses and clears held controls.
+- Added live altitude/status values and short, rate-limited pipe proximity/gap-alignment announcements. Guidance uses the nearest pipe and collision-radius clearance; automatic speech omits altitude to stay brief. Full sound-only usability is not established by these changes.
+- Added regression coverage for all four schemes, first-input spawning, stable accessibility identity, pause/held-state cleanup, and gap direction/clearance. Corrected the inherited Dynamic Type test's trait environment and excluded empty/internal segmented-control labels from its automatic-font assertion. The Settings layout test now hosts the panel in a window and resolves its traits, matching the app view hierarchy. This exposed clipped Calm Mode/Show Score labels at the largest text size; multiline labels now use their resolved width and resist vertical compression.
+- Updated README, corrected stale atlas/version/privacy/round-over notes, and added `Audit/APP_STORE_READINESS.md` with the app breakdown and non-testing launch recommendations.
+- Final validation: all **60 tests passed**, zero failures/skips, on iPhone 17 Pro (iOS 26.5 simulator). Optimized unsigned iOS Release build and `git diff --check` passed. Reviewed the largest-text 320-point Settings choice capture. Results: `/tmp/helichopter-layout-validated.xcresult`; test log: `/tmp/helichopter-layout-validated.log`; release log: `/tmp/helichopter-release-validated.log`. No physical VoiceOver session or App Store submission is claimed.

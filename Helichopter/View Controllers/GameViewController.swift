@@ -68,6 +68,16 @@ private final class ButtonAccessibilityElement: UIAccessibilityElement {
 class GameViewController: UIViewController {
 
     private var inputSuspended = false
+    private let sceneTextOverlay = SceneTextOverlay()
+    private var textRefreshTimer: Timer?
+
+    deinit { textRefreshTimer?.invalidate() }
+
+    func refreshSceneText() {
+        guard let skView = viewIfLoaded as? SKView else { return }
+        sceneTextOverlay.refresh(in: skView)
+    }
+
 
     func suspendInput() {
         inputSuspended = true
@@ -91,7 +101,18 @@ class GameViewController: UIViewController {
             skView.ignoresSiblingOrder = true
         }
 
+        sceneTextOverlay.frame = view.bounds
+        sceneTextOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(sceneTextOverlay)
+        refreshSceneText()
+        // UIKit continues refreshing when SpriteKit is paused. Capture weakly so
+        // the run loop cannot retain the controller or a departed scene.
+        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.refreshSceneText() }
+        RunLoop.main.add(timer, forMode: .common)
+        textRefreshTimer = timer
         setupGameControllerObservers()
+        NotificationCenter.default.addObserver(self, selector: #selector(voiceOverStatusChanged),
+                                               name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -109,6 +130,12 @@ class GameViewController: UIViewController {
     }
 
     override var prefersStatusBarHidden: Bool { true }
+
+    @objc private func voiceOverStatusChanged() {
+        // Changing input methods must not leave a toggled climb/descent running.
+        ((viewIfLoaded as? SKView)?.scene as? GameScene)?.pauseForInterruption()
+        refreshSceneText()
+    }
 
     // MARK: - Orientation
 
@@ -138,7 +165,7 @@ class GameViewController: UIViewController {
     override var accessibilityElements: [Any]? {
         get {
             guard let skView = view as? SKView, let scene = skView.scene else { return nil }
-            if scene is SettingsScene { return nil }
+            if scene is SettingsScene || !sceneTextOverlay.isHidden { return nil }
             var elements: [Any] = []
 
             // Score element — present when GameScene is playing

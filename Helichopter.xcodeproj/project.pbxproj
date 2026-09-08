@@ -49,6 +49,7 @@
 		A9EC755E20A6CB03007C42EC /* SettingsScene.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9EC755D20A6CB03007C42EC /* SettingsScene.sks */; };
 		A9EC756420A6D3E9007C42EC /* SettingsScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EC756320A6D3E9007C42EC /* SettingsScene.swift */; };
 		A9EC756820A6E479007C42EC /* RoutingUtilityScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EC756720A6E479007C42EC /* RoutingUtilityScene.swift */; };
+		D10000000000000000000001 /* SceneTextOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* SceneTextOverlay.swift */; };
 		D8986E4B3047D63A00B4D8C4 /* GameSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E4A3047D63A00B4D8C4 /* GameSettings.swift */; };
 		D8986E4D3047DADB00B4D8C4 /* FocusScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E4C3047DADB00B4D8C4 /* FocusScanner.swift */; };
 		D8986E513048ADCF00B4D8C4 /* Dead.caf in Resources */ = {isa = PBXBuildFile; fileRef = D8986E4E3048ADCF00B4D8C4 /* Dead.caf */; };
@@ -114,6 +115,7 @@
 		A9EC755D20A6CB03007C42EC /* SettingsScene.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = SettingsScene.sks; sourceTree = "<group>"; };
 		A9EC756320A6D3E9007C42EC /* SettingsScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScene.swift; sourceTree = "<group>"; };
 		A9EC756720A6E479007C42EC /* RoutingUtilityScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingUtilityScene.swift; sourceTree = "<group>"; };
+		D10000000000000000000002 /* SceneTextOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneTextOverlay.swift; sourceTree = "<group>"; };
 		D8986E4A3047D63A00B4D8C4 /* GameSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSettings.swift; sourceTree = "<group>"; };
 		D8986E4C3047DADB00B4D8C4 /* FocusScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusScanner.swift; sourceTree = "<group>"; };
 		D8986E4E3048ADCF00B4D8C4 /* Dead.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Dead.caf; sourceTree = "<group>"; };
@@ -299,6 +301,7 @@
 				A9ACB9222099A1F200966991 /* GameScene.swift */,
 				A9EC756320A6D3E9007C42EC /* SettingsScene.swift */,
 				A992D8B520A03B90003A9998 /* SceneOverlay.swift */,
+				D10000000000000000000002 /* SceneTextOverlay.swift */,
 				A9EC756720A6E479007C42EC /* RoutingUtilityScene.swift */,
 			);
 			path = Scenes;
@@ -550,6 +553,7 @@
 				A92E72EE209D87570015F647 /* ButtonNode.swift in Sources */,
 				A9092FA5216B35C800D773BC /* TriggleButtonNode.swift in Sources */,
 				A992D8B620A03B90003A9998 /* SceneOverlay.swift in Sources */,
+				D10000000000000000000001 /* SceneTextOverlay.swift in Sources */,
 				A9ACB9232099A1F200966991 /* GameScene.swift in Sources */,
 				A9ACB98D2099F0FC00966991 /* Touchable.swift in Sources */,
 				A90192FB21F1BDF40020C612 /* PhysicsContactable.swift in Sources */,

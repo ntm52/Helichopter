@@ -69,6 +69,8 @@ private final class SettingsScanItem: FocusScannable {
 
 final class SettingsOverlayView: UIView {
 
+    private var fontTraits: UITraitCollection?
+
     var onBack: (() -> Void)?
     var onThemeChanged: (() -> Void)?
 
@@ -141,6 +143,13 @@ final class SettingsOverlayView: UIView {
                 control.sendActions(for: .touchUpInside)
             }
         })
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if (fontTraits ?? previousTraitCollection)?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
+            onThemeChanged?()
+        }
     }
 
     override func layoutSubviews() {
@@ -247,6 +256,8 @@ final class SettingsOverlayView: UIView {
         UIAccessibility.post(notification: .screenChanged, argument: focusedControl)
     }
 
+    var isAdjusting: Bool { adjustmentPanel != nil }
+
     var scrollPosition: CGPoint { scrollView.contentOffset }
 
     func restoreScrollPosition(_ offset: CGPoint) {
@@ -275,7 +286,8 @@ final class SettingsOverlayView: UIView {
 
     // MARK: - Initialization
 
-    init(frame: CGRect, theme: UITheme) {
+    init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil) {
+        self.fontTraits = fontTraits
         let light = SettingsOverlayView.isLightColor(theme.sceneBackgroundColor)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         theme.sceneBackgroundColor.getRed(&r, green: &g, blue: &b, alpha: &a)
@@ -337,13 +349,12 @@ final class SettingsOverlayView: UIView {
                                    action: #selector(backTapped))
         let titleLbl = makeLabel("Settings", size: 26, weight: .bold, color: text)
         titleLbl.textAlignment = .center
-
-        let header = UIView()
+        let header = UIStackView(arrangedSubviews: [backBtn, titleLbl])
+        header.axis = .vertical
+        header.spacing = 4
+        header.isLayoutMarginsRelativeArrangement = true
+        header.layoutMargins = UIEdgeInsets(top: 4, left: 16, bottom: 8, right: 16)
         header.translatesAutoresizingMaskIntoConstraints = false
-        [backBtn, titleLbl].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            header.addSubview($0)
-        }
         addSubview(header)
 
         let headerDiv = hairline()
@@ -363,13 +374,7 @@ final class SettingsOverlayView: UIView {
             header.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             header.leadingAnchor.constraint(equalTo: leadingAnchor),
             header.trailingAnchor.constraint(equalTo: trailingAnchor),
-            header.heightAnchor.constraint(equalToConstant: 52),
-
-            backBtn.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            backBtn.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
-
-            titleLbl.centerXAnchor.constraint(equalTo: header.centerXAnchor),
-            titleLbl.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            header.heightAnchor.constraint(greaterThanOrEqualToConstant: 52),
 
             headerDiv.bottomAnchor.constraint(equalTo: header.bottomAnchor),
             headerDiv.leadingAnchor.constraint(equalTo: header.leadingAnchor),
@@ -534,14 +539,7 @@ final class SettingsOverlayView: UIView {
         spacer.heightAnchor.constraint(equalToConstant: 18).isActive = true
         stack.addArrangedSubview(spacer)
 
-        let attrStr = NSAttributedString(string: title.uppercased(), attributes: [
-            .foregroundColor: accent,
-            .font: UIFont.systemFont(ofSize: 12, weight: .bold),
-            .kern: 1.5,
-        ])
-        let lbl = UILabel()
-        lbl.attributedText = attrStr
-        lbl.translatesAutoresizingMaskIntoConstraints = false
+        let lbl = makeLabel(title.uppercased(), size: 12, weight: .bold, color: accent)
 
         let wrap = UIView()
         wrap.addSubview(lbl)
@@ -549,6 +547,7 @@ final class SettingsOverlayView: UIView {
             lbl.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 2),
             lbl.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -2),
             lbl.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 20),
+            lbl.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -20),
         ])
         stack.addArrangedSubview(wrap)
         stack.addArrangedSubview(hairline())
@@ -559,7 +558,7 @@ final class SettingsOverlayView: UIView {
         row.backgroundColor = rowBg
 
         let hs = UIStackView()
-        hs.axis         = .horizontal
+        hs.axis         = .vertical
         hs.distribution = .fillEqually
         hs.spacing      = 10
         hs.translatesAutoresizingMaskIntoConstraints = false
@@ -575,15 +574,18 @@ final class SettingsOverlayView: UIView {
                 self?.onThemeChanged?()
             }
             controlTargets.append(t)
-            let btn = UIButton(type: .system)
+            let btn = DynamicTextButton(type: .system)
             btn.setTitle(name, for: .normal)
-            btn.titleLabel?.font   = .systemFont(ofSize: 15, weight: .semibold)
+            btn.titleLabel?.font = scaledFont(15, weight: .semibold)
+            btn.titleLabel?.adjustsFontForContentSizeCategory = true
+            btn.titleLabel?.numberOfLines = 0
+            btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
             btn.setTitleColor(.white, for: .normal)
             btn.backgroundColor    = color.withAlphaComponent(0.30)
             btn.layer.cornerRadius = 10
             btn.layer.borderWidth  = 1.5
             btn.layer.borderColor  = color.withAlphaComponent(0.70).cgColor
-            btn.heightAnchor.constraint(equalToConstant: 48).isActive = true
+            btn.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
             btn.addTarget(t, action: #selector(ButtonTarget.tapped), for: .touchUpInside)
             hs.addArrangedSubview(btn)
         }
@@ -699,17 +701,32 @@ final class SettingsOverlayView: UIView {
         seg.selectedSegmentIndex     = selectedIndex
         seg.backgroundColor          = segBg
         seg.selectedSegmentTintColor = accent
-        seg.setTitleTextAttributes([.foregroundColor: sub], for: .normal)
+        let segmentFont = scaledFont(16, weight: .semibold)
+        seg.setTitleTextAttributes([.foregroundColor: sub, .font: segmentFont], for: .normal)
         seg.setTitleTextAttributes([
             .foregroundColor: selectedSegText,
-            .font: UIFont.systemFont(ofSize: 12, weight: .semibold),
+            .font: segmentFont,
         ], for: .selected)
 
         let t = SegTarget(onChange)
         controlTargets.append(t)
         seg.addTarget(t, action: #selector(SegTarget.changed(_:)), for: .valueChanged)
 
-        let vs = UIStackView(arrangedSubviews: [titleL, detailL, seg])
+        let segmentScroll = UIScrollView()
+        segmentScroll.showsHorizontalScrollIndicator = true
+        segmentScroll.addSubview(seg)
+        seg.translatesAutoresizingMaskIntoConstraints = false
+        let itemWidth = items.map { ($0 as NSString).size(withAttributes: [.font: segmentFont]).width + 32 }.max() ?? 80
+        NSLayoutConstraint.activate([
+            seg.leadingAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.leadingAnchor),
+            seg.trailingAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.trailingAnchor),
+            seg.topAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.topAnchor),
+            seg.bottomAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.bottomAnchor),
+            seg.widthAnchor.constraint(equalToConstant: itemWidth * CGFloat(items.count)),
+            seg.heightAnchor.constraint(equalTo: segmentScroll.frameLayoutGuide.heightAnchor),
+            segmentScroll.heightAnchor.constraint(equalToConstant: max(44, segmentFont.lineHeight + 24))
+        ])
+        let vs = UIStackView(arrangedSubviews: [titleL, detailL, segmentScroll])
         vs.axis    = .vertical
         vs.spacing = 8
         vs.translatesAutoresizingMaskIntoConstraints = false
@@ -778,14 +795,14 @@ final class SettingsOverlayView: UIView {
             hScroll.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
             hScroll.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
             hScroll.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
-            hScroll.heightAnchor.constraint(equalToConstant: 88),
+            hScroll.heightAnchor.constraint(equalToConstant: 50 + scaledFont(12, weight: .medium).lineHeight * 3),
         ])
         appendRow(row)
     }
 
     private func makeSwatch(_ palette: ColorPalette, selected: Bool, index: Int) -> UIButton {
         let btn = UIButton(type: .custom)
-        btn.widthAnchor.constraint(equalToConstant: 72).isActive = true
+        btn.widthAnchor.constraint(equalToConstant: max(100, scaledFont(12, weight: .medium).pointSize * 8)).isActive = true
         btn.layer.cornerRadius = 12
         btn.layer.borderWidth  = selected ? 3.0 : 1.5
         btn.layer.borderColor  = selected ? accent.cgColor : div.cgColor
@@ -804,8 +821,9 @@ final class SettingsOverlayView: UIView {
         let nameL = UILabel()
         nameL.text          = palette.name
         nameL.textColor     = sub
-        nameL.font          = .systemFont(ofSize: 9, weight: .medium)
-        nameL.numberOfLines = 2
+        nameL.font = scaledFont(12, weight: .medium)
+        nameL.adjustsFontForContentSizeCategory = true
+        nameL.numberOfLines = 0
         nameL.textAlignment = .center
         nameL.isUserInteractionEnabled = false
 
@@ -818,6 +836,7 @@ final class SettingsOverlayView: UIView {
 
         btn.addSubview(vs)
         NSLayoutConstraint.activate([
+            nameL.widthAnchor.constraint(lessThanOrEqualTo: vs.widthAnchor),
             vs.topAnchor.constraint(equalTo: btn.topAnchor, constant: 8),
             vs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -6),
             vs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: 4),
@@ -847,21 +866,32 @@ final class SettingsOverlayView: UIView {
 
     // MARK: - Factory helpers
 
+    private func scaledFont(_ size: CGFloat, weight: UIFont.Weight) -> UIFont {
+        UIFontMetrics(forTextStyle: size < 15 ? .caption1 : (size >= 22 ? .title2 : .body)).scaledFont(
+            for: .systemFont(ofSize: size, weight: weight), compatibleWith: fontTraits ?? traitCollection)
+    }
+
     private func makeLabel(_ labelText: String, size: CGFloat,
                             weight: UIFont.Weight, color: UIColor) -> UILabel {
-        let l = UILabel()
+        let l = WrappingSettingsLabel()
+        l.setContentCompressionResistancePriority(.required, for: .vertical)
         l.text      = labelText
         l.textColor = color
-        l.font      = .systemFont(ofSize: size, weight: weight)
+        l.adjustsFontForContentSizeCategory = true
+        l.font = scaledFont(size, weight: weight)
+        l.numberOfLines = 0
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }
 
     private func plainButton(_ title: String, color: UIColor,
                               target: Any, action: Selector) -> UIButton {
-        let btn = UIButton(type: .system)
+        let btn = DynamicTextButton(type: .system)
         btn.setTitle(title, for: .normal)
-        btn.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        btn.titleLabel?.font = scaledFont(17, weight: .semibold)
+        btn.titleLabel?.adjustsFontForContentSizeCategory = true
+        btn.titleLabel?.numberOfLines = 0
+        btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8)
         btn.setTitleColor(color, for: .normal)
         btn.addTarget(target, action: action, for: .touchUpInside)
         return btn
@@ -942,7 +972,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
 
     private func makeOverlay(in view: SKView) -> SettingsOverlayView {
         let overlay = SettingsOverlayView(frame: view.bounds,
-                                          theme: GameSettings.shared.selectedTheme)
+                                          theme: GameSettings.shared.selectedTheme, fontTraits: view.traitCollection)
         overlay.accessibilityViewIsModal = true
         overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         overlay.onBack = { [weak self, weak view] in self?.navigateBack(from: view) }
@@ -951,6 +981,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
             let savedOffset = overlay?.scrollPosition ?? .zero
             let wasScanning = overlay?.switchScanner.isActive == true
             let focusedSetting = overlay?.focusedSetting
+            let wasAdjusting = overlay?.isAdjusting == true
             overlay?.stopScanning()
             overlay?.isUserInteractionEnabled = false
             let newOverlay = self.makeOverlay(in: view)
@@ -960,6 +991,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
             newOverlay.restoreScrollPosition(savedOffset)
             if wasScanning || GameSettings.shared.scanningEnabled {
                 newOverlay.startScanning(focusing: focusedSetting)
+                if wasAdjusting { newOverlay.primaryActivate() }
             }
             let newTheme = GameSettings.shared.selectedTheme
             self.backgroundColor = newTheme.sceneBackgroundColor
@@ -1024,5 +1056,17 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
         case .hard:   GameSettings.shared.applyChallenge()
         }
         UserDefaults.standard.set(difficultyLevel: level)
+    }
+}
+
+/// Nested stacks need the resolved width when calculating multiline label height.
+private final class WrappingSettingsLabel: UILabel {
+    override var bounds: CGRect {
+        didSet {
+            if bounds.width > 0 && preferredMaxLayoutWidth != bounds.width {
+                preferredMaxLayoutWidth = bounds.width
+                invalidateIntrinsicContentSize()
+            }
+        }
     }
 }
