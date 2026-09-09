@@ -245,6 +245,8 @@ final class GameSettings {
         case noFailMode              = "gs_noFailMode"
         case showScore               = "gs_showScore"
         case calmMode                = "gs_calmMode"
+        case helicopterOutline       = "gs_helicopterOutline"
+        case hideGameWhilePaused     = "gs_hideGameWhilePaused"
         case invulnerabilityDuration = "gs_invulnerabilityDuration"
         case isSettingsLocked        = "gs_isSettingsLocked"
     }
@@ -406,8 +408,18 @@ final class GameSettings {
         set { defaults.set(newValue, forKey: Key.showScore.rawValue) }
     }
 
-    /// When true, suppresses the collision hit sound and impact haptic.
-    /// The game still plays normally — it just removes the startling audio/haptic stinger.
+    /// Retain the existing contrast aid by default; players can opt out.
+    var helicopterOutline: Bool {
+        get { defaults.object(forKey: Key.helicopterOutline.rawValue) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.helicopterOutline.rawValue) }
+    }
+
+    var hideGameWhilePaused: Bool {
+        get { defaults.bool(forKey: Key.hideGameWhilePaused.rawValue) }
+        set { defaults.set(newValue, forKey: Key.hideGameWhilePaused.rawValue) }
+    }
+
+    /// Suppress startling collision sounds and haptics.
     var calmMode: Bool {
         get { defaults.bool(forKey: Key.calmMode.rawValue) }
         set { defaults.set(newValue, forKey: Key.calmMode.rawValue) }

@@ -82,3 +82,7 @@ feedback pulses the artwork tint without fading the marker. These borders preser
 the existing hitboxes; they are visual guides, not collision outlines. Rendered
 regression tests cover all 18 theme/palette combinations. This does not certify
 all artwork pixels or replace testing with players who have low vision.
+
+### Display preferences
+
+Settings → Comfort includes **Helicopter Outline** (turn off the black/white circle) and **Hide Game While Paused** (use a solid pause background). By default, Pause keeps the frozen game visible. **Show Score** controls current and best scores during play and the end-of-run scores.

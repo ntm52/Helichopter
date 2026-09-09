@@ -38,6 +38,16 @@ class ButtonNode: SKSpriteNode {
 
     // MARK: Properties
 
+    // Keep archived nodes as action/scanner models, with UIKit owning presentation.
+    var isPresentedInUIKit = false {
+        didSet {
+            if isPresentedInUIKit {
+                alpha = 0
+                isUserInteractionEnabled = false
+            }
+        }
+    }
+
     var buttonIdentifier: ButtonIdentifier!
 
     var responder: ButtonNodeResponderType {
@@ -127,7 +137,7 @@ class ButtonNode: SKSpriteNode {
     }
 
     func buttonTriggered() {
-        if isUserInteractionEnabled {
+        if isUserInteractionEnabled || isPresentedInUIKit {
             responder.buttonTriggered(button: self)
         }
     }

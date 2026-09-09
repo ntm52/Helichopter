@@ -17,6 +17,8 @@ The project builds. Full gameplay and assistive-technology validation remain out
 
 ## Known Bugs / Outstanding Issues
 
+- [ ] Add a “New high score” notification when a run beats the saved record. Announce it once, respect Show Score and Calm Mode, and avoid interrupting flight input.
+
 VoiceOver flight actions and spoken gap guidance are implemented; sound-only usability remains to be established; Dynamic Type is implemented with device validation pending; gameplay contrast boundaries are implemented, with low-vision device validation pending. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
 
 ---
@@ -250,3 +252,13 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Added regression coverage for all four schemes, first-input spawning, stable accessibility identity, pause/held-state cleanup, and gap direction/clearance. Corrected the inherited Dynamic Type test's trait environment and excluded empty/internal segmented-control labels from its automatic-font assertion. The Settings layout test now hosts the panel in a window and resolves its traits, matching the app view hierarchy. This exposed clipped Calm Mode/Show Score labels at the largest text size; multiline labels now use their resolved width and resist vertical compression.
 - Updated README, corrected stale atlas/version/privacy/round-over notes, and added `Audit/APP_STORE_READINESS.md` with the app breakdown and non-testing launch recommendations.
 - Final validation: all **60 tests passed**, zero failures/skips, on iPhone 17 Pro (iOS 26.5 simulator). Optimized unsigned iOS Release build and `git diff --check` passed. Reviewed the largest-text 320-point Settings choice capture. Results: `/tmp/helichopter-layout-validated.xcresult`; test log: `/tmp/helichopter-layout-validated.log`; release log: `/tmp/helichopter-release-validated.log`. No physical VoiceOver session or App Store submission is claimed.
+
+### 2026-09-08 — Unified home screen, gameplay HUD, and pause presentation
+- UIKit owns visible menus and HUD controls. Archived SpriteKit buttons remain action/scanner models but no longer render or receive duplicate touch targets; the hidden title mascot stops animating. The home screen retains its themed sky and one visible helicopter.
+- Current score, live best score, and a single Pause control share the HUD, with the flight hint below. The HUD stacks vertically at accessibility text sizes. Show Score controls both score displays.
+- Pause retains the frozen game behind a light dimming layer. Settings → Comfort → Hide Game While Paused restores a solid background for players who prefer fewer distractions. Pause reads only its own menu labels, excluding the underlying flight hint.
+- Added Settings → Comfort → Helicopter Outline to disable the black/white flight marker. It defaults on to preserve the existing contrast aid; collision geometry and pipe boundaries are unchanged.
+- Added the “New high score” notification to future work above; it is not implemented in this change.
+- Regression coverage includes phone/tablet scene archives, menu action routing, duplicate-control suppression, score visibility, outline preference, pause background modes, and the largest-text HUD layout.
+- Validation: initial full simulator suites passed with the earlier local work (68 tests) and in an isolated copy of this change (62 tests). After the pause-label and largest-text refinements, all 7 targeted presentation/Dynamic Type/VoiceOver tests passed both in the working tree and in the final isolated commit, including switch-controlled Resume. Reviewed composite home, HUD, and pause captures. Optimized unsigned iOS Release build passed in the isolated copy. Physical assistive-device validation remains outstanding.
+- Final isolated test result: `/tmp/helichopter-ui-commit-final.xcresult`; release log: `/tmp/helichopter-ui-release.log`. Earlier local onboarding/readiness edits remain uncommitted and intact.

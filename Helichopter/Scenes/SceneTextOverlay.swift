@@ -11,11 +11,18 @@ final class SceneTextOverlay: UIView {
     private weak var source: SKNode?
     private weak var hostScene: SKScene?
     private var menu = false
+    private var bestScoreLabel: UILabel?
+    private weak var hudStack: UIStackView?
     private var flightElement: FlightAccessibilityElement?
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        hudStack?.axis = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
+    }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
-        return !menu && (hit === self || hit === scroll || hit === stack) ? nil : hit
+        return !menu && (hit === self || hit === scroll || hit === stack || hit is UIStackView || hit is UILabel) ? nil : hit
     }
 
     func refresh(in view: SKView) {
@@ -48,6 +55,11 @@ final class SceneTextOverlay: UIView {
             label.isHidden = !visible
             label.alpha = alpha
         }
+        if let game = scene as? GameScene, !menu {
+            let best = "Best \(max(game.sceneAdapter?.score ?? 0, UserDefaults.standard.integer(for: .bestScore)))"
+            if bestScoreLabel?.text != best { bestScoreLabel?.text = best }
+            bestScoreLabel?.isHidden = !GameSettings.shared.showScore
+        }
         flightElement?.accessibilityHint = (scene as? GameScene)?.accessibilityFlightHint
         for (node, button) in links {
             let focused = node.isFocused
@@ -65,11 +77,31 @@ final class SceneTextOverlay: UIView {
         links = []
         labels = []
         let theme = GameSettings.shared.selectedTheme
-        backgroundColor = menu ? theme.sceneBackgroundColor : .clear
+        bestScoreLabel = nil
+        let isPaused = (scene as? GameScene)?.stateMachine.currentState is PausedState
+        backgroundColor = isPaused
+            ? (GameSettings.shared.hideGameWhilePaused ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
+            : (menu && !(scene is TitleScene) ? theme.sceneBackgroundColor : .clear)
+        // The archive supplies actions and text only; never draw a second menu.
+        if let content = root as? SKSpriteNode, root !== scene {
+            content.texture = nil
+            content.color = .clear
+            (scene as? GameScene)?.sceneAdapter?.overlay?.backgroundNode.color = .clear
+        }
+        if scene is TitleScene {
+            let mascot = scene.childNode(withName: "Animated Helicopter")
+            mascot?.removeAllActions()
+            mascot?.isHidden = true
+        }
+        root.enumerateChildNodes(withName: "//*") { node, _ in
+            if let label = node as? SKLabelNode { label.fontColor = .clear }
+        }
+        for button in scene.findAllButtonsInScene() { button.isPresentedInUIKit = true }
         scroll.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.spacing = 16
+        stack.spacing = menu ? 16 : 8
+        scroll.isUserInteractionEnabled = menu
         addSubview(scroll)
         scroll.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -97,7 +129,8 @@ final class SceneTextOverlay: UIView {
         }
         var textNodes: [SKLabelNode] = []
         root.enumerateChildNodes(withName: "//*") { node, _ in
-            guard let label = node as? SKLabelNode else { return }
+            // SpriteKit's // search can escape the receiver and include the host scene.
+            guard node.inParentHierarchy(root), let label = node as? SKLabelNode else { return }
             var parent = label.parent
             while let item = parent, item !== root {
                 if item is ButtonNode { return }
@@ -106,6 +139,13 @@ final class SceneTextOverlay: UIView {
             textNodes.append(label)
         }
         textNodes.sort { $0.convert(.zero, to: scene).y > $1.convert(.zero, to: scene).y }
+        // Controls precede the hint so its fade cannot move or cover Pause.
+        let hud = UIStackView()
+        hud.axis = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
+        hudStack = hud
+        hud.spacing = 12
+        hud.alignment = .fill
+        if !menu { stack.addArrangedSubview(hud) }
         for node in textNodes {
             let label = UILabel()
             label.font = .preferredFont(forTextStyle: menu && labels.isEmpty ? .title1 : .body, compatibleWith: traitCollection)
@@ -119,7 +159,19 @@ final class SceneTextOverlay: UIView {
                 label.backgroundColor = theme.sceneBackgroundColor
                 label.isUserInteractionEnabled = false
             }
-            stack.addArrangedSubview(label)
+            if !menu && node.name == "Score Label" {
+                hud.addArrangedSubview(label)
+                let best = UILabel()
+                best.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
+                best.adjustsFontForContentSizeCategory = true
+                best.numberOfLines = 0
+                best.textColor = theme.titleTextColor
+                best.backgroundColor = theme.sceneBackgroundColor
+                hud.addArrangedSubview(best)
+                bestScoreLabel = best
+            } else {
+                stack.addArrangedSubview(label)
+            }
             labels.append((node, label))
         }
         for node in scene.findAllButtonsInScene() {
@@ -136,7 +188,14 @@ final class SceneTextOverlay: UIView {
             button.layer.cornerRadius = 12
             button.layer.borderColor = theme.titleTextColor.cgColor
             button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
-            stack.addArrangedSubview(button)
+            if menu {
+                stack.addArrangedSubview(button)
+            } else {
+                // hitTest lets touches outside this control reach the flight surface.
+                scroll.isUserInteractionEnabled = true
+                hud.addArrangedSubview(button)
+                button.setContentCompressionResistancePriority(.required, for: .horizontal)
+            }
             links.append((node, button))
         }
         flightElement = nil

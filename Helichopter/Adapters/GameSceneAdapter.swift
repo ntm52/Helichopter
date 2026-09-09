@@ -6,10 +6,10 @@ extension SKScene {
     func findAllButtonsInScene() -> [ButtonNode] {
         return ButtonIdentifier.allButtonIdentifiers.compactMap { buttonIdentifier in
             guard let button = childNode(withName: "//\(buttonIdentifier.rawValue)") as? ButtonNode,
-                  button.isUserInteractionEnabled else { return nil }
+                  (button.isUserInteractionEnabled || button.isPresentedInUIKit) else { return nil }
             var ancestor: SKNode? = button
             while let node = ancestor {
-                if node.isHidden || node.alpha == 0 { return nil }
+                if node.isHidden || (node.alpha == 0 && !(node === button && button.isPresentedInUIKit)) { return nil }
                 ancestor = node.parent
             }
             return button

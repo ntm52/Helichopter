@@ -453,8 +453,14 @@ final class SettingsOverlayView: UIView {
         toggleRow("Calm Mode",
                   detail: "No collision sounds or vibration on impact",
                   isOn: gs.calmMode) { v in gs.calmMode = v }
+        toggleRow("Helicopter Outline",
+                  detail: "Black and white contrast marker around the helicopter",
+                  isOn: gs.helicopterOutline) { v in gs.helicopterOutline = v }
+        toggleRow("Hide Game While Paused",
+                  detail: "Use a solid background behind the pause menu to reduce distractions",
+                  isOn: gs.hideGameWhilePaused) { v in gs.hideGameWhilePaused = v }
         toggleRow("Show Score",
-                  detail: "Display score during play and at the end of a run",
+                  detail: "Display current and best scores during play and at the end of a run",
                   isOn: gs.showScore) { v in gs.showScore = v }
 
         sectionHeader("Switch Access")

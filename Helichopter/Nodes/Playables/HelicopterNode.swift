@@ -122,6 +122,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         let boundary = SKNode()
         boundary.name = "flightBoundary"
         boundary.zPosition = -2
+        boundary.isHidden = !GameSettings.shared.helicopterOutline
         let rect = CGRect(x: -size.width / 2, y: -size.height / 2,
                           width: size.width, height: size.height)
         boundary.addGameplayBoundary(path: CGPath(roundedRect: rect,
