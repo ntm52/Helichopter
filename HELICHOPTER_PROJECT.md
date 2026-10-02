@@ -1,9 +1,9 @@
 # Helichopter — Project Reference
 
-**Status (2026-09-05 audit):** Phase 7 is in progress. Automated tests pass, but accessibility implementation gaps remain. Not ready for App Store submission. See [the audit report](Audit/REVIEW_2026-09-05.md). Historical phase notes below are not release certification.
+**Status (2026-10-01):** Feature-complete for 2.0; working through the [Release Plan](#release-plan--path-to-the-app-store) below. 71 automated tests pass. Remaining blockers are owner inputs (privacy URL, support contact, asset rights), the in-app privacy link, physical-device accessibility testing, and App Store Connect setup. Historical phase notes below are not release certification.
 
-> **Start a new session:** *"Read HELICHOPTER_PROJECT.md and continue from where it left off."*
-> **Rule:** Update the Progress Log before the session ends. If code and doc disagree, trust the code.
+> **Start a new session:** *"Read HELICHOPTER_PROJECT.md and continue from where it left off."* The [Release Plan](#release-plan--path-to-the-app-store) is the active to-do list.
+> **Rule:** Update the Progress Log before the session ends. If code and doc disagree, trust the code. Run `Tools/release_check.sh` before any submission.
 
 ---
 
@@ -17,7 +17,12 @@ The project builds. Full gameplay and assistive-technology validation remain out
 
 ## Known Bugs / Outstanding Issues
 
+- [x] **Two versions of a screen (new loading over old)** — fixed 2026-10-01. The legacy SpriteKit `.sks` menus/HUD were only hidden by the UIKit overlay's 50 ms refresh timer, and `applyUITheme` re-coloured them on every scene load, pause, and round-over. During scene transitions and the first frames of each pause, the archived screen rendered under/beside the UIKit one. Scenes and overlays now call `suppressArchivedPresentation()` at load and after theming (`SceneTextOverlay.swift`).
+- [x] **Two Pause buttons** — same root cause: the archived SpriteKit Pause sprite was visible until the first UIKit refresh. Fixed by the change above; covered by `PresentationTests.archivedScenesNeverRenderBeforeUIKitRefresh`.
+- [x] **Menu buttons/text at the top instead of centred** — the UIKit menu stack was pinned to the top of its scroll view. Menus now centre vertically and still scroll from the top when text is too large to fit; the gameplay HUD stays at the top. Covered by `PresentationTests.menusAreCentredAndHUDStaysAtTop`.
+- [x] **Crash on a fast double-tap in a closing menu** — a UIKit button could outlive its SpriteKit node for up to 50 ms; activating it hit `fatalError` in `ButtonNode.responder`. The responder is now optional and the overlay rebuilds immediately after each tap.
 - [ ] Add a “New high score” notification when a run beats the saved record. Announce it once, respect Show Score and Calm Mode, and avoid interrupting flight input.
+- [ ] **Verify on device** that the three presentation fixes above hold during real transitions (Title ↔ Settings push, Title → Game fade, Pause/Resume, Round Over → Retry), on iPhone and iPad in both orientations.
 
 VoiceOver flight actions and spoken gap guidance are implemented; sound-only usability remains to be established; Dynamic Type is implemented with device validation pending; gameplay contrast boundaries are implemented, with low-vision device validation pending. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
 
@@ -39,7 +44,7 @@ VoiceOver flight actions and spoken gap guidance are implemented; sound-only usa
 | `Scenes/GameScene.swift` | Main game scene; GKStateMachine; routes input to helicopter or overlay scanner. |
 | `Scenes/SettingsScene.swift` | Hides all .sks content; shows `SettingsOverlayView` (UIKit, full settings). |
 | `Scenes/RoutingUtilityScene.swift` | Base class for TitleScene/SettingsScene; handles button routing and FocusScanner. |
-| `Scenes/SceneTextOverlay.swift` | Scalable UIKit menu/HUD text, scrollable buttons bound to SpriteKit actions, and scanner focus. |
+| `Scenes/SceneTextOverlay.swift` | Scalable UIKit menu/HUD text, scrollable buttons bound to SpriteKit actions, and scanner focus. **UIKit owns everything visible**; `SKNode.suppressArchivedPresentation()` keeps archived `.sks` buttons/labels invisible. Call it after any `applyUITheme`. |
 | `Scenes/SceneOverlay.swift` | Wraps Pause/Failed .sks files as floating overlays over GameScene. |
 | `Game States/PlayingState.swift` | Active gameplay; spawns pipes; control-scheme dispatch. |
 | `Game States/GameOverState.swift` | Shows FailedScene overlay; updates scores. |
@@ -80,7 +85,7 @@ Theme application:
 
 ## Design Principles
 
-1. Every difficulty knob is independent and continuous — presets are starting points only.
+1. Visible controls independently tune gap size, pipe speed, hitbox size, and background scroll; other model parameters remain preset-controlled in the UI.
 2. Nothing punishes. No-fail is the default first experience.
 3. Figure-vs-figure contrast is a hard requirement (player vs obstacle vs background — luminance + silhouette).
 4. The player never has to read. Icons + spoken labels.
@@ -102,15 +107,15 @@ Theme application:
 | 6 — Art + audio | ✅ Done | New helicopter (60 aligned frames), 9-slice pipes, background, icon, audio CAF |
 | Post-6 — UI theme system | ✅ Done | Night Sky/Parchment/Neon Night themes, SettingsOverlayView UIKit rewrite |
 | **7 — Testing** | ⬜ Next | See Phase 7 section below |
-| 8 — App Store | ⬜ Pending | Privacy manifest, screenshots, submission |
+| 8 — App Store | 🔄 In progress | See [Release Plan](#release-plan--path-to-the-app-store) |
 
 ---
 
 ## Phase 7 — Testing and Validation
 
 - [x] **Gameplay contrast boundaries** — opaque black/white borders separate the flight marker and pipe silhouettes from textured backgrounds. Validate rendered output for every theme/palette, alongside swatch tests. This replaces the unrealized three-way 4.5:1 fill-color target; artwork pixels are not individually certified. Low-vision device testing remains required.
-- [ ] **GameSettings model tests** — verify presets write correct values, migration runs once, UserDefaults round-trips.
-- [ ] **Scanner timing tests** — verify dwell fires at the configured interval, primaryActivate triggers the correct button.
+- [x] **GameSettings model tests** — presets, migration, round-trips, validation, reset (`GameSettingsTests.swift`).
+- [x] **Scanner timing tests** — dwell advance and activation (`FocusScannerTests.swift`).
 - [ ] **Accessibility Inspector audit** — Xcode → Open Developer Tool → Accessibility Inspector → audit every scene. Zero issues target.
 - [ ] **Manual assistive-tech matrix** (on hardware, not simulator):
   - VoiceOver with screen curtain on — full session playable by sound alone
@@ -126,13 +131,50 @@ Theme application:
 
 ---
 
-## Phase 8 — App Store
+## Release Plan — path to the App Store
 
-- [x] Root `PrivacyInfo.xcprivacy` is bundled — UserDefaults declares `NSPrivacyAccessedAPICategoryUserDefaults` reason `CA92.1`
-- [ ] Accessibility Nutrition Labels in App Store Connect
-- [ ] Bundle ID `com.nathanmayo.helichopter`, Team `9HJ5466NL8` — confirm certificates current
-- [ ] Screenshots, description, age rating, export compliance
-- [ ] Confirm release version/build (currently 2.0 (1)) and tag the release
+Work top to bottom. **Owner** = needs Nathan's decision or account access; everything else can be done in code. Drafted copy lives in `Release/`; detailed rationale in [Audit/APP_STORE_READINESS.md](Audit/APP_STORE_READINESS.md).
+
+### P0 — Code and repo hygiene (do first)
+- [ ] **Commit and push the outstanding work.** As of 2026-10-01 the onboarding guide, Settings reset, settings validation, pipe-geometry fix, presentation fixes, `Release/` docs, and `Tools/release_check.sh` are uncommitted. GitHub (`ntm52/Helichopter`) only has up to `3242563`.
+- [x] **Minimum iOS version: 17.6** (owner confirmed 2026-10-01). Dead `#available(iOS 14/17)` branches removed; README and readiness docs updated.
+- [ ] **Rename the Xcode scheme** `flappy-fly-bird` → `Helichopter` (visible in archives, Xcode Cloud, and TestFlight build names). Update the test commands in `CLAUDE.md`.
+
+### P0 — Apple privacy and security requirements (submission blockers)
+Run `Tools/release_check.sh` (unsigned Release build) and `Tools/release_check.sh path/to/Helichopter.xcarchive` (before upload). It verifies the items marked ⚙.
+- [x] ⚙ **Privacy manifest** (`PrivacyInfo.xcprivacy`) bundled. Declares no tracking, no collected data, and UserDefaults reason `CA92.1`. No other required-reason APIs (file timestamps, boot time, disk space, keyboards) are referenced by the app binary.
+- [x] ⚙ **Export compliance:** `ITSAppUsesNonExemptEncryption = false` (no custom crypto, no networking). Answer "No" to the encryption questions in App Store Connect.
+- [x] ⚙ **No App Transport Security exceptions, no networking, no third-party SDKs, no permission prompts.** Keeps the App Privacy answer "Data Not Collected" valid. Re-run the script if any SDK, analytics, or crash reporter is ever added: each needs its own privacy manifest and signature, and the privacy answers must change.
+- [x] ⚙ **App Store icon** 1024 px opaque (no alpha).
+- [ ] **Owner: publish the privacy policy and support page** (drafts in `Release/PRIVACY_AND_SUPPORT.md`). Replace `[MONITORED SUPPORT EMAIL]`, then host them (GitHub Pages on this repo is the simplest free option). Both URLs are required App Store Connect fields.
+- [ ] **In-app privacy policy link** (Guideline 5.1.1(i) requires it to be easily accessible inside the app). Add a "Privacy Policy" row to Settings that opens the published URL in `SFSafariViewController`, reachable by switch scanning and VoiceOver. If the app is placed in the **Kids** category, this link must sit behind a parental gate (Guideline 1.3).
+- [ ] **App Privacy questionnaire** in App Store Connect: "Data Not Collected". Tracking: No.
+- [ ] ⚙ **Distribution signing:** archive with an Apple Distribution certificate. The script fails if `get-task-allow` is present (development-signed build). Bundle ID `com.nathanmayo.helichopter`, team `9HJ5466NL8`. Owner: confirm the membership and certificates are current.
+- [ ] **Current SDK:** uploads must be built with the current required Xcode/iOS SDK (Xcode 26 / iOS 26 SDK since April 2026). The local toolchain already meets this; recheck Apple's [upcoming requirements](https://developer.apple.com/news/upcoming-requirements/) at upload time.
+- [ ] **Owner: content rights (Guideline 5.2).** All artwork is owner-made (by hand or with Codex). Owner statement recorded in `Release/ASSET_RIGHTS.md`. **Still to record:** the sound website, each sound's URL, and its licence, plus any credit the licence requires.
+- [ ] **Acknowledgements screen** (owner agreed 2026-10-01): a Settings row showing the BSD 3-Clause notice for the original code (required in binary distributions; it doesn't restrict selling or in-app purchases) and any sound credits the licences require. Scannable and VoiceOver-labelled.
+
+### P0 — App Store Connect setup (Owner)
+- [ ] **Age rating:** complete Apple's current age-rating questionnaire (the 2025 system with 4+/9+/13+/16+/18+). No violence beyond cartoon collisions, no user-generated content, no ads, no purchases. Answer from the actual content; don't pre-pick a rating.
+- [ ] **EU Digital Services Act trader status:** declare trader or non-trader in App Store Connect. Distribution in the EU is blocked without it. Traders must publish contact details.
+- [ ] **Category:** Games → Casual (proposed). Choose **Kids** only if you accept its extra rules (parental gate on external links, stricter review).
+- [ ] **Listing:** paste in `Release/APP_STORE_COPY.md`. Keep accessibility claims specific (Guideline 2.3: accurate metadata). Add App Review contact and the drafted review notes.
+- [ ] **Screenshots:** capture real release-candidate screens on the required iPhone and iPad sizes.
+- [ ] **Accessibility Nutrition Labels:** select only features verified on device (VoiceOver, Larger Text, etc.).
+- [ ] **Version:** 2.0, build number unique and increasing for each upload. Tag the release in git after approval.
+
+### P1 — Before launch (quality)
+- [ ] **Physical-device testing** (Phase 7 matrix): VoiceOver, Switch Control, keyboard switches, adaptive controller, Reduce Motion, largest text, oldest supported device. Include the transition checks under Known Bugs.
+- [ ] **TestFlight** with real players (OT/SLP, school, or AT lab) before public release.
+- [ ] **iPadOS 26 windowing:** `UIRequiresFullScreen` is deprecated in iPadOS 26 and will be ignored in a future release. Check that the scene and UIKit overlay lay out correctly in resizable windows, not just full-screen portrait/landscape.
+- [ ] **Hint wording:** the gameplay hint reads "CLICK ME TO FLY", which is inaccurate for touch, switch, and VoiceOver players. Replace with scheme-aware text (e.g. "Tap or press your switch to fly"). Needs `PlayingState`'s text match updated too.
+- [ ] **"New high score" notification** (see Known Bugs).
+
+### P2 — After launch (technical debt)
+- [ ] **Replace the 50 ms overlay polling timer** in `GameViewController` with explicit refreshes on scene/state changes. It runs 20×/second even on the home screen (battery), and it's why UIKit and SpriteKit could disagree.
+- [ ] **Retire the hidden SpriteKit menu archives.** UIKit now draws every menu; the `.sks` buttons and labels are kept only as invisible action and text models. Moving the actions into Swift would remove the duplication class of bug entirely, along with the iPad `.sks` copies and the legacy `ToggleButtonNode`/`TriggleButtonNode`.
+- [ ] Remove `fatalError` from the legacy `ToggleButtonNode`/`TriggleButtonNode` responders, matching the `ButtonNode` fix.
+- [ ] Continuous audio guidance, saved profiles, differentiate-without-colour pipe patterns, localization.
 
 ---
 
@@ -140,7 +182,7 @@ Theme application:
 
 - **Dynamic Type device validation** — UIKit owns visible menu/HUD text; Settings uses UIFontMetrics. Validate largest sizes with VoiceOver, Switch Control, and mounted iPad orientations on hardware.
 - **Round-over wording** — runtime already replaces the archive text with “Round Over” or “Well Done!” in Calm Mode.
-- **Guided first-run onboarding** — all backing parameters in GameSettings, no UI yet.
+- **Guided first-run onboarding** — implemented with three replayable steps, spoken instructions, and switch navigation.
 - **Differentiate without color** (`UIAccessibility.shouldDifferentiateWithoutColor`) — pattern fills on pipes. Requires art work.
 - **Per-profile save/load** — GameSettings supports the pattern; only needs a profile selection UI layer.
 - **iPad .sks deduplication** — `*iPad.sks` files exist alongside phone versions. Deferred to Phase 4/5 rebuild.
@@ -253,6 +295,20 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Updated README, corrected stale atlas/version/privacy/round-over notes, and added `Audit/APP_STORE_READINESS.md` with the app breakdown and non-testing launch recommendations.
 - Final validation: all **60 tests passed**, zero failures/skips, on iPhone 17 Pro (iOS 26.5 simulator). Optimized unsigned iOS Release build and `git diff --check` passed. Reviewed the largest-text 320-point Settings choice capture. Results: `/tmp/helichopter-layout-validated.xcresult`; test log: `/tmp/helichopter-layout-validated.log`; release log: `/tmp/helichopter-release-validated.log`. No physical VoiceOver session or App Store submission is claimed.
 
+### 2026-09-08 — Simple first-run onboarding
+- Added a three-step first-run guide with current flight controls, no-fail status, pause, switch scanning, and difficulty guidance. Done/Skip persist completion; How to Play on the home screen replays it.
+- Reused scalable, scrollable UIKit menus and switch scanning. Spoken instructions pause the scanner until the next switch press; steps never auto-advance.
+- Added completion/replay/switch navigation and phone/tablet large-text layout coverage. Full simulator suite passed; a follow-up onboarding run passed with the largest accessibility text size hosted in a window. Results: `/tmp/helichopter-onboarding-2.xcresult` and `/tmp/helichopter-onboarding-layout.xcresult`. Physical assistive-device verification remains outstanding.
+- Updated the App Store readiness document to record the implemented guide.
+
+### 2026-09-08 — Remaining local App Store preparation
+- Added bounded numeric settings, safe malformed enum handling, ordered gap bounds, and pipe geometry constrained to the scene. Explicit gap edits retain the newly requested value by adjusting the opposite bound.
+- Added Settings reset with Cancel/Restore Defaults and switch scanning; preserves scores and guide completion, resets controls/theme/audio, and respects caregiver lock.
+- Prepared release listing/review copy, privacy/support drafts, and an asset-rights register under `Release/`. Updated readiness statuses and narrowed public tuning promises to visible controls.
+- Public contact/URLs, asset rights confirmation, final screenshots, supported-OS commitment, distribution signing and App Store Connect remain outstanding. Kept iOS 13 app minimum and the separate iOS 26.5 test target.
+- Validation: all **65 discovered tests passed** on iPhone 17 Pro (iOS 26.5 simulator), including reset confirmation, invalid settings recovery, and small-scene gap geometry. Existing timer tests now use the supported 0.5-second minimum instead of out-of-range test values. Result: `/tmp/helichopter-readiness-final.xcresult`; log: `/tmp/helichopter-readiness-final.log`.
+- Optimized unsigned iOS Release build passed; bundled manifest and version 2.0 (1), iOS 13 minimum verified. Log: `/tmp/helichopter-readiness-release.log`. Listing field lengths and `git diff --check` passed. This does not establish signing readiness or physical-device accessibility support.
+
 ### 2026-09-08 — Unified home screen, gameplay HUD, and pause presentation
 - UIKit owns visible menus and HUD controls. Archived SpriteKit buttons remain action/scanner models but no longer render or receive duplicate touch targets; the hidden title mascot stops animating. The home screen retains its themed sky and one visible helicopter.
 - Current score, live best score, and a single Pause control share the HUD, with the flight hint below. The HUD stacks vertically at accessibility text sizes. Show Score controls both score displays.
@@ -262,3 +318,13 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Regression coverage includes phone/tablet scene archives, menu action routing, duplicate-control suppression, score visibility, outline preference, pause background modes, and the largest-text HUD layout.
 - Validation: initial full simulator suites passed with the earlier local work (68 tests) and in an isolated copy of this change (62 tests). After the pause-label and largest-text refinements, all 7 targeted presentation/Dynamic Type/VoiceOver tests passed both in the working tree and in the final isolated commit, including switch-controlled Resume. Reviewed composite home, HUD, and pause captures. Optimized unsigned iOS Release build passed in the isolated copy. Physical assistive-device validation remains outstanding.
 - Final isolated test result: `/tmp/helichopter-ui-commit-final.xcresult`; release log: `/tmp/helichopter-ui-release.log`. Earlier local onboarding/readiness edits remain uncommitted and intact.
+
+### 2026-10-01 — Codebase review, presentation fixes, and release plan (Claude Code)
+- Reviewed the codebase, docs, uncommitted Codex work, and GitHub sync. Baseline: 69 tests passed on iPhone 17 (iOS 27 simulator).
+- **Fixed duplicate screens and double Pause button.** Root cause: the archived SpriteKit menus/HUD were hidden only by the UIKit overlay's 50 ms timer, and `applyUITheme` re-showed them on every scene load, pause, and round-over. Title/Game scenes, pause/round-over overlays, and Settings now hide archived content at load (`sceneDidLoad`) and after theming. The title-scene SpriteKit mascot is created hidden; UIKit draws the visible one.
+- **Fixed menus at top of screen.** Menu stacks centre vertically and scroll from the top when content is too tall. The HUD stays top-pinned. Stack constraints are now tracked and replaced on each rebuild; previously they accumulated.
+- **Fixed potential crash:** a tap on a menu that had just closed could reach `fatalError` in `ButtonNode.responder`. The responder is optional and the overlay refreshes immediately after each tap.
+- Updated `titleReplacesLegacyFourFrameAnimationOnPhoneAndPad` to the UIKit-mascot contract. Added `archivedScenesNeverRenderBeforeUIKitRefresh` and `menusAreCentredAndHUDStaysAtTop`. **71 tests pass.** Simulator screenshot confirms a single, centred home menu.
+- Added `Tools/release_check.sh` (privacy manifest, required-reason APIs, export compliance, ATS, permissions, SDKs, test leftovers, icon alpha, versioning, distribution signing). Unsigned Release build: no blocking failures. Remaining warnings: privacy link/URL and signing.
+- Rewrote Phase 8 as the prioritized **Release Plan**, including Apple's privacy/security/account requirements. Added `CLAUDE.md` for future sessions.
+- Not done: nothing committed or pushed (awaiting owner); no physical-device verification of the transition fixes.

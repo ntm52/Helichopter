@@ -11,18 +11,18 @@ This project is an active remodel of the original 2021 build, bringing it to cur
 ## Accessibility goals
 
 - Switch access as a first-class input (keyboard emulation, game controller, iOS Switch Control)
-- Independent, continuous difficulty tuning — gap size, speed, gravity, flap strength, hitbox forgiveness, all separately adjustable
+- Adjustable gap size, pipe speed, hitbox forgiveness, and background scrolling; presets also set gravity, flap strength, spacing, and gap variability
 - Hold-to-hover and auto-hover control schemes alongside tap-to-flap
 - VoiceOver support across every scene
 - Dynamic Type for menus, gameplay text, and Settings
 - Validated contrast palettes including deuteranopia-safe, protanopia-safe, and low-luminance options
 - No-fail / practice mode
-- Picture-based settings comprehensible without reading
+- Spoken switch-scanning labels and scalable text in Settings
 
 ## Tech
 
 - Swift / SpriteKit / GameplayKit
-- iOS 13.0+ (current project deployment target; oldest-device validation pending)
+- iOS 17.6+ (oldest-device validation pending)
 - iPhone and iPad
 
 ## Switch controls in Settings
@@ -82,6 +82,10 @@ feedback pulses the artwork tint without fading the marker. These borders preser
 the existing hitboxes; they are visual guides, not collision outlines. Rendered
 regression tests cover all 18 theme/palette combinations. This does not certify
 all artwork pixels or replace testing with players who have low vision.
+
+Settings → Reset Settings opens a confirmation before restoring Standard difficulty,
+default controls, theme, and audio. Saved scores and first-run guide completion are kept.
+Unlock Settings first if the caregiver lock is enabled.
 
 ### Display preferences
 
