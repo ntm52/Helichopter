@@ -21,7 +21,7 @@ The project builds. Full gameplay and assistive-technology validation remain out
 - [x] **Two Pause buttons** — same root cause: the archived SpriteKit Pause sprite was visible until the first UIKit refresh. Fixed by the change above; covered by `PresentationTests.archivedScenesNeverRenderBeforeUIKitRefresh`.
 - [x] **Menu buttons/text at the top instead of centred** — the UIKit menu stack was pinned to the top of its scroll view. Menus now centre vertically and still scroll from the top when text is too large to fit; the gameplay HUD stays at the top. Covered by `PresentationTests.menusAreCentredAndHUDStaysAtTop`.
 - [x] **Crash on a fast double-tap in a closing menu** — a UIKit button could outlive its SpriteKit node for up to 50 ms; activating it hit `fatalError` in `ButtonNode.responder`. The responder is now optional and the overlay rebuilds immediately after each tap.
-- [ ] Add a “New high score” notification when a run beats the saved record. Announce it once, respect Show Score and Calm Mode, and avoid interrupting flight input.
+- [x] **“New high score” notification** — done 2026-10-01. A static "New high score!" HUD banner shows for 3 s the first time a run beats an existing record, and VoiceOver says "New high score! N". It is hidden when Show Score is off or the game is paused. It adds no sound, haptic, or animation (Calm Mode friendly) and never captures input. Best scores now save the moment they are beaten, which fixes records being lost in No-Fail runs that never reach Round Over.
 - [ ] **Verify on device** that the three presentation fixes above hold during real transitions (Title ↔ Settings push, Title → Game fade, Pause/Resume, Round Over → Retry), on iPhone and iPad in both orientations.
 
 VoiceOver flight actions and spoken gap guidance are implemented; sound-only usability remains to be established; Dynamic Type is implemented with device validation pending; gameplay contrast boundaries are implemented, with low-vision device validation pending. Hardware-switch Settings navigation and hold-to-pause are implemented; physical assistive-device validation remains outstanding. See [the current audit](Audit/REVIEW_2026-09-05.md).
@@ -169,7 +169,7 @@ Run `Tools/release_check.sh` (unsigned Release build) and `Tools/release_check.s
 - [ ] **TestFlight** with real players (OT/SLP, school, or AT lab) before public release.
 - [ ] **iPadOS 26 windowing:** `UIRequiresFullScreen` is deprecated in iPadOS 26 and will be ignored in a future release. Check that the scene and UIKit overlay lay out correctly in resizable windows, not just full-screen portrait/landscape.
 - [x] **Hint wording:** replaced "CLICK ME TO FLY" with scheme-aware text, plus a VoiceOver variant ("Double-tap the flight control to start"), refreshed every run (`GameScene.flightHintText`). The archived label is renamed `Flight Hint` on load, so lookups no longer depend on its wording.
-- [ ] **"New high score" notification** (see Known Bugs).
+- [x] **"New high score" notification** (see Known Bugs).
 
 ### P2 — After launch (technical debt)
 - [ ] **Replace the 50 ms overlay polling timer** in `GameViewController` with explicit refreshes on scene/state changes. It runs 20×/second even on the home screen (battery), and it's why UIKit and SpriteKit could disagree.

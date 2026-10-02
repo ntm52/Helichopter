@@ -521,6 +521,62 @@ struct GameLifecycleTests {
         }
     }
 
+    @Test func newHighScoreCelebratesOncePerRunAndSavesImmediately() throws {
+        try withSettings {
+            let defaults = UserDefaults.standard
+            GameSettings.shared.showScore = true
+            defaults.set(3, for: .bestScore)
+            let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            let game = try #require(GameScene(fileNamed: "GameScene"))
+            view.presentScene(game)
+            defer { view.presentScene(nil) }
+            let overlay = SceneTextOverlay(frame: view.bounds)
+            view.addSubview(overlay)
+            overlay.refresh(in: view)
+            func bannerVisible() -> Bool {
+                overlay.refresh(in: view)
+                func find(_ v: UIView) -> UILabel? {
+                    (v as? UILabel).flatMap { $0.text == "New high score!" ? $0 : nil } ?? v.subviews.lazy.compactMap(find).first
+                }
+                return find(overlay).map { !$0.isHidden } ?? false
+            }
+            let adapter = try #require(game.sceneAdapter)
+            #expect(adapter.bestAtRunStart == 3)
+            for _ in 0..<3 { adapter.scorePoint() }
+            #expect(!adapter.isShowingNewHighScore && !bannerVisible())
+            adapter.scorePoint()
+            #expect(adapter.isShowingNewHighScore && bannerVisible())
+            // Saved at once, so a No-Fail run that never reaches Round Over keeps its record.
+            #expect(defaults.integer(for: .bestScore) == 4)
+            GameSettings.shared.showScore = false
+            #expect(!adapter.isShowingNewHighScore && !bannerVisible())
+            GameSettings.shared.showScore = true
+            #expect(game.stateMachine.enter(PausedState.self))
+            #expect(!bannerVisible())
+            #expect(game.stateMachine.enter(PlayingState.self))
+            adapter.scorePoint()
+            #expect(defaults.integer(for: .bestScore) == 5)
+
+            // A retry is a new run measured against the updated record, celebrating only once.
+            #expect(game.stateMachine.enter(GameOverState.self))
+            #expect(game.stateMachine.enter(PlayingState.self))
+            #expect(adapter.bestAtRunStart == 5 && !adapter.isShowingNewHighScore)
+            for _ in 0..<5 { adapter.scorePoint() }
+            #expect(!adapter.isShowingNewHighScore)
+            adapter.scorePoint()
+            #expect(adapter.isShowingNewHighScore)
+
+            // No existing record: the first points are not a "new high score".
+            defaults.set(0, for: .bestScore)
+            #expect(game.stateMachine.enter(GameOverState.self))
+            defaults.set(0, for: .bestScore)
+            #expect(game.stateMachine.enter(PlayingState.self))
+            adapter.scorePoint()
+            #expect(!adapter.isShowingNewHighScore)
+            #expect(defaults.integer(for: .bestScore) == 1)
+        }
+    }
+
     @Test func privacyAndAcknowledgementsReachableBySwitchWhenLocked() throws {
         try withSettings {
             let (view, scene) = try settingsScene()

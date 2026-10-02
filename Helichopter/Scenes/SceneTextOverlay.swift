@@ -12,6 +12,7 @@ final class SceneTextOverlay: UIView {
     private weak var hostScene: SKScene?
     private var menu = false
     private var bestScoreLabel: UILabel?
+    private var newHighScoreLabel: UILabel?
     private weak var hudStack: UIStackView?
     private var flightElement: FlightAccessibilityElement?
     // Stack constraints survive removing the scroll view, so track them per rebuild.
@@ -68,6 +69,9 @@ final class SceneTextOverlay: UIView {
             let best = "Best \(max(game.sceneAdapter?.score ?? 0, UserDefaults.standard.integer(for: .bestScore)))"
             if bestScoreLabel?.text != best { bestScoreLabel?.text = best }
             bestScoreLabel?.isHidden = !GameSettings.shared.showScore
+            let celebrate = game.sceneAdapter?.isShowingNewHighScore == true
+                && game.stateMachine.currentState is PlayingState
+            if newHighScoreLabel?.isHidden == celebrate { newHighScoreLabel?.isHidden = !celebrate }
         }
         flightElement?.accessibilityHint = (scene as? GameScene)?.accessibilityFlightHint
         for (node, button) in links {
@@ -87,6 +91,7 @@ final class SceneTextOverlay: UIView {
         labels = []
         let theme = GameSettings.shared.selectedTheme
         bestScoreLabel = nil
+        newHighScoreLabel = nil
         let isPaused = (scene as? GameScene)?.stateMachine.currentState is PausedState
         backgroundColor = isPaused
             ? (GameSettings.shared.hideGameWhilePaused ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
@@ -193,6 +198,20 @@ final class SceneTextOverlay: UIView {
                 stack.addArrangedSubview(label)
             }
             labels.append((node, label))
+        }
+        if !menu, scene is GameScene {
+            // Static text; no animation, sound, or input capture, so flight is never interrupted.
+            let banner = UILabel()
+            banner.text = "New high score!"
+            banner.font = .preferredFont(forTextStyle: .title2, compatibleWith: traitCollection)
+            banner.adjustsFontForContentSizeCategory = true
+            banner.numberOfLines = 0
+            banner.textAlignment = .center
+            banner.textColor = theme.titleTextColor
+            banner.backgroundColor = theme.sceneBackgroundColor
+            banner.isHidden = true
+            stack.addArrangedSubview(banner)
+            newHighScoreLabel = banner
         }
         for node in scene.findAllButtonsInScene() {
             let button = SceneTextButton(node: node)

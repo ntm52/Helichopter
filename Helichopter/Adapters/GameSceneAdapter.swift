@@ -38,6 +38,17 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     var score: Int = 0
     private(set) var scoreLabel: SKLabelNode?
 
+    // New-high-score celebration: once per run, only when beating an existing record.
+    private(set) var bestAtRunStart = 0
+    private var celebratedThisRun = false
+    private var newHighScoreUntil: Date?
+    static let newHighScoreDisplayDuration: TimeInterval = 3
+
+    /// True while the HUD should show the "New high score!" banner.
+    var isShowingNewHighScore: Bool {
+        GameSettings.shared.showScore && newHighScoreUntil.map { Date() < $0 } == true
+    }
+
     private(set) var scoreSound = SKAction.playSoundFileNamed("Score.caf", waitForCompletion: false)
     private(set) var hitSound = SKAction.playSoundFileNamed("Dead.caf", waitForCompletion: false)
 
@@ -142,6 +153,38 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         scoreLabel?.text = "Score 0"
     }
 
+    /// Called when a fresh run (not a resume) starts.
+    func beginRun() {
+        bestAtRunStart = UserDefaults.standard.integer(for: .bestScore)
+        celebratedThisRun = false
+        newHighScoreUntil = nil
+    }
+
+    /// Adds a point, saves a new best immediately (No-Fail runs may never reach
+    /// Round Over), and celebrates the first time this run beats the old record.
+    func scorePoint() {
+        score += 1
+        scoreLabel?.text = "Score \(score)"
+        if score > UserDefaults.standard.integer(for: .bestScore) {
+            UserDefaults.standard.set(score, for: .bestScore)
+        }
+        let isNewHighScore = !celebratedThisRun && bestAtRunStart > 0 && score > bestAtRunStart
+        if isNewHighScore {
+            celebratedThisRun = true
+            newHighScoreUntil = Date().addingTimeInterval(Self.newHighScoreDisplayDuration)
+        }
+
+        if isSoundEffectsOn { scene?.run(scoreSound) }
+        notification.notificationOccurred(.success)
+
+        // Announce score to VoiceOver — only when it's running to avoid interrupting audio.
+        // Hidden scores stay silent, including the new-high-score message.
+        if GameSettings.shared.showScore && UIAccessibility.isVoiceOverRunning {
+            UIAccessibility.post(notification: .announcement,
+                                 argument: isNewHighScore ? "New high score! \(score)" : "Score \(score)")
+        }
+    }
+
     func removePipes() {
         var nodes = [SKNode]()
 
@@ -208,17 +251,7 @@ extension GameSceneAdapter: SKPhysicsContactDelegate {
             guard threshold.node?.userData?["scored"] as? Bool != true else { return }
             if threshold.node?.userData == nil { threshold.node?.userData = NSMutableDictionary() }
             threshold.node?.userData?["scored"] = true
-            score += 1
-            scoreLabel?.text = "Score \(score)"
-
-            if isSoundEffectsOn { scene?.run(scoreSound) }
-
-            notification.notificationOccurred(.success)
-
-            // Announce score to VoiceOver — only when it's running to avoid interrupting audio.
-            if GameSettings.shared.showScore && UIAccessibility.isVoiceOverRunning {
-                UIAccessibility.post(notification: .announcement, argument: "Score \(score)")
-            }
+            scorePoint()
         }
 
         if collision == (player | PhysicsCategories.pipe.rawValue) {

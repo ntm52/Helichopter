@@ -52,6 +52,7 @@ class PlayingState: GKState {
 
         adapter.playerCharacter?.isAffectedByGravity = false
         (adapter.playerCharacter as? HelicopterNode)?.prepareForNewRun()
+        adapter.beginRun()
 
         guard let scene = adapter.scene, let player = adapter.playerCharacter else {
             return
