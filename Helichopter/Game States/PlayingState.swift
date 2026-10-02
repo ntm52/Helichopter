@@ -1,5 +1,6 @@
 import GameplayKit
 import SpriteKit
+import UIKit
 
 class PlayingState: GKState {
 
@@ -62,10 +63,12 @@ class PlayingState: GKState {
             }
         }
 
-        scene.enumerateChildNodes(withName: "//*") { node, _ in
-            guard let label = node as? SKLabelNode, label.text == "CLICK ME TO FLY" else { return }
-            label.removeAllActions()
-            label.alpha = 1
+        if let hint = (scene as? GameScene)?.flightHint {
+            hint.removeAllActions()
+            hint.alpha = 1
+            // Refreshed each run so it matches the current scheme and VoiceOver state.
+            hint.text = GameScene.flightHintText(for: GameSettings.shared.controlScheme,
+                                                 voiceOver: UIAccessibility.isVoiceOverRunning)
         }
         adapter.isHUDHidden = false
 
@@ -74,11 +77,7 @@ class PlayingState: GKState {
         (adapter.playerCharacter as? HelicopterNode)?.onFirstInput = { [weak self, weak scene] in
             guard let self = self, let scene = scene else { return }
             self.adapter.scene?.run(self.infinitePipeProducer, withKey: self.infinitePipeProducerKey)
-            scene.enumerateChildNodes(withName: "//*") { node, stop in
-                guard let label = node as? SKLabelNode, label.text == "CLICK ME TO FLY" else { return }
-                label.run(.fadeOut(withDuration: 0.5))
-                stop.pointee = true
-            }
+            (scene as? GameScene)?.flightHint?.run(.fadeOut(withDuration: 0.5))
         }
 
         let character = PlayableCharacter.helicopter

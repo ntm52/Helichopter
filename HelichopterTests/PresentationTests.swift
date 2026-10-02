@@ -120,6 +120,34 @@ struct PresentationTests {
         }
     }
 
+    @Test func flightHintMatchesSchemeAndResetsEachRun() throws {
+        let gs = GameSettings.shared
+        let saved = gs.controlScheme
+        defer { gs.controlScheme = saved }
+        var texts = Set<String>()
+        for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover, .twoSwitchUD] {
+            gs.controlScheme = scheme
+            for archive in ["GameScene", "GameScene iPad"] {
+                let game = try #require(GameScene(fileNamed: archive))
+                let hint = try #require(game.flightHint)
+                let expected = GameScene.flightHintText(for: scheme, voiceOver: UIAccessibility.isVoiceOverRunning)
+                #expect(hint.text == expected)
+                #expect(!expected.localizedCaseInsensitiveContains("click"))
+                texts.insert(GameScene.flightHintText(for: scheme, voiceOver: false))
+                // First input fades it; a retry restores it for the next run.
+                let heli = try #require(game.sceneAdapter?.playerCharacter as? HelicopterNode)
+                heli.switchPrimaryBegan()
+                heli.switchPrimaryEnded()
+                #expect(hint.hasActions())
+                #expect(game.stateMachine.enter(GameOverState.self))
+                #expect(game.stateMachine.enter(PlayingState.self))
+                #expect(hint.alpha == 1 && !hint.hasActions() && hint.text == expected)
+            }
+        }
+        #expect(texts.count == 4)
+        #expect(GameScene.flightHintText(for: .tapFlap, voiceOver: true).contains("Double-tap"))
+    }
+
     @Test func contrastAndPausePreferencesPersist() {
         let defaults = UserDefaults(suiteName: "PresentationTests.\(UUID())")!
         let settings = GameSettings(defaults: defaults)
@@ -149,7 +177,8 @@ struct PresentationTests {
         overlay.layoutIfNeeded()
         overlay.layoutIfNeeded()
         let pause = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Pause" })
-        let hint = try #require(descendants(overlay, UILabel.self).first { $0.text == "CLICK ME TO FLY" })
+        let hintText = try #require(scene.flightHint?.text)
+        let hint = try #require(descendants(overlay, UILabel.self).first { $0.text == hintText })
         let pauseFrame = pause.convert(pause.bounds, to: overlay)
         let hintFrame = hint.convert(hint.bounds, to: overlay)
         #expect(!pauseFrame.intersects(hintFrame))
@@ -218,7 +247,7 @@ struct PresentationTests {
                 #expect(game.stateMachine.currentState is PausedState)
                 overlay.refresh(in: view)
                 try capture(view, overlay: overlay, name: "Unified-Pause-" + archive)
-                #expect(!descendants(overlay, UILabel.self).contains { $0.text == "CLICK ME TO FLY" })
+                #expect(!descendants(overlay, UILabel.self).contains { $0.text == game.flightHint?.text })
                 #expect(overlay.backgroundColor?.cgColor.alpha == 0.25)
                 #expect(game.sceneAdapter?.overlay?.backgroundNode.color.cgColor.alpha == 0)
                 #expect(!scene.findAllButtonsInScene().contains { $0.buttonIdentifier == .pause })

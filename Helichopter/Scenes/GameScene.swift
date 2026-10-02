@@ -42,6 +42,12 @@ class GameScene: SKScene {
     override func sceneDidLoad() {
         super.sceneDidLoad()
         lastUpdateTime = 0
+        // Name the archived hint so its wording can change without breaking lookups.
+        enumerateChildNodes(withName: "//*") { node, stop in
+            guard let label = node as? SKLabelNode, label.text == "CLICK ME TO FLY" else { return }
+            label.name = GameScene.flightHintName
+            stop.pointee = true
+        }
         sceneAdapter = GameSceneAdapter(with: self)
         sceneAdapter?.stateMachine = stateMachine
         sceneAdapter?.onGameOverEntered = { [weak self] in
@@ -67,6 +73,25 @@ class GameScene: SKScene {
         overlayScanner?.stop()
         cancelSwitchPauseHold()
         primarySwitchHeld = false
+    }
+
+    // MARK: - Flight hint
+
+    static let flightHintName = "Flight Hint"
+
+    var flightHint: SKLabelNode? {
+        childNode(withName: "//\(GameScene.flightHintName)") as? SKLabelNode
+    }
+
+    /// Shown until the first flight input; worded for how this player actually flies.
+    static func flightHintText(for scheme: ControlScheme, voiceOver: Bool) -> String {
+        if voiceOver { return "Double-tap the flight control to start" }
+        switch scheme {
+        case .tapFlap: return "Tap or press your switch to fly"
+        case .holdHover: return "Hold the screen or your switch to rise"
+        case .autoHover: return "Tap or press your switch to nudge up"
+        case .twoSwitchUD: return "Hold a switch to move up or down"
+        }
     }
 
     // MARK: - Accessibility

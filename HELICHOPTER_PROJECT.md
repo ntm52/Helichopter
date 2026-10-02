@@ -168,7 +168,7 @@ Run `Tools/release_check.sh` (unsigned Release build) and `Tools/release_check.s
 - [ ] **Physical-device testing** (Phase 7 matrix): VoiceOver, Switch Control, keyboard switches, adaptive controller, Reduce Motion, largest text, oldest supported device. Include the transition checks under Known Bugs.
 - [ ] **TestFlight** with real players (OT/SLP, school, or AT lab) before public release.
 - [ ] **iPadOS 26 windowing:** `UIRequiresFullScreen` is deprecated in iPadOS 26 and will be ignored in a future release. Check that the scene and UIKit overlay lay out correctly in resizable windows, not just full-screen portrait/landscape.
-- [ ] **Hint wording:** the gameplay hint reads "CLICK ME TO FLY", which is inaccurate for touch, switch, and VoiceOver players. Replace with scheme-aware text (e.g. "Tap or press your switch to fly"). Needs `PlayingState`'s text match updated too.
+- [x] **Hint wording:** replaced "CLICK ME TO FLY" with scheme-aware text, plus a VoiceOver variant ("Double-tap the flight control to start"), refreshed every run (`GameScene.flightHintText`). The archived label is renamed `Flight Hint` on load, so lookups no longer depend on its wording.
 - [ ] **"New high score" notification** (see Known Bugs).
 
 ### P2 — After launch (technical debt)
