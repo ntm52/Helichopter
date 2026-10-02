@@ -29,16 +29,6 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
          <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A9ACB9322099A1F300966991"
-               BuildableName = "flappy-fly-birdTests.xctest"
-               BlueprintName = "flappy-fly-birdTests"
-               ReferencedContainer = "container:Helichopter.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
             skipped = "NO"
             parallelizable = "YES">
             <BuildableReference

@@ -22,7 +22,7 @@ signed=false
 if [[ -z "$target" ]]; then
     out="$(mktemp -d)"
     echo "Building unsigned Release into $out ..."
-    xcodebuild build -project Helichopter.xcodeproj -scheme flappy-fly-bird -configuration Release \
+    xcodebuild build -project Helichopter.xcodeproj -scheme Helichopter -configuration Release \
         -destination 'generic/platform=iOS' -derivedDataPath "$out" CODE_SIGNING_ALLOWED=NO \
         > "$out/build.log" 2>&1 || { echo "Build failed; see $out/build.log"; exit 1; }
     app="$out/Build/Products/Release-iphoneos/Helichopter.app"

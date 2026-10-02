@@ -7,10 +7,10 @@ Accessible SpriteKit/UIKit helicopter game for iPhone/iPad, preparing for App St
 ## Build and test
 
 ```bash
-xcodebuild test -project Helichopter.xcodeproj -scheme flappy-fly-bird -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test -project Helichopter.xcodeproj -scheme Helichopter -destination 'platform=iOS Simulator,name=iPhone 17'
 ```
 
-- The scheme is still named `flappy-fly-bird` (rename planned). Pick an installed simulator with `xcrun simctl list devices available`.
+- Pick an installed simulator with `xcrun simctl list devices available`. Swift Testing filters need the parentheses: `-only-testing:'HelichopterTests/Suite/testName()'`.
 - `HelichopterTests/` is a file-system-synchronized group, so new test files are picked up without editing the project.
 - Tests use Swift Testing (`@Test`, `#expect`). Many touch `GameSettings.shared` and `UserDefaults.standard`, so save and restore values as the existing tests do.
 - Run `Tools/release_check.sh` before a submission (it also accepts a `.xcarchive`).

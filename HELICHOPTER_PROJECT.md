@@ -138,7 +138,7 @@ Work top to bottom. **Owner** = needs Nathan's decision or account access; every
 ### P0 — Code and repo hygiene (do first)
 - [ ] **Commit and push the outstanding work.** As of 2026-10-01 the onboarding guide, Settings reset, settings validation, pipe-geometry fix, presentation fixes, `Release/` docs, and `Tools/release_check.sh` are uncommitted. GitHub (`ntm52/Helichopter`) only has up to `3242563`.
 - [x] **Minimum iOS version: 17.6** (owner confirmed 2026-10-01). Dead `#available(iOS 14/17)` branches removed; README and readiness docs updated.
-- [ ] **Rename the Xcode scheme** `flappy-fly-bird` → `Helichopter` (visible in archives, Xcode Cloud, and TestFlight build names). Update the test commands in `CLAUDE.md`.
+- [x] **Renamed the Xcode scheme** `flappy-fly-bird` → `Helichopter` (2026-10-01) and removed its stale reference to the deleted `flappy-fly-birdTests` target.
 
 ### P0 — Apple privacy and security requirements (submission blockers)
 Run `Tools/release_check.sh` (unsigned Release build) and `Tools/release_check.sh path/to/Helichopter.xcarchive` (before upload). It verifies the items marked ⚙.
