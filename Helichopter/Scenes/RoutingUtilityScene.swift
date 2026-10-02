@@ -5,11 +5,6 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
     // MARK: - Properties
 
     let selection = UISelectionFeedbackGenerator()
-    // Computed so that scenes loaded during iPad landscape use aspectFit (pillarbox),
-    // keeping the full portrait game visible regardless of mount orientation.
-    static var sceneScaleMode: SKSceneScaleMode {
-        GameViewController.scaleMode(forSize: UIScreen.main.bounds.size)
-    }
     private static var lastPushTransitionDirection: SKTransitionDirection?
 
     // Focus scanner drives the ButtonNode focus-ring for switch / keyboard / controller navigation.
@@ -52,7 +47,6 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
 
         var sceneToPresent: SKScene?
         var transition: SKTransition?
-        let scaleMode: SKSceneScaleMode = RoutingUtilityScene.sceneScaleMode
 
         // Honour system motion preferences: push/slide transitions are suppressed when
         // Reduce Motion is enabled or the user has requested cross-fade transitions.
@@ -99,7 +93,7 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
         }
 
         guard let scene = sceneToPresent, let tx = transition else { return }
-        scene.scaleMode = scaleMode
+        scene.scaleMode = GameViewController.scaleMode(for: scene, in: view?.bounds.size ?? .zero)
         tx.pausesIncomingScene = false
         tx.pausesOutgoingScene = false
         view?.presentScene(scene, transition: tx)

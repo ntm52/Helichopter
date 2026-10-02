@@ -1110,7 +1110,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
             self?.settingsOverlay = nil
             guard let view = view,
                   let scene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
-            scene.scaleMode = RoutingUtilityScene.sceneScaleMode
+            scene.scaleMode = GameViewController.scaleMode(for: scene, in: view.bounds.size)
             let fade = UIAccessibility.isReduceMotionEnabled || UIAccessibility.prefersCrossFadeTransitions
             let tx = SKTransition.fade(withDuration: fade ? 0.4 : 1.0)
             tx.pausesIncomingScene = false

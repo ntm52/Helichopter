@@ -269,7 +269,7 @@ extension GameScene: ButtonNodeResponderType {
 
         case .home:
             guard let titleScene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
-            titleScene.scaleMode = RoutingUtilityScene.sceneScaleMode
+            titleScene.scaleMode = GameViewController.scaleMode(for: titleScene, in: view?.bounds.size ?? .zero)
             // A paused scene must not depend on render-loop progress to leave its menu.
             teardownOverlayScanner()
             cancelSwitchPauseHold()

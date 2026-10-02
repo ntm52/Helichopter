@@ -167,7 +167,8 @@ Run `Tools/release_check.sh` (unsigned Release build) and `Tools/release_check.s
 ### P1 — Before launch (quality)
 - [ ] **Physical-device testing** (Phase 7 matrix): VoiceOver, Switch Control, keyboard switches, adaptive controller, Reduce Motion, largest text, oldest supported device. Include the transition checks under Known Bugs.
 - [ ] **TestFlight** with real players (OT/SLP, school, or AT lab) before public release.
-- [ ] **iPadOS 26 windowing:** `UIRequiresFullScreen` is deprecated in iPadOS 26 and will be ignored in a future release. Check that the scene and UIKit overlay lay out correctly in resizable windows, not just full-screen portrait/landscape.
+- [x] **iPadOS 26 windowing** (2026-10-01): scaling is now chosen from the window's shape (`GameViewController.scaleMode(for:in:)`), not the device or screen. Previously, narrow iPad windows cropped the helicopter off-screen, and wide or short windows cropped the ceiling and floor. Fill is used only when it trims ≤48 scene units per side (iPhone 17, full-screen iPad portrait); otherwise the whole scene is shown with theme-coloured bars. `WindowSizeTests` covers 8 window shapes for gameplay, menus, the HUD, and Settings. Side effect: iPhone SE now shows thin side bars instead of cropping the ceiling and floor. Physical iPad window-resizing still needs checking on device.
+- [ ] (Optional, post-launch) Load the phone-shaped archive in narrow iPad windows, so they get a larger game instead of wide top/bottom bars.
 - [x] **Hint wording:** replaced "CLICK ME TO FLY" with scheme-aware text, plus a VoiceOver variant ("Double-tap the flight control to start"), refreshed every run (`GameScene.flightHintText`). The archived label is renamed `Flight Hint` on load, so lookups no longer depend on its wording.
 - [x] **"New high score" notification** (see Known Bugs).
 
@@ -337,3 +338,10 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Added Settings → About (Privacy Policy with summary and Safari link; Acknowledgements with the BSD notice and music credits). Both stay available when Settings is locked. URLs and text live in `AppLinks` (`SettingsScene.swift`).
 - Tests: added `privacyAndAcknowledgementsReachableBySwitchWhenLocked`. Updated the locked-Settings item count to 4. Widened the hold-to-pause timing margin, which failed once under full parallel load and passed when re-run alone. **72 tests pass.**
 - Owner next: enable GitHub Pages; App Store Connect setup; device testing.
+
+### 2026-10-01 — Scheme rename, flight hint, new high score, window sizes
+- Renamed the scheme to `Helichopter` and removed its stale `flappy-fly-birdTests` reference.
+- Replaced "CLICK ME TO FLY" with scheme- and VoiceOver-aware hint text, refreshed each run.
+- Added the "New high score!" banner and VoiceOver announcement. Best scores now save as soon as they are beaten (previously lost in No-Fail runs that ended via Home).
+- Made scene scaling window-shape aware for iPadOS resizable windows; added `WindowSizeTests`.
+- Each item was committed and pushed separately. **78 tests pass.**

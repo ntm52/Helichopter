@@ -96,7 +96,7 @@ class GameViewController: UIViewController {
         let sceneName = Scenes.title.getName()
         if let scene = SKScene(fileNamed: sceneName) as? TitleScene,
            let skView = self.view as? SKView {
-            scene.scaleMode = GameViewController.scaleMode(forSize: skView.bounds.size)
+            scene.scaleMode = GameViewController.scaleMode(for: scene, in: skView.bounds.size)
             skView.presentScene(scene)
             skView.ignoresSiblingOrder = true
         }
@@ -141,20 +141,31 @@ class GameViewController: UIViewController {
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return }
+        // Also called when an iPadOS window is resized, not only on rotation.
         coordinator.animate(alongsideTransition: { [weak self] _ in
             guard let skView = self?.view as? SKView, let scene = skView.scene else { return }
-            scene.scaleMode = GameViewController.scaleMode(forSize: size)
+            scene.scaleMode = GameViewController.scaleMode(for: scene, in: size)
             skView.backgroundColor = scene.backgroundColor
         })
     }
 
-    /// Returns the appropriate scene scale mode for the given view size.
-    /// iPad landscape uses aspectFit (pillarboxed portrait game) so the full scene
-    /// is always visible regardless of mount orientation — critical for switch users.
-    static func scaleMode(forSize size: CGSize) -> SKSceneScaleMode {
-        guard UIDevice.current.userInterfaceIdiom == .pad else { return .aspectFill }
-        return size.width > size.height ? .aspectFit : .aspectFill
+    /// Most scene units aspectFill may trim from each side. The helicopter's left
+    /// edge sits 50 units in, so it always stays fully visible.
+    static let maximumSideCrop: CGFloat = 48
+
+    /// Chooses how the portrait scene fits a window of any shape: iPhone, either iPad
+    /// orientation, and iPadOS resizable windows. Filling may only trim a sliver from
+    /// the sides; otherwise the whole scene is shown with theme-coloured bars, so the
+    /// helicopter, ceiling, and floor are never cut off. Critical for switch users,
+    /// whose iPads are often mounted in landscape.
+    static func scaleMode(for scene: SKScene, in size: CGSize) -> SKSceneScaleMode {
+        let sceneSize = scene.size
+        guard size.width > 0, size.height > 0, sceneSize.width > 0, sceneSize.height > 0 else { return .aspectFill }
+        let viewAspect = size.width / size.height
+        // Wider than the scene: filling would crop the ceiling and floor.
+        guard viewAspect <= sceneSize.width / sceneSize.height else { return .aspectFit }
+        let cropPerSide = (sceneSize.width - sceneSize.height * viewAspect) / 2
+        return cropPerSide <= maximumSideCrop ? .aspectFill : .aspectFit
     }
 
     // MARK: - Accessibility (VoiceOver + iOS Switch Control)
