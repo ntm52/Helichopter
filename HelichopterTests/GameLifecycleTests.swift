@@ -69,7 +69,8 @@ struct GameLifecycleTests {
                 // Keyboard repeat must neither re-flap nor restart the hold deadline.
                 try await Task.sleep(nanoseconds: 1_100_000_000)
                 scene.switchPrimaryBegan()
-                try await Task.sleep(nanoseconds: 1_100_000_000)
+                // Checked at 2.6 s: a 2 s hold has fired, while a restarted one (3.1 s) would not.
+                try await Task.sleep(nanoseconds: 1_500_000_000)
                 #expect(scene.stateMachine.currentState is PausedState)
                 #expect(scene.isPaused)
                 #expect(scene.overlayScanner?.isActive == true)
@@ -520,6 +521,35 @@ struct GameLifecycleTests {
         }
     }
 
+    @Test func privacyAndAcknowledgementsReachableBySwitchWhenLocked() throws {
+        try withSettings {
+            let (view, scene) = try settingsScene()
+            defer { view.presentScene(nil) }
+            GameSettings.shared.isSettingsLocked = true
+            let overlay = try #require(scene.settingsOverlay)
+            overlay.onThemeChanged?()
+            let locked = try #require(scene.settingsOverlay)
+            for (label, expected) in [("Privacy Policy", "Open Full Policy in Safari"), ("Acknowledgements", "Done")] {
+                try focusSetting(label, in: scene)
+                scene.switchPrimaryBegan()
+                #expect(locked.isAdjusting)
+                #expect(locked.switchScanner.items[0].accessibilityScanLabel == expected)
+                let texts = [AppLinks.privacySummary, AppLinks.acknowledgements]
+                #expect(locked.subviews.contains { panel in
+                    func labels(_ v: UIView) -> [String] { ((v as? UILabel)?.text).map { [$0] } ?? v.subviews.flatMap(labels) }
+                    return labels(panel).contains { texts.contains($0) }
+                })
+                // Done is the last choice in both panels.
+                let scanner = locked.switchScanner
+                while scanner.items[scanner.currentIndex].accessibilityScanLabel != "Done" { scene.switchSecondaryBegan() }
+                scene.switchPrimaryBegan()
+                #expect(!locked.isAdjusting)
+            }
+            #expect(AppLinks.acknowledgements.contains("Copyright (c) 2018, Astemir Eleev"))
+            #expect(AppLinks.privacySummary.contains(AppLinks.supportEmail))
+        }
+    }
+
     @Test func resetCanBeCancelledAndConfirmedBySwitch() throws {
         try withSettings {
             GameSettings.shared.applyChallenge()
@@ -612,7 +642,8 @@ struct GameLifecycleTests {
             try focusSetting("Lock Settings", in: scene)
             scene.switchPrimaryBegan()
             #expect(GameSettings.shared.isSettingsLocked)
-            #expect(scene.settingsOverlay?.switchScanner.items.count == 2)
+            // Back, Lock Settings, Privacy Policy, Acknowledgements.
+            #expect(scene.settingsOverlay?.switchScanner.items.count == 4)
             #expect(scene.settingsOverlay?.focusedSetting == "Lock Settings")
             scene.switchPrimaryBegan()
             #expect(!GameSettings.shared.isSettingsLocked)

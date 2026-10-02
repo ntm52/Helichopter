@@ -32,11 +32,11 @@ The prioritized checklist is now the **Release Plan** in [HELICHOPTER_PROJECT.md
 | ATS exceptions / networking / third-party SDKs / permission prompts | None. Supports the "Data Not Collected" answer. |
 | App Store icon opaque | Pass |
 | Distribution signing (no `get-task-allow`) | Check on the archive |
-| Public privacy policy + support URLs | **Open.** Contact address and hosting needed. |
-| In-app privacy policy link (5.1.1) | **Open:** not implemented |
-| BSD licence notice in distribution | **Open:** no acknowledgements screen |
+| Public privacy policy + support URLs | Written in `docs/`; **enable GitHub Pages** to publish |
+| In-app privacy policy link (5.1.1) | Done: Settings → About |
+| BSD licence notice in distribution | Done: Settings → About → Acknowledgements |
 | Age rating questionnaire, DSA trader status, App Privacy answers | **Open:** App Store Connect |
-| Asset rights evidence (5.2) | **Open:** see `Release/ASSET_RIGHTS.md` |
+| Asset rights evidence (5.2) | Done: owner-made art and effects; CC0 music. See `Release/ASSET_RIGHTS.md` |
 
 ## Before submission
 

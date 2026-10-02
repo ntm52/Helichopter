@@ -146,13 +146,14 @@ Run `Tools/release_check.sh` (unsigned Release build) and `Tools/release_check.s
 - [x] ⚙ **Export compliance:** `ITSAppUsesNonExemptEncryption = false` (no custom crypto, no networking). Answer "No" to the encryption questions in App Store Connect.
 - [x] ⚙ **No App Transport Security exceptions, no networking, no third-party SDKs, no permission prompts.** Keeps the App Privacy answer "Data Not Collected" valid. Re-run the script if any SDK, analytics, or crash reporter is ever added: each needs its own privacy manifest and signature, and the privacy answers must change.
 - [x] ⚙ **App Store icon** 1024 px opaque (no alpha).
-- [ ] **Owner: publish the privacy policy and support page** (drafts in `Release/PRIVACY_AND_SUPPORT.md`). Replace `[MONITORED SUPPORT EMAIL]`, then host them (GitHub Pages on this repo is the simplest free option). Both URLs are required App Store Connect fields.
-- [ ] **In-app privacy policy link** (Guideline 5.1.1(i) requires it to be easily accessible inside the app). Add a "Privacy Policy" row to Settings that opens the published URL in `SFSafariViewController`, reachable by switch scanning and VoiceOver. If the app is placed in the **Kids** category, this link must sit behind a parental gate (Guideline 1.3).
+- [x] **Privacy policy and support pages** written in `docs/` (contact `helichopter.support@gmail.com`), to be served at https://ntm52.github.io/Helichopter/privacy.html and `/support.html`.
+- [ ] **Owner: turn on GitHub Pages** (repo Settings → Pages → Deploy from branch `master`, folder `/docs`), then open both URLs to confirm they load before entering them in App Store Connect.
+- [x] **In-app privacy policy** (Guideline 5.1.1(i)): Settings → About → Privacy Policy shows a summary plus "Open Full Policy in Safari". Switch-scannable, and reachable while Settings is locked. If the app is placed in the **Kids** category, the Safari link must sit behind a parental gate (Guideline 1.3).
 - [ ] **App Privacy questionnaire** in App Store Connect: "Data Not Collected". Tracking: No.
 - [ ] ⚙ **Distribution signing:** archive with an Apple Distribution certificate. The script fails if `get-task-allow` is present (development-signed build). Bundle ID `com.nathanmayo.helichopter`, team `9HJ5466NL8`. Owner: confirm the membership and certificates are current.
 - [ ] **Current SDK:** uploads must be built with the current required Xcode/iOS SDK (Xcode 26 / iOS 26 SDK since April 2026). The local toolchain already meets this; recheck Apple's [upcoming requirements](https://developer.apple.com/news/upcoming-requirements/) at upload time.
-- [ ] **Owner: content rights (Guideline 5.2).** All artwork is owner-made (by hand or with Codex). Owner statement recorded in `Release/ASSET_RIGHTS.md`. **Still to record:** the sound website, each sound's URL, and its licence, plus any credit the licence requires.
-- [ ] **Acknowledgements screen** (owner agreed 2026-10-01): a Settings row showing the BSD 3-Clause notice for the original code (required in binary distributions; it doesn't restrict selling or in-app purchases) and any sound credits the licences require. Scannable and VoiceOver-labelled.
+- [x] **Content rights (Guideline 5.2).** Artwork is owner-made (by hand or with Codex), the sound effects were made in GarageBand, and the music was replaced with a CC0 Freesound track (2026-10-01). Details in `Release/ASSET_RIGHTS.md`. Optional: download the lossless original from Freesound (login required) to replace the preview-quality encode.
+- [x] **Acknowledgements:** Settings → About → Acknowledgements shows the BSD 3-Clause notice (required in binary distributions; it doesn't restrict selling or in-app purchases) and music credits.
 
 ### P0 — App Store Connect setup (Owner)
 - [ ] **Age rating:** complete Apple's current age-rating questionnaire (the 2025 system with 4+/9+/13+/16+/18+). No violence beyond cartoon collisions, no user-generated content, no ads, no purchases. Answer from the actual content; don't pre-pick a rating.
@@ -328,3 +329,11 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Added `Tools/release_check.sh` (privacy manifest, required-reason APIs, export compliance, ATS, permissions, SDKs, test leftovers, icon alpha, versioning, distribution signing). Unsigned Release build: no blocking failures. Remaining warnings: privacy link/URL and signing.
 - Rewrote Phase 8 as the prioritized **Release Plan**, including Apple's privacy/security/account requirements. Added `CLAUDE.md` for future sessions.
 - Not done: nothing committed or pushed (awaiting owner); no physical-device verification of the transition fixes.
+
+### 2026-10-01 — Privacy pages, in-app links, and music replacement
+- Removed dead pre-iOS 17 availability checks after the owner confirmed iOS 17.6. Committed and pushed earlier work (`6c6faee`, `3e17394`).
+- Audio provenance: the original effects' WAVs carry GarageBand tags (owner-made). The music source was unknown, so it was replaced with a CC0 Freesound track by SouljaUnit/Louswan (both licences checked). It was encoded from the public HQ preview to 128 kbps AAC at matched loudness, keeping the same `MainTheme.caf` name.
+- Added `docs/` (index, privacy, support) for GitHub Pages with `helichopter.support@gmail.com`. `Release/PRIVACY_AND_SUPPORT.md` now points there instead of duplicating it.
+- Added Settings → About (Privacy Policy with summary and Safari link; Acknowledgements with the BSD notice and music credits). Both stay available when Settings is locked. URLs and text live in `AppLinks` (`SettingsScene.swift`).
+- Tests: added `privacyAndAcknowledgementsReachableBySwitchWhenLocked`. Updated the locked-Settings item count to 4. Widened the hold-to-pause timing margin, which failed once under full parallel load and passed when re-run alone. **72 tests pass.**
+- Owner next: enable GitHub Pages; App Store Connect setup; device testing.

@@ -61,7 +61,7 @@ Use real release-candidate screens on iPhone and iPad; do not upload test-layout
 
 ## Account fields still needed
 
-- Public privacy policy and support URLs; monitored support contact.
+- Privacy policy URL: https://ntm52.github.io/Helichopter/privacy.html · Support URL: https://ntm52.github.io/Helichopter/support.html · Contact: helichopter.support@gmail.com
 - App Review contact name, email, and phone; developer/trader details where applicable.
 - Owner-approved price, regions, release timing, and final build number.
 - Complete the age-rating questionnaire from the app's actual content. No chat, user-generated content, ads, gambling, or purchases were found; do not choose a numeric age rating without completing Apple's questionnaire.
