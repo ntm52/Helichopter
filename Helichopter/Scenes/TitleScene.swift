@@ -5,12 +5,19 @@ class TitleScene: RoutingUtilityScene {
 
     // MARK: - Overrides
 
+    override func sceneDidLoad() {
+        super.sceneDidLoad()
+        // Hide the archived menu before any transition can render it.
+        suppressArchivedPresentation()
+    }
+
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         centerBackground()
         loadSelectedPlayer()
         setupAudio()
         applyContrastStyling()
+        suppressArchivedPresentation()
     }
 
     private func centerBackground() {
@@ -50,6 +57,9 @@ class TitleScene: RoutingUtilityScene {
         helicopterNode.physicsBody = nil
         helicopterNode.position  = targetNode.position
         helicopterNode.zPosition = targetNode.zPosition
+        // The UIKit menu draws the visible mascot; this node is kept only as a placeholder.
+        helicopterNode.removeAllActions()
+        helicopterNode.isHidden = true
         addChild(helicopterNode)
         targetNode.removeFromParent()
     }

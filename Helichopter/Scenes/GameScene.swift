@@ -48,6 +48,8 @@ class GameScene: SKScene {
             self?.setupOverlayScanner()
         }
         sceneAdapter?.stateMachine?.enter(PlayingState.self)
+        // UIKit draws the HUD; the archived Pause button and labels must never render.
+        suppressArchivedPresentation()
     }
 
     override func didMove(to view: SKView) {
@@ -57,6 +59,7 @@ class GameScene: SKScene {
         backgroundColor = theme.sceneBackgroundColor
         view.backgroundColor = theme.sceneBackgroundColor
         applyUITheme(theme)
+        suppressArchivedPresentation()
     }
 
     override func willMove(from view: SKView) {

@@ -29,10 +29,8 @@ struct DynamicTypeTests {
             window.rootViewController = host
             window.makeKeyAndVisible()
             defer { window.isHidden = true }
-            if #available(iOS 17.0, *) {
-                panel.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-            }
-            if #available(iOS 17.0, *) { panel.updateTraitsIfNeeded() }
+            panel.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+            panel.updateTraitsIfNeeded()
             panel.layoutIfNeeded()
             panel.layoutIfNeeded()
             let labels = descendants(panel, UILabel.self)
@@ -76,7 +74,7 @@ struct DynamicTypeTests {
             view.addSubview(overlay)
             defer { view.presentScene(nil) }
             for category in [UIContentSizeCategory.large, .accessibilityExtraExtraExtraLarge] {
-                if #available(iOS 17.0, *) { overlay.traitOverrides.preferredContentSizeCategory = category }
+                overlay.traitOverrides.preferredContentSizeCategory = category
                 overlay.refresh(in: view)
                 overlay.layoutIfNeeded()
                 overlay.layoutIfNeeded()

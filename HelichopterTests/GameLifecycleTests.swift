@@ -10,10 +10,10 @@ struct GameLifecycleTests {
         let defaults = UserDefaults.standard
         let saved = defaults.dictionaryRepresentation()
         defer {
-            for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn"].contains(key) {
+            for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn", "isSoundEffectsOn", "difficulty"].contains(key) {
                 defaults.removeObject(forKey: key)
             }
-            for (key, value) in saved where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn"].contains(key) {
+            for (key, value) in saved where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn", "isSoundEffectsOn", "difficulty"].contains(key) {
                 defaults.set(value, forKey: key)
             }
         }
@@ -26,10 +26,10 @@ struct GameLifecycleTests {
         let defaults = UserDefaults.standard
         let saved = defaults.dictionaryRepresentation()
         defer {
-            for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn"].contains(key) {
+            for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn", "isSoundEffectsOn", "difficulty"].contains(key) {
                 defaults.removeObject(forKey: key)
             }
-            for (key, value) in saved where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn"].contains(key) {
+            for (key, value) in saved where key.hasPrefix("gs_") || ["bestScore", "lastScore", "isMusicOn", "isSoundEffectsOn", "difficulty"].contains(key) {
                 defaults.set(value, forKey: key)
             }
         }
@@ -295,7 +295,8 @@ struct GameLifecycleTests {
                 #expect(helicopter.animationTimeInterval == HelicopterNode.rotorFrameInterval)
                 #expect(helicopter.physicsBody == nil)
                 #expect(!helicopter.shouldAcceptTouches)
-                #expect((helicopter.action(forKey: "rotorAnimation") != nil) == !UIAccessibility.isReduceMotionEnabled)
+                // UIKit draws the visible mascot; the SpriteKit placeholder never renders or animates.
+                #expect(helicopter.isHidden && helicopter.action(forKey: "rotorAnimation") == nil)
                 // Re-presenting the same scene must not duplicate or restart the mascot.
                 scene.didMove(to: view)
                 #expect(scene.children.compactMap { $0 as? HelicopterNode }.count == 1)
@@ -503,6 +504,44 @@ struct GameLifecycleTests {
         Issue.record("Setting not reachable by switch: \(label)")
     }
 
+    @Test func gapsFitWithinSmallScenes() throws {
+        try withSettings {
+            GameSettings.shared.gapMin = 600
+            GameSettings.shared.gapMax = 100
+            for height in [CGFloat(121), 320, 568, 1024] {
+                for _ in 0..<20 {
+                    let parts = try #require(PipeFactory.standardPipeParts(for: CGSize(width: 320, height: height)))
+                    #expect(parts.threshold.size.height > 0)
+                    #expect(parts.top.size.height >= 50)
+                    #expect(abs(parts.top.size.height + parts.bottom.size.height + parts.threshold.size.height - height) < 0.001)
+                }
+            }
+            #expect(PipeFactory.standardPipeParts(for: .zero) == nil)
+        }
+    }
+
+    @Test func resetCanBeCancelledAndConfirmedBySwitch() throws {
+        try withSettings {
+            GameSettings.shared.applyChallenge()
+            let (view, scene) = try settingsScene()
+            defer { view.presentScene(nil) }
+            try focusSetting("Reset Settings", in: scene)
+            scene.switchPrimaryBegan()
+            let overlay = try #require(scene.settingsOverlay)
+            #expect(overlay.isAdjusting)
+            #expect(overlay.switchScanner.items[0].accessibilityScanLabel == "Cancel")
+            scene.switchPrimaryBegan()
+            #expect(!overlay.isAdjusting)
+            #expect(GameSettings.shared.gapMin == 180)
+            scene.switchPrimaryBegan()
+            scene.switchSecondaryBegan()
+            scene.switchPrimaryBegan()
+            #expect(GameSettings.shared.gapMin == 240)
+            #expect(scene.settingsOverlay?.isAdjusting == false)
+            #expect(scene.settingsOverlay?.switchScanner.isActive == true)
+        }
+    }
+
     @Test func settingsSwitchReachesControlsAndBackWithoutLegacyScanner() throws {
         try withSettings {
             let (view, scene) = try settingsScene()
@@ -621,13 +660,13 @@ struct GameLifecycleTests {
         let (view, scene) = try settingsScene()
         defer { view.presentScene(nil) }
         gs.scanScheme = .autoScan
-        gs.scanDwellTime = 0.1
+        gs.scanDwellTime = 0.5
         let overlay = try #require(scene.settingsOverlay)
         let input: SwitchInputReceivable = scene
         input.switchPrimaryBegan()
 
         func activateWhenScanned(_ label: String) async throws {
-            let deadline = Date().addingTimeInterval(6)
+            let deadline = Date().addingTimeInterval(25)
             while Date() < deadline {
                 let scanner = overlay.switchScanner
                 if scanner.items[scanner.currentIndex].accessibilityScanLabel.hasPrefix(label) {

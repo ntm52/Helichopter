@@ -54,7 +54,9 @@ struct PipeFactory {
 
     // MARK: - Pipe parts production
 
-    private static func standardPipeParts(for sceneSize: CGSize) -> PipeParts? {
+    static func standardPipeParts(for sceneSize: CGSize) -> PipeParts? {
+        guard sceneSize.width.isFinite, sceneSize.height.isFinite,
+              sceneSize.width > 0, sceneSize.height > 120 else { return nil }
         let settings = GameSettings.shared
         let pipeX: CGFloat = sceneSize.width
         let sceneHeight = sceneSize.height
@@ -65,7 +67,9 @@ struct PipeFactory {
         let palette = GameSettings.shared.selectedPalette
 
         // Variance 0.0 = all pipes at minimum height (predictable), 1.0 = full range
-        let maxBottomHeight = max(70, sceneHeight * 0.55 * settings.pipeHeightVariance)
+        let desiredGap = min(settings.gapMin, sceneHeight - 120)
+        let maxBottomHeight = max(70, min(sceneHeight * 0.55 * settings.pipeHeightVariance,
+                                        sceneHeight - minPipeHeight - desiredGap))
         let bottomHeight = CGFloat.range(min: 70, max: max(70, maxBottomHeight))
         let pipeBottomSize = CGSize(width: pipeWidth, height: bottomHeight)
         let pipeBottom = PipeNode(textures: (pipe: "pipe-yellow", cap: "cap-yellow"),
@@ -79,12 +83,11 @@ struct PipeFactory {
         }
 
         // Gap from GameSettings — B2 fixed: values now directly represent gap size (wider = easier)
-        let minimum = settings.gapMin
-        var maximum = settings.gapMax
+        let absoluteMaxGap = sceneHeight - unwrappedPipeBottom.size.height - minPipeHeight
+        let minimum = min(settings.gapMin, absoluteMaxGap)
+        let maximum = min(settings.gapMax, absoluteMaxGap)
 
         // Clamp gap so the top pipe always has at least minPipeHeight
-        let absoluteMaxGap = sceneHeight - unwrappedPipeBottom.size.height - minPipeHeight
-        maximum = min(maximum, max(minimum, absoluteMaxGap))
 
         let threshold = SKSpriteNode(color: .clear, size: CGSize(width: thresholdWidth, height: CGFloat.range(min: minimum, max: maximum)))
         threshold.position = CGPoint(x: pipeX, y: unwrappedPipeBottom.size.height + threshold.size.height / 2)

@@ -14,6 +14,12 @@ final class SceneTextOverlay: UIView {
     private var bestScoreLabel: UILabel?
     private weak var hudStack: UIStackView?
     private var flightElement: FlightAccessibilityElement?
+    // Stack constraints survive removing the scroll view, so track them per rebuild.
+    private var layoutConstraints: [NSLayoutConstraint] = []
+    static let guideCompletedKey = "onboarding_completed_v1"
+    var guideDefaults = UserDefaults.standard
+    private(set) var guidePage: Int?
+
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
@@ -37,6 +43,9 @@ final class SceneTextOverlay: UIView {
         let root = (scene as? GameScene)?.sceneAdapter?.overlay?.contentNode ?? scene
         let isMenu = scene is TitleScene || root !== scene
         if source !== root || hostScene !== scene {
+            if hostScene !== scene {
+                guidePage = scene is TitleScene && !guideDefaults.bool(forKey: Self.guideCompletedKey) ? 0 : nil
+            }
             source = root
             hostScene = scene
             menu = isMenu
@@ -83,20 +92,9 @@ final class SceneTextOverlay: UIView {
             ? (GameSettings.shared.hideGameWhilePaused ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
             : (menu && !(scene is TitleScene) ? theme.sceneBackgroundColor : .clear)
         // The archive supplies actions and text only; never draw a second menu.
-        if let content = root as? SKSpriteNode, root !== scene {
-            content.texture = nil
-            content.color = .clear
-            (scene as? GameScene)?.sceneAdapter?.overlay?.backgroundNode.color = .clear
-        }
-        if scene is TitleScene {
-            let mascot = scene.childNode(withName: "Animated Helicopter")
-            mascot?.removeAllActions()
-            mascot?.isHidden = true
-        }
-        root.enumerateChildNodes(withName: "//*") { node, _ in
-            if let label = node as? SKLabelNode { label.fontColor = .clear }
-        }
-        for button in scene.findAllButtonsInScene() { button.isPresentedInUIKit = true }
+        // Scenes and overlays also suppress at load, so this only covers late additions.
+        scene.suppressArchivedPresentation()
+        (scene as? GameScene)?.sceneAdapter?.overlay?.suppressArchivedPresentation()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
@@ -104,17 +102,39 @@ final class SceneTextOverlay: UIView {
         scroll.isUserInteractionEnabled = menu
         addSubview(scroll)
         scroll.addSubview(stack)
-        NSLayoutConstraint.activate([
+        NSLayoutConstraint.deactivate(layoutConstraints)
+        layoutConstraints = [
             scroll.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 12),
             scroll.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -12),
             scroll.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 16),
             scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
             stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
             stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor)
-        ])
+        ]
+        if menu {
+            // Menus centre vertically when they fit and scroll from the top when they don't.
+            let hug = stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor)
+            hug.priority = .defaultLow
+            layoutConstraints += [
+                scroll.contentLayoutGuide.heightAnchor.constraint(greaterThanOrEqualTo: scroll.frameLayoutGuide.heightAnchor),
+                stack.centerYAnchor.constraint(equalTo: scroll.contentLayoutGuide.centerYAnchor),
+                stack.topAnchor.constraint(greaterThanOrEqualTo: scroll.contentLayoutGuide.topAnchor),
+                stack.bottomAnchor.constraint(lessThanOrEqualTo: scroll.contentLayoutGuide.bottomAnchor),
+                hug
+            ]
+        } else {
+            // The gameplay HUD stays pinned to the top, clear of the flight area.
+            layoutConstraints += [
+                stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+                stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor)
+            ]
+        }
+        NSLayoutConstraint.activate(layoutConstraints)
+        if let title = scene as? TitleScene, let page = guidePage {
+            buildGuide(page: page, scene: title)
+            return
+        }
         if scene is TitleScene {
             let art = UIImageView(image: UIImage(cgImage: SKTextureAtlas(named: "Helicopter Player").textureNamed("r_player1").cgImage()))
             if !UIAccessibility.isReduceMotionEnabled {
@@ -198,6 +218,18 @@ final class SceneTextOverlay: UIView {
             }
             links.append((node, button))
         }
+        if let title = scene as? TitleScene {
+            let scanner = title.focusScanner
+            let wasScanning = scanner?.isActive == true
+            scanner?.stop()
+            let help = guideButton("How to Play") { [weak self, weak title] in
+                guard let self = self, let title = title else { return }
+                self.guidePage = 0
+                self.rebuild(scene: title, root: title)
+            }
+            scanner?.items = title.findAllButtonsInScene() + [help]
+            if wasScanning { scanner?.start() }
+        }
         flightElement = nil
         if !menu, let game = scene as? GameScene {
             let element = FlightAccessibilityElement(accessibilityContainer: self)
@@ -221,6 +253,127 @@ final class SceneTextOverlay: UIView {
         UIAccessibility.post(notification: .screenChanged, argument: flightElement)
 
     }
+
+    private func guideLabel(_ text: String, style: UIFont.TextStyle) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = .preferredFont(forTextStyle: style, compatibleWith: traitCollection)
+        label.adjustsFontForContentSizeCategory = true
+        label.numberOfLines = 0
+        label.textColor = GameSettings.shared.selectedTheme.titleTextColor
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        if style == .title1 { label.accessibilityTraits = .header }
+        stack.addArrangedSubview(label)
+        return label
+    }
+
+    @discardableResult
+    private func guideButton(_ title: String, action: @escaping () -> Void) -> GuideButton {
+        let button = GuideButton(frame: .zero)
+        button.action = action
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
+        button.titleLabel?.adjustsFontForContentSizeCategory = true
+        button.titleLabel?.numberOfLines = 0
+        button.titleLabel?.textAlignment = .center
+        let theme = GameSettings.shared.selectedTheme
+        button.setTitleColor(theme.buttonTextColor, for: .normal)
+        button.backgroundColor = theme.buttonTintColor
+        button.layer.cornerRadius = 12
+        button.layer.borderColor = theme.titleTextColor.cgColor
+        button.contentEdgeInsets = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        button.onFocus = { [weak self, weak button] in
+            guard let self = self, let button = button else { return }
+            self.layoutIfNeeded()
+            self.scroll.scrollRectToVisible(button.convert(button.bounds.insetBy(dx: -6, dy: -6), to: self.scroll), animated: false)
+        }
+        stack.addArrangedSubview(button)
+        return button
+    }
+
+    static func flightInstructions(for scheme: ControlScheme) -> String {
+        switch scheme {
+        case .tapFlap:
+            return "Tap the screen or press your primary switch to rise. Between taps, the helicopter falls. With VoiceOver, double-tap to rise."
+        case .holdHover:
+            return "Hold the screen or your primary switch to rise. Release to fall gently. With VoiceOver, double-tap to switch between rising and falling."
+        case .autoHover:
+            return "The helicopter hovers automatically. Tap the screen or press your primary switch to nudge up; use your secondary switch to nudge down. With VoiceOver, double-tap to nudge up or use the Move down action."
+        case .twoSwitchUD:
+            return "Hold your primary switch to move up or your secondary switch to move down. Release to settle. Touching the screen also moves up. With VoiceOver, double-tap to toggle moving up or use Move down to toggle moving down."
+        }
+    }
+
+    private func navigateGuide(to page: Int?, scene: TitleScene) {
+        guidePage = page
+        if page == nil { guideDefaults.set(true, forKey: Self.guideCompletedKey) }
+        rebuild(scene: scene, root: scene)
+    }
+
+    private func buildGuide(page: Int, scene: TitleScene) {
+        let scanner = scene.focusScanner
+        let wasScanning = scanner?.isActive == true
+        scanner?.stop()
+        flightElement = nil
+        accessibilityViewIsModal = true
+        accessibilityElements = [scroll]
+        scroll.setContentOffset(.zero, animated: false)
+        let settings = GameSettings.shared
+        let pages: [(String, String)] = [
+            ("Your flight controls", "Fly through the gaps between pipes.\n\n" + Self.flightInstructions(for: settings.controlScheme) + "\n\nYou can change controls in Settings → Switch Access."),
+            ("Go at your own pace", "No-fail mode is currently \(settings.noFailMode ? "on: bumps let you keep flying" : "off: a collision ends the round, and you can retry"). Change it in Settings → Comfort.\n\nTap Pause during flight, or hold your primary switch for \(String(format: "%.0f", settings.switchPauseHoldDuration)) seconds. With VoiceOver, use the Pause action or the escape gesture. Choose Resume when ready.\n\nSettings → Difficulty Preset offers Gentle, Standard, and Challenge. Start with Gentle for wider gaps and slower pipes."),
+            ("Switches and menus", "Press your primary switch (Space or Enter on a keyboard) to start menu scanning, then press it again to choose the highlighted item. \(settings.scanScheme == .autoScan ? "Your menus currently advance automatically." : "Your menus currently wait for your secondary switch to advance.") Use your secondary switch (2 or an arrow key other than Up) to move to the next item.\n\nSettings → Switch Access lets you choose automatic or two-switch scanning, scan timing, and the hold-to-pause delay.\n\nThis guide waits for you. Replay it anytime with How to Play on the home screen.")
+        ]
+        let content = pages[page]
+        let heading = guideLabel(content.0, style: .title1)
+        _ = guideLabel("Step \(page + 1) of \(pages.count)", style: .subheadline)
+        _ = guideLabel(content.1, style: .body)
+        var items: [FocusScannable] = []
+        // Switch users can hear the full instructions without navigating static text.
+        let read = guideButton("Read this step aloud") { [weak scanner] in
+            scanner?.readInstructions(content.0 + ". " + content.1 + " Press your switch to resume menu scanning.")
+        }
+        items.append(read)
+        items.append(guideButton(page == pages.count - 1 ? "Done" : "Next") { [weak self, weak scene] in
+            guard let self = self, let scene = scene else { return }
+            self.navigateGuide(to: page == pages.count - 1 ? nil : page + 1, scene: scene)
+        })
+        if page > 0 {
+            items.append(guideButton("Back") { [weak self, weak scene] in
+                guard let self = self, let scene = scene else { return }
+                self.navigateGuide(to: page - 1, scene: scene)
+            })
+        }
+        items.append(guideButton("Skip guide") { [weak self, weak scene] in
+            guard let self = self, let scene = scene else { return }
+            self.navigateGuide(to: nil, scene: scene)
+        })
+        scanner?.items = items
+        if wasScanning { scanner?.start() }
+        UIAccessibility.post(notification: .screenChanged, argument: heading)
+    }
+}
+
+private final class GuideButton: DynamicTextButton, FocusScannable {
+    var action: (() -> Void)?
+    var onFocus: (() -> Void)?
+    private var scanFocused = false
+    override var isFocused: Bool {
+        get { scanFocused }
+        set {
+            scanFocused = newValue
+            layer.borderWidth = newValue ? 4 : 0
+            if newValue { onFocus?() }
+        }
+    }
+    var accessibilityScanLabel: String { currentTitle ?? "" }
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        addTarget(self, action: #selector(scannerActivate), for: .touchUpInside)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    @objc func scannerActivate() { action?() }
 }
 
 private final class SceneTextButton: DynamicTextButton {
@@ -231,7 +384,42 @@ private final class SceneTextButton: DynamicTextButton {
         addTarget(self, action: #selector(activate), for: .touchUpInside)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    @objc private func activate() { node?.scannerActivate() }
+    @objc private func activate() {
+        node?.scannerActivate()
+        // Rebuild now rather than on the next timer tick, so a second tap cannot
+        // reach a control whose menu has already closed.
+        if let overlay = superview(of: SceneTextOverlay.self), let view = overlay.superview as? SKView {
+            overlay.refresh(in: view)
+        }
+    }
+}
+
+private extension UIView {
+    func superview<T: UIView>(of type: T.Type) -> T? {
+        superview.flatMap { $0 as? T ?? $0.superview(of: type) }
+    }
+}
+
+extension SKNode {
+    /// UIKit draws visible menus and HUD text; archived buttons and labels remain
+    /// invisible action/text models. Scenes call this when loaded and after theming,
+    /// so no frame ever shows both the archived and UIKit versions.
+    func suppressArchivedPresentation() {
+        for child in children {
+            if let button = child as? ButtonNode { button.isPresentedInUIKit = true }
+            if let label = child as? SKLabelNode { label.fontColor = .clear }
+            child.suppressArchivedPresentation()
+        }
+    }
+}
+
+extension SceneOverlay {
+    func suppressArchivedPresentation() {
+        contentNode.texture = nil
+        contentNode.color = .clear
+        backgroundNode.color = .clear
+        contentNode.suppressArchivedPresentation()
+    }
 }
 
 /// UIButton's default intrinsic height does not account for wrapped titles.

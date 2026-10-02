@@ -30,11 +30,14 @@ class SceneOverlay {
         
         // Set the content node to a clear color to allow the background node to be seen through it.
         contentNode.color = .clear
+        suppressArchivedPresentation()
     }
 
     /// Applies the UITheme to all buttons and labels inside the overlay content.
     func applyUITheme(_ theme: UITheme) {
         contentNode.applyUITheme(theme)
+        // Theming recolours archived labels; UIKit still owns what is visible.
+        suppressArchivedPresentation()
     }
 
 }

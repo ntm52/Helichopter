@@ -103,7 +103,7 @@ private func makeButton() -> ButtonNode {
 
     // MARK: - Auto-scan timer
 
-    // Schedules a 50 ms dwell timer and confirms the index advances within 300 ms.
+    // Uses the minimum supported dwell and confirms the timer advances.
     // @MainActor ensures Timer is scheduled on the main run loop so it fires during Task.sleep.
     @Test @MainActor func autoScanTimerAdvancesIndex() async throws {
         let savedScheme = settings.scanScheme
@@ -113,7 +113,7 @@ private func makeButton() -> ButtonNode {
             settings.scanDwellTime = savedDwell
         }
         settings.scanScheme    = .autoScan
-        settings.scanDwellTime = 0.05   // 50 ms
+        settings.scanDwellTime = 0.5
 
         let scanner = FocusScanner(settings: settings)
         scanner.items = (0..<100).map { _ in makeButton() }
@@ -121,7 +121,7 @@ private func makeButton() -> ButtonNode {
         defer { scanner.stop() }
 
         #expect(scanner.currentIndex == 0)
-        try await Task.sleep(nanoseconds: 300_000_000)   // 300 ms — timer fires >= 4x
+        try await Task.sleep(nanoseconds: 1_100_000_000)
         #expect(scanner.currentIndex > 0)
     }
 }

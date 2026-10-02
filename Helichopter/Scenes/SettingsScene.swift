@@ -1,10 +1,9 @@
 import SpriteKit
 import UIKit
 
-// MARK: - Control target helpers (iOS 12 compatible)
-// UIControl.addAction requires iOS 14+, so these wrappers let closures
-// work as addTarget selectors while keeping a strong reference alive
-// via SettingsOverlayView.controlTargets.
+// MARK: - Control target helpers
+// These wrappers let closures work as addTarget selectors while keeping a strong
+// reference alive via SettingsOverlayView.controlTargets.
 
 private final class ButtonTarget: NSObject {
     private let f: () -> Void
@@ -239,7 +238,19 @@ final class SettingsOverlayView: UIView {
                 }
             }
         }
-        addChoice("Done") { [weak self] in self?.closeAdjustment() }
+        if control.accessibilityLabel == "Reset Settings" {
+            let explanation = makeLabel("Restore Standard difficulty, default controls, theme, and audio. Saved scores and guide completion are kept.", size: 20, weight: .regular, color: text)
+            explanation.numberOfLines = 0
+            choices.addArrangedSubview(explanation)
+            addChoice("Cancel") { [weak self] in self?.closeAdjustment() }
+            addChoice("Restore Defaults") { [weak self] in
+                GameSettings.shared.resetToDefaults()
+                self?.closeAdjustment()
+                self?.onThemeChanged?()
+            }
+        } else {
+            addChoice("Done") { [weak self] in self?.closeAdjustment() }
+        }
         switchScanner.items = controls(in: panel).map { scanItem(for: $0) }
         switchScanner.start()
         UIAccessibility.post(notification: .screenChanged, argument: title)
@@ -522,6 +533,14 @@ final class SettingsOverlayView: UIView {
             UserDefaults.standard.set(v, for: .isMusicOn)
         }
 
+        sectionHeader("Reset")
+        let reset = plainButton("Reset Settings", color: accent, target: self,
+                                action: #selector(resetTapped(_:)))
+        reset.accessibilityLabel = "Reset Settings"
+        reset.titleLabel?.numberOfLines = 0
+        reset.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        stack.addArrangedSubview(reset)
+
         if gs.isSettingsLocked {
             // Keep the panel and Back reachable, while preventing accidental edits.
             for row in stack.arrangedSubviews {
@@ -536,6 +555,10 @@ final class SettingsOverlayView: UIView {
             gs.isSettingsLocked = v
             self?.onThemeChanged?()
         }
+    }
+
+    @objc private func resetTapped(_ sender: UIButton) {
+        showAdjustment(for: sender)
     }
 
     // MARK: - Row builders
@@ -943,6 +966,12 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
 
     // MARK: - Lifecycle
 
+    override func sceneDidLoad() {
+        super.sceneDidLoad()
+        // Hide the legacy archive before the incoming push transition renders it.
+        children.forEach { $0.isHidden = true }
+    }
+
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         // Immediately hide all .sks content so it doesn't flash through the SpriteKit
@@ -1025,8 +1054,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
             guard let view = view,
                   let scene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
             scene.scaleMode = RoutingUtilityScene.sceneScaleMode
-            var fade = UIAccessibility.isReduceMotionEnabled
-            if #available(iOS 14.0, *) { fade = fade || UIAccessibility.prefersCrossFadeTransitions }
+            let fade = UIAccessibility.isReduceMotionEnabled || UIAccessibility.prefersCrossFadeTransitions
             let tx = SKTransition.fade(withDuration: fade ? 0.4 : 1.0)
             tx.pausesIncomingScene = false
             tx.pausesOutgoingScene = false

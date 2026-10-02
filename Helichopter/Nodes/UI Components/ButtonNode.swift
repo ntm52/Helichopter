@@ -50,11 +50,9 @@ class ButtonNode: SKSpriteNode {
 
     var buttonIdentifier: ButtonIdentifier!
 
-    var responder: ButtonNodeResponderType {
-        guard let responder = scene as? ButtonNodeResponderType else {
-            fatalError("ButtonNode may only be used within a `ButtonNodeResponderType` scene.")
-        }
-        return responder
+    /// Nil once the button leaves its scene (e.g. a closed pause menu).
+    var responder: ButtonNodeResponderType? {
+        scene as? ButtonNodeResponderType
     }
 
     /// Baseline blend factor applied by the active UI theme.
@@ -138,7 +136,7 @@ class ButtonNode: SKSpriteNode {
 
     func buttonTriggered() {
         if isUserInteractionEnabled || isPresentedInUIKit {
-            responder.buttonTriggered(button: self)
+            responder?.buttonTriggered(button: self)
         }
     }
 

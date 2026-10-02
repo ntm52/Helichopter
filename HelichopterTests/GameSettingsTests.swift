@@ -198,6 +198,51 @@ import Foundation
         #expect(reloaded.gapMin == 333)
     }
 
+    @Test func invalidNumbersAndEnumsRecoverSafely() {
+        let settings = gs
+        defaults.set(Double.infinity, forKey: "gs_controlScheme")
+        defaults.set(1e100, forKey: "gs_scanScheme")
+        defaults.set("invalid", forKey: "gs_gravity")
+        defaults.set(Double.nan, forKey: "gs_pipeSpawnInterval")
+        #expect(settings.controlScheme == .tapFlap)
+        #expect(settings.scanScheme == .autoScan)
+        #expect(settings.gravity == -5)
+        #expect(settings.pipeSpawnInterval == 3.5)
+        settings.hitboxFraction = -5
+        settings.scanDwellTime = 100
+        settings.pipeHeightVariance = .infinity
+        #expect(settings.hitboxFraction == 0.4)
+        #expect(settings.scanDwellTime == 10)
+        #expect(settings.pipeHeightVariance == 1)
+        defaults.set(600, forKey: "gs_gapMin")
+        defaults.set(100, forKey: "gs_gapMax")
+        #expect(settings.gapMin == 100)
+        #expect(settings.gapMax == 600)
+        #expect(GameSettings(defaults: defaults).scanDwellTime == 10)
+    }
+
+    @Test func resetPreservesScoresGuideAndUnrelatedStorage() {
+        let settings = gs
+        settings.applyChallenge()
+        settings.calmMode = true
+        settings.isSettingsLocked = true
+        settings.scanningEnabled = true
+        settings.selectedThemeID = "parchment"
+        defaults.set(42, for: .bestScore)
+        defaults.set(true, forKey: "onboarding_completed_v1")
+        defaults.set("keep", forKey: "unrelated")
+        settings.resetToDefaults()
+        #expect(settings.gapMin == 240)
+        #expect(settings.noFailMode)
+        #expect(!settings.calmMode && !settings.isSettingsLocked && !settings.scanningEnabled)
+        #expect(settings.selectedThemeID == "nightSky")
+        #expect(defaults.bool(for: .isMusicOn) && defaults.bool(for: .isSoundEffectsOn))
+        #expect(defaults.integer(for: .bestScore) == 42)
+        #expect(defaults.bool(forKey: "onboarding_completed_v1"))
+        #expect(defaults.string(forKey: "unrelated") == "keep")
+        #expect(GameSettings(defaults: defaults).gapMin == 240)
+    }
+
     // MARK: - Helpers
 
     private func restoreObject(_ value: Any?, forKey key: String) {

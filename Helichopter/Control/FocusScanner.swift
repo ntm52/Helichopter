@@ -66,6 +66,12 @@ final class FocusScanner {
         items.forEach { $0.isFocused = false }
     }
 
+    /// Read help without a scan timer interrupting it. The next switch press resumes scanning.
+    func readInstructions(_ text: String) {
+        stop()
+        speak(text)
+    }
+
     /// Primary switch: activate the focused button.
     /// If scanning hasn't started yet, this call starts it instead of activating.
     func primaryActivate() {

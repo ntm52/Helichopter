@@ -223,7 +223,7 @@ final class GameSettings {
 
     // MARK: - Storage
 
-    private enum Key: String {
+    private enum Key: String, CaseIterable {
         case gapMin             = "gs_gapMin"
         case gapMax             = "gs_gapMax"
         case pipeSpawnInterval  = "gs_pipeSpawnInterval"
@@ -251,24 +251,80 @@ final class GameSettings {
         case isSettingsLocked        = "gs_isSettingsLocked"
     }
 
+    /// Bounds include every shipped preset and visible slider range.
+    private func numericRule(for key: Key) -> (ClosedRange<Double>, Double)? {
+        switch key {
+        case .gapMin: return (100...600, 240)
+        case .gapMax: return (100...600, 380)
+        case .pipeSpawnInterval: return (1...15, 3.5)
+        case .pipeMoveDuration: return (2...20, 7)
+        case .scrollSpeed: return (0...200, 100)
+        case .gravity: return (-15 ... -0.5, -5)
+        case .flapStrength: return (1000...100000, 50000)
+        case .terminalVelocity: return (50...1000, 480)
+        case .hitboxFraction: return (0.4...1, 0.8)
+        case .pipeHeightVariance: return (0...1, 1)
+        case .controlScheme: return (0...3, 0)
+        case .scanScheme: return (0...1, 0)
+        case .scanDwellTime: return (0.5...10, 2)
+        case .backgroundScrollSpeed: return (0...200, 80)
+        case .invulnerabilityDuration: return (0.1...10, 1.5)
+        default: return nil
+        }
+    }
+
+    private func validated(_ value: Double, for key: Key) -> Double {
+        guard let (range, fallback) = numericRule(for: key) else { return value }
+        guard value.isFinite else { return fallback }
+        if key == .controlScheme || key == .scanScheme {
+            return range.contains(value) && value.rounded() == value ? value : fallback
+        }
+        return min(range.upperBound, max(range.lowerBound, value))
+    }
+
     private func read(_ key: Key) -> Double {
-        defaults.double(forKey: key.rawValue)
+        guard let value = defaults.object(forKey: key.rawValue) as? NSNumber else {
+            return numericRule(for: key)?.1 ?? 0
+        }
+        return validated(value.doubleValue, for: key)
     }
 
     private func write(_ value: Double, for key: Key) {
-        defaults.set(value, forKey: key.rawValue)
+        defaults.set(validated(value, for: key), forKey: key.rawValue)
+    }
+
+    /// Restore the original Standard configuration, preserving scores and guide completion.
+    func resetToDefaults() {
+        for key in Key.allCases where key != .hasMigrated {
+            defaults.removeObject(forKey: key.rawValue)
+        }
+        for key in ["gs_switchPauseHoldDuration", "gs_scanningEnabled",
+                    "gs_selectedPaletteID", "gs_selectedThemeID"] {
+            defaults.removeObject(forKey: key)
+        }
+        defaults.set(true, for: .isMusicOn)
+        defaults.set(true, for: .isSoundEffectsOn)
+        defaults.set(difficultyLevel: .medium)
+        applyStandard()
+        defaults.set(true, forKey: Key.hasMigrated.rawValue)
     }
 
     // MARK: - Parameters (each independently persisted)
 
     var gapMin: CGFloat {
-        get { CGFloat(read(.gapMin)) }
-        set { write(Double(newValue), for: .gapMin) }
+        get { CGFloat(min(read(.gapMin), read(.gapMax))) }
+        set {
+            write(Double(newValue), for: .gapMin)
+            if read(.gapMax) < read(.gapMin) { write(read(.gapMin), for: .gapMax) }
+        }
     }
 
     var gapMax: CGFloat {
-        get { CGFloat(read(.gapMax)) }
-        set { write(Double(newValue), for: .gapMax) }
+        get { CGFloat(max(read(.gapMin), read(.gapMax))) }
+        set {
+            write(Double(newValue), for: .gapMax)
+            if read(.gapMin) > read(.gapMax) { write(read(.gapMax), for: .gapMin) }
+        }
     }
 
     var pipeSpawnInterval: TimeInterval {

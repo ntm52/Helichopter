@@ -56,10 +56,7 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
 
         // Honour system motion preferences: push/slide transitions are suppressed when
         // Reduce Motion is enabled or the user has requested cross-fade transitions.
-        var reduceMotion = UIAccessibility.isReduceMotionEnabled
-        if #available(iOS 14.0, *) {
-            reduceMotion = reduceMotion || UIAccessibility.prefersCrossFadeTransitions
-        }
+        let reduceMotion = UIAccessibility.isReduceMotionEnabled || UIAccessibility.prefersCrossFadeTransitions
 
         switch identifier {
         case .play:

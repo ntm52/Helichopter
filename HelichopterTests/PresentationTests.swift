@@ -21,6 +21,105 @@ struct PresentationTests {
         Attachment.record(try #require(image.pngData()), named: name + ".png")
     }
 
+    private func archivedContentIsInvisible(_ root: SKNode) -> Bool {
+        var visible: [String] = []
+        func walk(_ node: SKNode) {
+            for child in node.children {
+                if let button = child as? ButtonNode, !(button.isPresentedInUIKit && button.alpha == 0) {
+                    visible.append("button \(button.name ?? "")")
+                }
+                if let label = child as? SKLabelNode, (label.fontColor?.cgColor.alpha ?? 0) > 0 {
+                    visible.append("label \(label.text ?? "")")
+                }
+                walk(child)
+            }
+        }
+        walk(root)
+        if !visible.isEmpty { Issue.record("Archived content would render: \(visible)") }
+        return visible.isEmpty
+    }
+
+    /// Before UIKit's first refresh (e.g. during a scene transition), archived menus,
+    /// labels, and the Pause sprite must already be hidden so two versions never overlap.
+    @Test func archivedScenesNeverRenderBeforeUIKitRefresh() throws {
+        for archive in ["TitleScene", "TitleScene iPad", "GameScene", "GameScene iPad"] {
+            let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            let scene = try #require(SKScene(fileNamed: archive))
+            #expect(archivedContentIsInvisible(scene))
+            view.presentScene(scene)
+            defer { view.presentScene(nil) }
+            #expect(archivedContentIsInvisible(scene))
+            if scene is TitleScene {
+                #expect(scene.childNode(withName: "Animated Helicopter")?.isHidden == true)
+            }
+            if let game = scene as? GameScene {
+                // Re-theming on every pause must not resurrect the archived pause menu.
+                for _ in 0..<2 {
+                    #expect(game.stateMachine.enter(PausedState.self))
+                    let overlay = try #require(game.sceneAdapter?.overlay)
+                    #expect(overlay.backgroundNode.color.cgColor.alpha == 0)
+                    #expect(overlay.contentNode.texture == nil)
+                    #expect(archivedContentIsInvisible(scene))
+                    #expect(game.stateMachine.enter(PlayingState.self))
+                }
+                #expect(game.stateMachine.enter(GameOverState.self))
+                #expect(archivedContentIsInvisible(scene))
+            }
+        }
+        let settings = try #require(SettingsScene(fileNamed: "SettingsScene"))
+        #expect(settings.children.allSatisfy { $0.isHidden })
+    }
+
+    @Test func menusAreCentredAndHUDStaysAtTop() throws {
+        let guideKey = "onboarding_completed_v1"
+        let guideCompleted = UserDefaults.standard.object(forKey: guideKey)
+        UserDefaults.standard.set(true, forKey: guideKey)
+        defer {
+            if let guideCompleted = guideCompleted { UserDefaults.standard.set(guideCompleted, forKey: guideKey) }
+            else { UserDefaults.standard.removeObject(forKey: guideKey) }
+        }
+        for size in [CGSize(width: 390, height: 844), CGSize(width: 1024, height: 1366)] {
+            let view = SKView(frame: CGRect(origin: .zero, size: size))
+            let overlay = SceneTextOverlay(frame: view.bounds)
+            view.addSubview(overlay)
+            func stackFrame() throws -> CGRect {
+                overlay.layoutIfNeeded()
+                overlay.layoutIfNeeded()
+                let stack = try #require(descendants(overlay, UIScrollView.self).first?.subviews.first { $0 is UIStackView })
+                return stack.convert(stack.bounds, to: overlay)
+            }
+            let title = try #require(TitleScene(fileNamed: "TitleScene"))
+            view.presentScene(title)
+            overlay.refresh(in: view)
+            let menu = try stackFrame()
+            #expect(abs(menu.midY - overlay.bounds.midY) < 30)
+            #expect(menu.minY > overlay.bounds.height * 0.15)
+
+            let game = try #require(GameScene(fileNamed: "GameScene"))
+            view.presentScene(game)
+            overlay.refresh(in: view)
+            #expect(try stackFrame().minY < 40)
+            #expect(descendants(overlay, UIButton.self).filter { $0.currentTitle == "Pause" }.count == 1)
+
+            let pause = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Pause" })
+            pause.sendActions(for: .touchUpInside)
+            #expect(game.stateMachine.currentState is PausedState)
+            let paused = try stackFrame()
+            #expect(abs(paused.midY - overlay.bounds.midY) < 30)
+            #expect(!descendants(overlay, UIButton.self).contains { $0.currentTitle == "Pause" })
+
+            // A repeated tap on a menu that already closed must be ignored, not crash.
+            let resume = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Resume" })
+            resume.sendActions(for: .touchUpInside)
+            #expect(game.stateMachine.currentState is PlayingState)
+            #expect(resume.superview == nil)
+            resume.sendActions(for: .touchUpInside)
+            #expect(game.stateMachine.currentState is PlayingState)
+            #expect(try stackFrame().minY < 40)
+            view.presentScene(nil)
+        }
+    }
+
     @Test func contrastAndPausePreferencesPersist() {
         let defaults = UserDefaults(suiteName: "PresentationTests.\(UUID())")!
         let settings = GameSettings(defaults: defaults)
@@ -44,10 +143,8 @@ struct PresentationTests {
         view.presentScene(scene)
         let overlay = SceneTextOverlay(frame: view.bounds)
         view.addSubview(overlay)
-        if #available(iOS 17.0, *) {
-            overlay.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-            overlay.updateTraitsIfNeeded()
-        }
+        overlay.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        overlay.updateTraitsIfNeeded()
         overlay.refresh(in: view)
         overlay.layoutIfNeeded()
         overlay.layoutIfNeeded()
