@@ -53,7 +53,7 @@ No login, purchase, server connection, or special account is needed. The first-r
 
 Helichopter includes scalable menu and Settings text, spoken switch-scanning labels, four flight control schemes, adjustable scanning and pause timing, VoiceOver flight actions and periodic gap guidance, contrasting object boundaries, colour palettes, Reduce Motion handling, and optional collision sounds/vibration.
 
-These features are implemented. Full sound-only play and physical assistive-device compatibility have not yet been established. Avoid claims that the game supports every disability or guarantees independent play for every player. Final App Store accessibility labels remain unselected pending assessment against [Apple's criteria](https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels/).
+These features are implemented. Full sound-only play and physical assistive-device compatibility have not yet been established. Avoid claims that the game supports every disability or guarantees independent play for every player. Accessibility Nutrition Labels (drafted in App Store Connect 2026-10-07, unpublished): Larger Text, Dark Interface, Differentiate Without Color Alone, Sufficient Contrast, Reduced Motion. VoiceOver and Voice Control are held until device testing. Criteria: [Apple's criteria](https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels/).
 
 ## Screenshot capture brief
 

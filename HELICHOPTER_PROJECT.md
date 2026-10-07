@@ -136,7 +136,7 @@ Theme application:
 Work top to bottom. **Owner** = needs Nathan's decision or account access; everything else can be done in code. Drafted copy lives in `Release/`; detailed rationale in [Audit/APP_STORE_READINESS.md](Audit/APP_STORE_READINESS.md).
 
 ### P0 — Code and repo hygiene (do first)
-- [ ] **Commit and push the outstanding work.** As of 2026-10-01 the onboarding guide, Settings reset, settings validation, pipe-geometry fix, presentation fixes, `Release/` docs, and `Tools/release_check.sh` are uncommitted. GitHub (`ntm52/Helichopter`) only has up to `3242563`.
+- [x] **Commit and push the outstanding work.** Done 2026-10-01; `master` matches `origin/master`.
 - [x] **Minimum iOS version: 17.6** (owner confirmed 2026-10-01). Dead `#available(iOS 14/17)` branches removed; README and readiness docs updated.
 - [x] **Renamed the Xcode scheme** `flappy-fly-bird` → `Helichopter` (2026-10-01) and removed its stale reference to the deleted `flappy-fly-birdTests` target.
 
@@ -147,21 +147,22 @@ Run `Tools/release_check.sh` (unsigned Release build) and `Tools/release_check.s
 - [x] ⚙ **No App Transport Security exceptions, no networking, no third-party SDKs, no permission prompts.** Keeps the App Privacy answer "Data Not Collected" valid. Re-run the script if any SDK, analytics, or crash reporter is ever added: each needs its own privacy manifest and signature, and the privacy answers must change.
 - [x] ⚙ **App Store icon** 1024 px opaque (no alpha).
 - [x] **Privacy policy and support pages** written in `docs/` (contact `helichopter.support@gmail.com`), to be served at https://ntm52.github.io/Helichopter/privacy.html and `/support.html`.
-- [ ] **Owner: turn on GitHub Pages** (repo Settings → Pages → Deploy from branch `master`, folder `/docs`), then open both URLs to confirm they load before entering them in App Store Connect.
+- [x] **Owner: turn on GitHub Pages** — done 2026-10-06; owner confirmed both URLs load.
 - [x] **In-app privacy policy** (Guideline 5.1.1(i)): Settings → About → Privacy Policy shows a summary plus "Open Full Policy in Safari". Switch-scannable, and reachable while Settings is locked. If the app is placed in the **Kids** category, the Safari link must sit behind a parental gate (Guideline 1.3).
-- [ ] **App Privacy questionnaire** in App Store Connect: "Data Not Collected". Tracking: No.
+- [x] **App Privacy questionnaire** in App Store Connect: "Data Not Collected", privacy URL set (checked 2026-10-06).
 - [ ] ⚙ **Distribution signing:** archive with an Apple Distribution certificate. The script fails if `get-task-allow` is present (development-signed build). Bundle ID `com.nathanmayo.helichopter`, team `9HJ5466NL8`. Owner: confirm the membership and certificates are current.
 - [ ] **Current SDK:** uploads must be built with the current required Xcode/iOS SDK (Xcode 26 / iOS 26 SDK since April 2026). The local toolchain already meets this; recheck Apple's [upcoming requirements](https://developer.apple.com/news/upcoming-requirements/) at upload time.
 - [x] **Content rights (Guideline 5.2).** Artwork is owner-made (by hand or with Codex), the sound effects were made in GarageBand, and the music was replaced with a CC0 Freesound track (2026-10-01). Details in `Release/ASSET_RIGHTS.md`. Optional: download the lossless original from Freesound (login required) to replace the preview-quality encode.
 - [x] **Acknowledgements:** Settings → About → Acknowledgements shows the BSD 3-Clause notice (required in binary distributions; it doesn't restrict selling or in-app purchases) and music credits.
 
 ### P0 — App Store Connect setup (Owner)
-- [ ] **Age rating:** complete Apple's current age-rating questionnaire (the 2025 system with 4+/9+/13+/16+/18+). No violence beyond cartoon collisions, no user-generated content, no ads, no purchases. Answer from the actual content; don't pre-pick a rating.
-- [ ] **EU Digital Services Act trader status:** declare trader or non-trader in App Store Connect. Distribution in the EU is blocked without it. Traders must publish contact details.
-- [ ] **Category:** Games → Casual (proposed). Choose **Kids** only if you accept its extra rules (parental gate on external links, stricter review).
-- [ ] **Listing:** paste in `Release/APP_STORE_COPY.md`. Keep accessibility claims specific (Guideline 2.3: accurate metadata). Add App Review contact and the drafted review notes.
-- [ ] **Screenshots:** capture real release-candidate screens on the required iPhone and iPad sizes.
-- [ ] **Accessibility Nutrition Labels:** select only features verified on device (VoiceOver, Larger Text, etc.).
+- [x] **Age rating:** 4+ already set in App Store Connect (checked 2026-10-06; re-review if Apple's new social-media questions prompt it).
+  - Original note: complete Apple's current age-rating questionnaire (the 2025 system with 4+/9+/13+/16+/18+). No violence beyond cartoon collisions, no user-generated content, no ads, no purchases. Answer from the actual content; don't pre-pick a rating.
+- [x] **EU Digital Services Act trader status:** declared non-trader (free app, no monetization). Original note: declare trader or non-trader in App Store Connect. Distribution in the EU is blocked without it. Traders must publish contact details.
+- [x] **Category:** Games → Casual (set). Choose **Kids** only if you accept its extra rules (parental gate on external links, stricter review).
+- [x] **Listing:** subtitle, promo text, description, What's New, keywords, copyright 2026, and review notes entered and saved 2026-10-06. Keep accessibility claims specific (Guideline 2.3: accurate metadata). Add App Review contact and the drafted review notes.
+- [x] **Screenshots:** captured 2026-10-07 from the Release build on iPhone 18 Pro Max (6.9", 1320×2868) and iPad Pro 13" (2064×2752), in `Release/Screenshots/`. Uploaded 2026-10-07. App Store Connect now requires 6.1"/6.3" (1206×2622, scaled from the 6.9" captures) and also has 6.9" and iPad 13". Old v1.3 screenshots were removed from the 2.0 slots (they remain in the Asset Library).
+- [ ] **Accessibility Nutrition Labels:** simulator-verified 2026-10-07 and recommended: Larger Text, Dark Interface, Sufficient Contrast, Reduced Motion, Differentiate Without Color Alone. **Hold VoiceOver and Voice Control** until tested on a device (the simulator has no VoiceOver). Captions/Audio Descriptions: not applicable (no video). Evidence in the 2026-10-07 Progress Log entry. **Saved as unpublished drafts** for iPhone and iPad in App Store Connect → App Accessibility. Publish them once 2.0 is live, since publishing now would label the live v1.3.
 - [ ] **Version:** 2.0, build number unique and increasing for each upload. Tag the release in git after approval.
 
 ### P1 — Before launch (quality)
@@ -345,3 +346,15 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Added the "New high score!" banner and VoiceOver announcement. Best scores now save as soon as they are beaten (previously lost in No-Fail runs that ended via Home).
 - Made scene scaling window-shape aware for iPadOS resizable windows; added `WindowSizeTests`.
 - Each item was committed and pushed separately. **78 tests pass.**
+
+### 2026-10-07 — Store screenshots, accessibility label checks, release bug fixes (Claude Code)
+- **Fixed Auto Hover** (owner-confirmed broken): each nudge applied a quarter flap impulse with no speed cap, reaching ~56,000 pt/s in a 1,434-unit scene, so the helicopter slammed into the floor. A nudge now sets ±`terminalVelocity` (≈100 units of travel at Standard), and damping settles it. Test: `autoHoverNudgesAreBoundedAndGravityStaysOff`.
+- **Fixed missing iPad title:** `TitleScene iPad.sks` nests the "Helichopter" label inside the Play button, so the UIKit overlay skipped it as button text. `TitleScene.sceneDidLoad` now moves it to the scene. Test: `titleTextShowsOnPhoneAndPad` (fails without the fix).
+- **Fixed bare band in the scrolling background:** the scroller used exactly 2 tiles (768 units wide on iPad), leaving a flat navy band over up to a quarter of the screen as it scrolled. iPhone was affected at the edges too. The tile count now covers the scene width. Test: `scrollingBackgroundCoversPhoneAndPadScenes` (failed on both devices without the fix).
+- **Fixed Parchment contrast:** preset buttons measured 1.7–2.0:1 (white text on a pale tint), and detail and segment text 3.4–3.5:1. They now use the theme text colour and 75% opacity (≥4.9:1). Test: `settingsTextMeetsAAInEveryTheme` checks every Settings label and segment in all themes against the colours actually behind it.
+- HUD "Best" label is now centred like the score.
+- **Accessibility checks (simulator):** Larger Text at AX5. Home, guide, Settings, and HUD all scale; segmented rows scroll sideways, and switch users get a choice list. Reduce Motion: the home rotor and starfield go fully static (47 vs 15,172 pixels changed per second), and pipes still move. Contrast: all themes ≥4.5:1 after the fix. VoiceOver/Voice Control still need a physical device.
+- Screenshots in `Release/Screenshots/` (6 iPhone, 5 iPad). Gameplay shots used Auto Hover with No-Fail on. **82 tests pass** (`-parallel-testing-enabled NO`; a parallel-clone run hung once).
+- App Store Connect: screenshots uploaded (6.3" required, 6.9", iPad 13"); old v1.3 shots removed from 2.0; accessibility labels saved as drafts, not published.
+- Still open: publish the accessibility drafts after 2.0 releases; on-device VoiceOver test; distribution archive **including these fixes**.
+
