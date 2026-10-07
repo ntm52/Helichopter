@@ -86,6 +86,9 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
 
     // Control-scheme state — set by switch/touch handlers, read by update loop
     private(set) var isHoveringHeld = false
+    /// Auto Hover nudge speed; with per-frame damping each nudge moves about 100 scene units.
+    static var autoHoverNudgeSpeed: CGFloat { GameSettings.shared.terminalVelocity }
+
     private(set) var isTwoSwitchUpHeld = false
     private(set) var isTwoSwitchDownHeld = false
     // Cached after physics body creation; avoids per-frame optional unwrapping
@@ -267,9 +270,11 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
             }
 
         case .autoHover:
-            // Nudge up on primary, nudge down on secondary
-            let nudge: CGFloat = GameSettings.shared.flapStrength * 0.25
-            physicsBody?.applyImpulse(CGVector(dx: 0, dy: primary ? nudge : -nudge))
+            // Nudge up on primary, nudge down on secondary. Set a bounded speed rather than
+            // applying an impulse: a quarter flap impulse reached ~56,000 pt/s and flung the
+            // helicopter into the floor. Damping then glides it ~0.2 s × speed and stops.
+            physicsBody?.velocity.dy = primary ? HelicopterNode.autoHoverNudgeSpeed
+                                               : -HelicopterNode.autoHoverNudgeSpeed
             impact.impactOccurred()
 
         case .twoSwitchUD:

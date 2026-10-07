@@ -7,6 +7,11 @@ class TitleScene: RoutingUtilityScene {
 
     override func sceneDidLoad() {
         super.sceneDidLoad()
+        // The iPad archive nests the title label inside the Play button, where the UIKit
+        // overlay treats it as button text and skips it, so iPad showed no title.
+        if let title = childNode(withName: "//Title") as? SKLabelNode, title.parent !== self {
+            title.move(toParent: self)
+        }
         // Hide the archived menu before any transition can render it.
         suppressArchivedPresentation()
     }

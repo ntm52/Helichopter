@@ -190,6 +190,7 @@ final class SceneTextOverlay: UIView {
                 best.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
                 best.adjustsFontForContentSizeCategory = true
                 best.numberOfLines = 0
+                best.textAlignment = .center
                 best.textColor = theme.titleTextColor
                 best.backgroundColor = theme.sceneBackgroundColor
                 hud.addArrangedSubview(best)

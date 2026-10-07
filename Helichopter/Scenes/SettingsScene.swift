@@ -350,7 +350,7 @@ final class SettingsOverlayView: UIView {
         bg     = theme.sceneBackgroundColor.withAlphaComponent(0.97)
         accent = theme.titleTextColor
         text   = light ? theme.titleTextColor : .white
-        sub    = light ? theme.titleTextColor.withAlphaComponent(0.6) : UIColor(white: 0.65, alpha: 1.0)
+        sub    = light ? theme.titleTextColor.withAlphaComponent(0.75) : UIColor(white: 0.65, alpha: 1.0)
         // For dark themes: nudge the row bg slightly brighter while preserving hue.
         // For light themes: shade it slightly darker so rows read off the panel bg.
         rowBg  = light
@@ -377,7 +377,7 @@ final class SettingsOverlayView: UIView {
         bg     = theme.sceneBackgroundColor.withAlphaComponent(0.97)
         accent = theme.titleTextColor
         text   = light ? theme.titleTextColor : .white
-        sub    = light ? theme.titleTextColor.withAlphaComponent(0.6) : UIColor(white: 0.65, alpha: 1.0)
+        sub    = light ? theme.titleTextColor.withAlphaComponent(0.75) : UIColor(white: 0.65, alpha: 1.0)
         rowBg  = light
             ? UIColor(red: r * 0.93, green: g * 0.93, blue: b * 0.93, alpha: 1.0)
             : UIColor(red: min(1, r + 0.08), green: min(1, g + 0.08), blue: min(1, b + 0.08), alpha: 1.0)
@@ -666,7 +666,8 @@ final class SettingsOverlayView: UIView {
             btn.titleLabel?.adjustsFontForContentSizeCategory = true
             btn.titleLabel?.numberOfLines = 0
             btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-            btn.setTitleColor(.white, for: .normal)
+            // Theme text, not white: white on the pale Parchment tint measured under 2:1.
+            btn.setTitleColor(text, for: .normal)
             btn.backgroundColor    = color.withAlphaComponent(0.30)
             btn.layer.cornerRadius = 10
             btn.layer.borderWidth  = 1.5

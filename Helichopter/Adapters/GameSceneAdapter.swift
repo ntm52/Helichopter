@@ -222,7 +222,8 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         infiniteBackgroundNode = InfiniteSpriteScrollNode(
             fileName: backgroundResourceName,
             scaleFactor: CGPoint(x: scaleFactor, y: scaleFactor),
-            speed: GameSettings.shared.backgroundScrollSpeed
+            speed: GameSettings.shared.backgroundScrollSpeed,
+            coverWidth: scene.size.width
         )
         infiniteBackgroundNode!.zPosition = 0
 

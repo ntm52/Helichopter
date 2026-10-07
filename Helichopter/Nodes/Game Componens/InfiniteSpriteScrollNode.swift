@@ -15,14 +15,16 @@ class InfiniteSpriteScrollNode: SKNode {
     var background: SKNode
     var backgroundSpeed: TimeInterval
     
-    let maxNumOfTiles = 2
+    /// Enough tiles to span `coverWidth` plus one recycling off the left edge.
+    let maxNumOfTiles: Int
     
     internal var delta = TimeInterval(0)
     internal var lastUpdateTime = TimeInterval(0)
     
     // MARK: - Initailziers
     
-    init(fileName: String, scaleFactor scale: CGPoint = CGPoint(x: 1.0, y: 1.0), speed: TimeInterval = 100) {
+    init(fileName: String, scaleFactor scale: CGPoint = CGPoint(x: 1.0, y: 1.0), speed: TimeInterval = 100,
+         coverWidth: CGFloat = 0) {
         self.backgroundSpeed = speed
         
         let yShift: CGFloat = 0.0  // start flush with the scene bottom (anchor at origin)
@@ -31,6 +33,9 @@ class InfiniteSpriteScrollNode: SKNode {
         background = SKNode()
         let texture = SKTexture(imageNamed: fileName)
         let width = texture.size().width
+        // Two tiles left a bare band on wide (iPad) scenes once scrolling began.
+        let tileWidth = width * scale.x
+        maxNumOfTiles = tileWidth > 0 ? max(2, Int((coverWidth / tileWidth).rounded(.up)) + 1) : 2
         
         
         for x in 0..<maxNumOfTiles {

@@ -306,6 +306,83 @@ struct GameLifecycleTests {
         }
     }
 
+    @Test func titleTextShowsOnPhoneAndPad() throws {
+        let guideKey = SceneTextOverlay.guideCompletedKey
+        let guideCompleted = UserDefaults.standard.object(forKey: guideKey)
+        UserDefaults.standard.set(true, forKey: guideKey)
+        defer {
+            if let guideCompleted = guideCompleted { UserDefaults.standard.set(guideCompleted, forKey: guideKey) }
+            else { UserDefaults.standard.removeObject(forKey: guideKey) }
+        }
+        try withSettings {
+            for suffix in ["", " iPad"] {
+                let scene = try #require(TitleScene(fileNamed: "TitleScene" + suffix))
+                let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+                view.presentScene(scene)
+                defer { view.presentScene(nil) }
+                let overlay = SceneTextOverlay(frame: view.bounds)
+                view.addSubview(overlay)
+                overlay.refresh(in: view)
+                var labels: [UILabel] = []
+                var pending: [UIView] = [overlay]
+                while let next = pending.popLast() {
+                    if let label = next as? UILabel { labels.append(label) }
+                    pending += next.subviews
+                }
+                #expect(labels.contains { $0.text == "Helichopter" }, "TitleScene\(suffix)")
+            }
+        }
+    }
+
+    @Test func scrollingBackgroundCoversPhoneAndPadScenes() throws {
+        for suffix in ["", " iPad"] {
+            let scene = try #require(GameScene(fileNamed: "GameScene" + suffix))
+            let scroller = try #require(scene.sceneAdapter?.infiniteBackgroundNode)
+            scroller.backgroundSpeed = 97
+            scroller.update(1)
+            for frame in 1...600 {
+                scroller.update(1 + Double(frame) / 30)
+                let frames = scroller.tiles.map { $0.calculateAccumulatedFrame() }
+                    .map { scroller.background.convert($0.origin, to: scroller).x ... scroller.background.convert($0.origin, to: scroller).x + $0.width }
+                // Every visible column of the scene lies under some tile.
+                var covered: CGFloat = 0
+                for span in frames.sorted(by: { $0.lowerBound < $1.lowerBound }) where span.lowerBound <= covered + 1 {
+                    covered = max(covered, span.upperBound)
+                }
+                #expect(covered >= scene.size.width, "GameScene\(suffix) frame \(frame)")
+                if covered < scene.size.width { break }
+            }
+        }
+    }
+
+    @Test func autoHoverNudgesAreBoundedAndGravityStaysOff() throws {
+        try withSettings {
+            GameSettings.shared.controlScheme = .autoHover
+            let scene = try #require(GameScene(fileNamed: "GameScene"))
+            let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+            heli.switchPrimaryBegan()
+            heli.switchPrimaryEnded()
+            #expect(!heli.isAffectedByGravity)
+            #expect(heli.physicsBody?.velocity.dy == GameSettings.shared.terminalVelocity)
+            // Repeated nudges replace the speed rather than stacking it.
+            heli.switchPrimaryBegan()
+            heli.switchPrimaryEnded()
+            #expect(heli.physicsBody?.velocity.dy == GameSettings.shared.terminalVelocity)
+            heli.switchSecondaryBegan()
+            heli.switchSecondaryEnded()
+            #expect(heli.physicsBody?.velocity.dy == -GameSettings.shared.terminalVelocity)
+            // Each nudge glides a short, finite distance and settles.
+            heli.update(1)
+            var travelled: CGFloat = 0
+            for frame in 1...120 {
+                heli.update(1 + Double(frame) / 60)
+                travelled += abs(heli.physicsBody?.velocity.dy ?? 0) / 60
+            }
+            #expect(heli.physicsBody?.velocity.dy == 0)
+            #expect(travelled > 40 && travelled < scene.size.height / 5)
+        }
+    }
+
     @Test func pausePreservesGravityAndClearsHeldInput() throws {
         try withSettings {
             GameSettings.shared.controlScheme = .holdHover

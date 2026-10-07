@@ -39,4 +39,50 @@ private func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
         }
     }
 
+
+    // Every Settings label and segment title meets WCAG AA (4.5:1) against the colours
+    // actually behind it, in every theme. Parchment once measured under 2:1 on presets.
+    @MainActor @Test func settingsTextMeetsAAInEveryTheme() {
+        func composite(_ fg: UIColor, over bg: UIColor) -> UIColor {
+            var fr: CGFloat = 0, fgG: CGFloat = 0, fb: CGFloat = 0, fa: CGFloat = 0
+            var br: CGFloat = 0, bgG: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+            fg.getRed(&fr, green: &fgG, blue: &fb, alpha: &fa)
+            bg.getRed(&br, green: &bgG, blue: &bb, alpha: &ba)
+            return UIColor(red: fr * fa + br * (1 - fa), green: fgG * fa + bgG * (1 - fa),
+                           blue: fb * fa + bb * (1 - fa), alpha: 1)
+        }
+        for theme in GameSettings.allThemes {
+            let panel = SettingsOverlayView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), theme: theme)
+            panel.layoutIfNeeded()
+            func background(of view: UIView) -> UIColor {
+                var chain: [UIView] = []
+                var next: UIView? = view
+                while let item = next { chain.append(item); next = item.superview }
+                return chain.reversed().reduce(theme.sceneBackgroundColor) { base, item in
+                    item.backgroundColor.map { composite($0, over: base) } ?? base
+                }
+            }
+            var checked = 0
+            var pending: [UIView] = [panel]
+            while let view = pending.popLast() {
+                if let seg = view as? UISegmentedControl {
+                    let tray = background(of: seg)
+                    let normal = seg.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor
+                    let segmentRatio = normal.map { contrastRatio(composite($0, over: tray), tray) } ?? 0
+                    #expect(segmentRatio >= 4.5, Comment(rawValue: "\(theme.name) segment \(segmentRatio)"))
+                    checked += 1
+                    continue
+                }
+                if let label = view as? UILabel, !label.isHidden, !(label.text ?? "").isEmpty {
+                    let behind = background(of: label.superview ?? label)
+                    let ratio = contrastRatio(composite(label.textColor, over: behind), behind)
+                    let text = label.text ?? ""
+                    #expect(ratio >= 4.5, Comment(rawValue: "\(theme.name): '\(text)' \(ratio)"))
+                    checked += 1
+                }
+                pending += view.subviews
+            }
+            #expect(checked > 20)
+        }
+    }
 }
