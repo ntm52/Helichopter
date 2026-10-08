@@ -1,5 +1,7 @@
 # Helichopter: app overview and release preparation
 
+> **Historical document.** Written before version 2.0 shipped (October 2026) and kept for background. Current state: [HELICHOPTER_PROJECT.md](../HELICHOPTER_PROJECT.md). Open work: [Plans/ROADMAP.md](../Plans/ROADMAP.md).
+
 Updated September 8, 2026. This checklist intentionally excludes testing activities.
 
 ## What the app contains

@@ -1,0 +1,122 @@
+# Plan 01 — One drawing layer per screen (remove the "double page" effect)
+
+**Status:** Not started. Written 2026-10-08.
+**Goal:** Every screen change looks like one page replacing another. No screen ever shows two menus, two backgrounds, or a menu sitting still while the page behind it slides.
+**Order:** Do this before the cosmetics store ([Plan 02](02_COSMETICS_AND_STORE.md)), so the Hangar/Store screen is built on the new pattern instead of adding another screen with the same problem.
+
+---
+
+## 1. What the player sees
+
+When moving between Home and Settings (and, to a lesser degree, Home → Play and Settings → Home), two pages are visible at once for about a second. One page appears instantly while another slides or fades underneath it.
+
+## 2. Why it happens
+
+Each screen is drawn by two separate systems that are not synchronised.
+
+| Layer | What it draws | How it changes screens |
+|---|---|---|
+| SpriteKit (`SKView`) | Scene background, starfield, gameplay | `SKTransition.push` (1.0 s) or `.fade` (0.4–1.0 s) in `RoutingUtilityScene.buttonTriggered` and `SettingsScene.navigateBack` |
+| UIKit (`SceneTextOverlay`, `SettingsOverlayView`) | Every visible menu, button, label, and the Settings panel | Swaps instantly when `SKView.scene` changes, which happens at the **start** of a SpriteKit transition |
+
+So, for example:
+
+- **Home → Settings:** `SettingsScene.didMove` adds the UIKit Settings panel at once, while the SpriteKit layer is still pushing the Home background downward behind it.
+- **Settings → Home:** the panel fades out in 0.15 s, then a 1-second SpriteKit fade starts. The UIKit Home menu appears immediately on top of a background that is still fading from the Settings colour.
+- **Home → Play:** the HUD appears at once over a 1-second fade from the title scene.
+
+The 50 ms polling timer in `GameViewController` adds jitter: the UIKit layer can be up to one tick behind SpriteKit.
+
+This is the same root cause as the earlier "two versions of a screen" and "two Pause buttons" bugs (fixed 2026-10-01 by hiding archived nodes). The `.sks` menus still exist as invisible models, so any new code path that forgets `suppressArchivedPresentation()` can bring those bugs back.
+
+**Step 0 of the work is to confirm this on a device:** record the screen (Control Centre → Screen Recording) during Home → Settings → Home → Play → Pause → Home on an iPhone and an iPad, and step through the frames. Save the findings in the progress log.
+
+---
+
+## 3. The fix, in two stages
+
+### Stage A — Quick fix: move both layers together (small, shippable as 2.0.1)
+
+Replace the SpriteKit transitions with one UIKit transition of the whole screen.
+
+1. Add a single helper on `GameViewController`, for example `present(_ scene: SKScene, style: ScreenTransition)`, and route **every** scene change through it (`RoutingUtilityScene.buttonTriggered`, `SettingsScene.navigateBack`, `GameScene` Home). No other code calls `presentScene`.
+2. The helper:
+   - takes a snapshot image of the current screen (SpriteKit and UIKit together) and places it on top;
+   - disables input and stops all scanners for the duration;
+   - presents the new scene **without** an `SKTransition`, then refreshes the UIKit overlay synchronously (no waiting for the timer);
+   - animates the snapshot away (cross-fade, or a slide if you want to keep the push feel), then removes it and re-enables input;
+   - posts `UIAccessibility.screenChanged` once, after the animation.
+3. Transition style: cross-fade of about 0.3 s by default. With Reduce Motion or Prefer Cross-Fade Transitions, use a short cross-fade with no movement. Remove the `lastPushTransitionDirection` logic.
+4. **Risk to check first:** snapshots of Metal-backed `SKView`s can come out blank with `snapshotView(afterScreenUpdates:)`. If so, build the image from `SKView.texture(from: scene)` plus `drawHierarchy(in:afterScreenUpdates:)` of the UIKit overlay. Test on a real device, not only the simulator.
+5. Tests:
+   - A test that fails if any code other than the helper calls `presentScene` (scan the source, or inject a spy `SKView`).
+   - A test that, immediately after each navigation, exactly one menu is visible and the overlay's host scene equals `SKView.scene` (no stale tick).
+   - Input during the transition is ignored (guards the old double-tap crash class).
+   - Reduce Motion selects the no-movement style.
+
+Stage A removes the visible problem with little risk. It does not remove the hidden `.sks` menus or the timer, so the bug class remains for future screens.
+
+### Stage B — The real fix: UIKit menus, SpriteKit only for gameplay (several sessions)
+
+Make each menu screen a plain UIKit view controller. SpriteKit is used only for gameplay and, optionally, an animated backdrop.
+
+**Target structure**
+
+```
+RootViewController (owns navigation and transitions)
+├── BackdropView          one shared SKView with a light "sky" scene (or a static image under Reduce Motion)
+├── HomeViewController    title, mascot, Play / Settings / How to Play / Hangar
+├── GuideViewController   first-run guide (moved out of SceneTextOverlay)
+├── SettingsViewController hosts the existing SettingsOverlayView, nearly unchanged
+├── HangarViewController  added by Plan 02
+└── GameViewController    SKView with GameScene + UIKit HUD, Pause, and Round Over views
+```
+
+**Rules for the new structure**
+
+- Menu buttons are defined in Swift (a `MenuAction` enum), not read from archives.
+- UIKit buttons join the scanner through the existing `FocusScannable` protocol, as Settings already does.
+- `GameScene` reports changes to its owner through a small delegate (`scoreDidChange`, `bestScoreDidChange`, `stateDidChange(playing/paused/roundOver)`, `flightHintDidChange`, `newHighScore`). The HUD updates only on those calls. **The 50 ms timer is deleted.**
+- Screen transitions are UIKit view-controller transitions: the whole screen moves as one unit.
+- One place builds themed colours and fonts for UIKit (a small `Theme` helper reused by every screen), replacing `SKNode+Theme`.
+
+**Migration steps (each step keeps the app working and the tests green; commit after each)**
+
+1. **Event-driven HUD.** Add the `GameScene` delegate and make the HUD use it. Keep the timer temporarily, then delete it once tests show nothing depends on it.
+2. **Pause and Round Over in UIKit.** Build both menus in Swift (Resume, Retry, Home; "Round Over" / "Well Done!" text, scores). Delete `SceneOverlay`, `PauseScene*.sks`, and `FailedScene*.sks`. Keep the existing pause background options (dim or solid) and hold-to-pause behaviour.
+3. **Home screen.** Create `HomeViewController` with the mascot (already a `UIImageView`) and the backdrop. Move the first-run guide into `GuideViewController`. Delete `TitleScene`, `TitleScene*.sks`, and the hidden placeholder mascot.
+4. **Settings.** Move `SettingsOverlayView` into `SettingsViewController`. Delete `SettingsScene`, `SettingsScene*.sks`, `ToggleButtonNode`, and `TriggleButtonNode`. While here, split `SettingsScene.swift` (about 1,160 lines) into the panel, rows, adjustment panel, and `AppLinks`.
+5. **Clean-up.** Delete `RoutingUtilityScene`, `ButtonAccessibilityElement`, `suppressArchivedPresentation()`, `SKNode+Theme`, unused `ButtonNode` code, and the iPad `.sks` copies that are no longer needed. `GameScene.sks` stays for gameplay nodes. Update `CLAUDE.md`, `HELICHOPTER_PROJECT.md`, and the README.
+6. **Narrow iPad windows** (optional): with menus in UIKit, layout adapts naturally. Revisit the gameplay scale mode so narrow windows get a larger game instead of wide bars.
+
+**Things that must not change**
+
+- Saved keys in `UserDefaults` (`gs_*`, best score, `onboarding_completed_v1`). Players keep their settings and scores.
+- Scanner behaviour: timed and two-switch modes, focus order, hold-to-pause, release-before-select, focus restoration after rebuilds.
+- VoiceOver: labels, hints, flight element, `screenChanged` on every screen, modal Settings.
+- Dynamic Type at every size, Reduce Motion, Calm Mode, the caregiver lock.
+
+**Testing**
+
+- Rewrite `PresentationTests` and the archive-loading parts of `GameLifecycleTests`, `WindowSizeTests`, `DynamicTypeTests`, and `OnboardingTests` to load view controllers instead of `.sks` files. Expect this to be the largest part of the work: about 40 test references to archives exist today.
+- New tests: one visible menu per screen; no `presentScene` outside gameplay; HUD updates without any timer; the scanner reaches every control on every screen; the locked-Settings item list is unchanged.
+- Manual: screen-record every transition on iPhone and iPad (portrait, landscape, resized window) with Reduce Motion on and off, with VoiceOver, and with a keyboard switch.
+
+---
+
+## 4. Risks
+
+| Risk | Mitigation |
+|---|---|
+| Test suite is tightly coupled to archives | Migrate one screen per step and rewrite its tests in the same commit. |
+| Switch or VoiceOver regressions | Keep `FocusScanner` unchanged; reuse the Settings scanning pattern that is already tested. Manual switch session after each step. |
+| Snapshot blank on Metal (Stage A) | Use `SKView.texture(from:)` fallback; verify on a device. |
+| Players lose settings | Do not rename any key; add a test that loads a saved 2.0 settings set. |
+| Large change, long branch | Ship Stage A first. Do Stage B steps as separate commits; each can ship. |
+
+## 5. Done when
+
+- [ ] Device screen recordings show one page at a time for every transition.
+- [ ] No `.sks` menu archives, `SceneOverlay`, `RoutingUtilityScene`, or 50 ms timer remain.
+- [ ] All tests pass; new presentation tests cover each screen.
+- [ ] Docs updated, and the "UIKit draws everything visible" trap removed from `CLAUDE.md` because it no longer applies.

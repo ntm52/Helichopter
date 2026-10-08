@@ -6,7 +6,7 @@ An iOS side-scrolling game built with Swift and SpriteKit, designed from the gro
 
 Helichopter is a Flappy Bird–style game where you pilot a helicopter through an obstacle course of pipes. The core design goal is genuine accessibility: the game slows down for cognitive load, pipe gaps widen, colors are designed for contrast and colorblind safety, and the entire app is intended to be navigable with a single switch.
 
-This project is an active remodel of the original 2021 build, bringing it to current iOS standards and finishing the accessibility work that was started.
+Version 2.0 is a remodel of the original 2021 build, bringing it to current iOS standards and finishing the accessibility work that was started.
 
 ## Accessibility goals
 
@@ -63,7 +63,7 @@ in Settings preserves the selected setting and an open adjustment panel.
 
 ## Status
 
-Active development; not yet ready for App Store submission. See [app overview and release preparation](Audit/APP_STORE_READINESS.md) for non-testing launch work. See [the September 5 audit](Audit/REVIEW_2026-09-05.md) for tested fixes and remaining release blockers. See `HELICHOPTER_PROJECT.md` for the full phase-by-phase plan and progress log.
+Version 2.0 is available on the App Store. See [HELICHOPTER_PROJECT.md](HELICHOPTER_PROJECT.md) for the architecture and current state, [Plans/ROADMAP.md](Plans/ROADMAP.md) for planned work, and [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md) for history.
 
 ## Helicopter artwork and animation
 

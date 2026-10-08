@@ -1,6 +1,8 @@
 # App Store submission copy
 
-Prepared September 8, 2026 for version 2.0. These are local drafts; no App Store Connect fields have been submitted.
+Version 2.0 listing as entered in App Store Connect (October 2026). Edit this file first, then copy changes into App Store Connect.
+
+> **Before in-app purchases ship:** the description and review notes below say there are no purchases. Update them, the age-rating answers, and the DSA trader status as described in [Plans/02_COSMETICS_AND_STORE.md](../Plans/02_COSMETICS_AND_STORE.md).
 
 ## Listing
 
@@ -53,11 +55,11 @@ No login, purchase, server connection, or special account is needed. The first-r
 
 Helichopter includes scalable menu and Settings text, spoken switch-scanning labels, four flight control schemes, adjustable scanning and pause timing, VoiceOver flight actions and periodic gap guidance, contrasting object boundaries, colour palettes, Reduce Motion handling, and optional collision sounds/vibration.
 
-These features are implemented. Full sound-only play and physical assistive-device compatibility have not yet been established. Avoid claims that the game supports every disability or guarantees independent play for every player. Accessibility Nutrition Labels (drafted in App Store Connect 2026-10-07, unpublished): Larger Text, Dark Interface, Differentiate Without Color Alone, Sufficient Contrast, Reduced Motion. VoiceOver and Voice Control are held until device testing. Criteria: [Apple's criteria](https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels/).
+These features are implemented. Full sound-only play and physical assistive-device compatibility have not yet been established. Avoid claims that the game supports every disability or guarantees independent play for every player. Accessibility Nutrition Labels (published in App Store Connect 2026-10-08): Larger Text, Dark Interface, Differentiate Without Color Alone, Sufficient Contrast, Reduced Motion. VoiceOver and Voice Control are held until device testing. Criteria: [Apple's criteria](https://developer.apple.com/help/app-store-connect/manage-app-accessibility/overview-of-accessibility-nutrition-labels/).
 
 ## Screenshot capture brief
 
-Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. Final screenshots remain outstanding.
+Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. Final 2.0 screenshots are in `Release/Screenshots/`.
 
 ## Account fields still needed
 
