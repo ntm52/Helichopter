@@ -1,6 +1,6 @@
 # Plan 01 — One drawing layer per screen (remove the "double page" effect)
 
-**Status:** Stage A implemented 2026-10-08 for 2.0.1 (build 3); device recording still to do. Stage B not started. Written 2026-10-08.
+**Status:** Stage A code merged on `master` 2026-10-08 but **will not ship on its own** (owner decision: no 2.0.1 hotfix). Stage B is next and ships as **2.1** only when complete. Written 2026-10-08.
 **Goal:** Every screen change looks like one page replacing another. No screen ever shows two menus, two backgrounds, or a menu sitting still while the page behind it slides.
 **Order:** Do this before the cosmetics store ([Plan 02](02_COSMETICS_AND_STORE.md)), so the Hangar/Store screen is built on the new pattern instead of adding another screen with the same problem.
 
@@ -35,9 +35,9 @@ This is the same root cause as the earlier "two versions of a screen" and "two P
 
 ## 3. The fix, in two stages
 
-### Stage A — Quick fix: move both layers together (small, shippable as 2.0.1)
+### Stage A — Quick fix: move both layers together (done; not released separately)
 
-> **Done 2026-10-08.** `GameViewController.present(_:transition:)`, `ScreenTransition`, `ScreenChangeAnnouncer`, and `FocusScanner.suspend()/resume()`. Snapshot check: `snapshotView(afterScreenUpdates: false)` included the Metal layer on the iPhone 17 simulator (8-second probe fade showed starfield and menu together), so it is used. The fallback `GameViewController.compositeSnapshot(of:)` is built and tested; it is used when the system snapshot returns nil, and should replace it outright if a device recording shows a blank or black first frame. Tests: `ScreenTransitionTests`. Still open: the device recording (step 0) on iPhone and iPad.
+> **Done 2026-10-08 (commit `0bb33a1`). Not shipping as 2.0.1:** the owner accepted the double page in 2.0 and does not want a partial fix released. The code stays as the transition foundation for Stage B, and Stage B's 2.1 release includes it. Built: `GameViewController.present(_:transition:)`, `ScreenTransition`, `ScreenChangeAnnouncer`, and `FocusScanner.suspend()/resume()`. Snapshot check: `snapshotView(afterScreenUpdates: false)` included the Metal layer on the iPhone 17 simulator (8-second probe fade showed starfield and menu together), so it is used. The fallback `GameViewController.compositeSnapshot(of:)` is built and tested; it is used when the system snapshot returns nil, and should replace it outright if a device recording shows a blank or black first frame. Tests: `ScreenTransitionTests`. The device recording moves to Stage B's manual testing.
 
 Replace the SpriteKit transitions with one UIKit transition of the whole screen.
 
@@ -59,6 +59,22 @@ Replace the SpriteKit transitions with one UIKit transition of the whole screen.
 Stage A removes the visible problem with little risk. It does not remove the hidden `.sks` menus or the timer, so the bug class remains for future screens.
 
 ### Stage B — The real fix: UIKit menus, SpriteKit only for gameplay (several sessions)
+
+**Release:** 2.1, build 3 (`MARKETING_VERSION` already set to 2.1). Ship only when steps 1–5 are all done and the manual recordings pass. Raise the build number only if a build is uploaded and rejected or replaced.
+
+#### Start here (state on 2026-10-08)
+
+What Stage A left in place, to reuse rather than rebuild:
+
+- **`GameViewController.present(_:transition:)`** is the single screen-change path. It snapshots the whole screen, swaps, refreshes the UIKit overlay at once, holds input, cross-fades (`ScreenTransition.preferred()`: 0.3 s, 0.2 s with Reduce Motion), and then releases. As screens become view controllers, keep one equivalent entry point on the new `RootViewController` (child view-controller swap under the same snapshot cross-fade), so there is still exactly one way to change screens.
+- **`ScreenChangeAnnouncer`** carries every `screenChanged` post and sends one per transition. New UIKit screens must post through it.
+- **`FocusScanner.suspend()/resume()`** and the `ScreenTransitionScanning` protocol freeze the incoming screen's scanner during the fade. New view controllers that own a scanner should adopt the protocol.
+- **Input gate:** `GameViewController.acceptsInput(in:)` is checked in `ButtonNode.buttonTriggered`, key and controller forwarding, and `ButtonAccessibilityElement`. UIKit buttons on new screens are already blocked because the root view has interaction disabled during the fade.
+- **Tests to keep green or port:** `ScreenTransitionTests` (5 tests). It loads the real storyboard controller into a `UIWindow` and waits 150 ms for a first draw, because `snapshotView` returns nil before that. The source-scan test expects `presentScene` only in `GameViewController.swift` (2 calls); update the expected list when the root controller changes. 87 tests pass at the start of Stage B.
+
+Step 1 (event-driven HUD) touch points: `GameSceneAdapter.score` and `scoreLabel` (`Adapters/GameSceneAdapter.swift`), `isShowingNewHighScore`, the flight hint set and faded in `PlayingState`, Round Over text in `GameOverState`, and `SceneTextOverlay.refresh(in:)`, which polls all of these. The 50 ms timer and `refreshSceneText()` live in `GameViewController`. After step 1, nothing on the HUD may depend on the timer; it can only be deleted once Home, Guide, and Settings no longer use `SceneTextOverlay` (step 3–4), so delete it no later than step 5.
+
+Manual checks before 2.1 is submitted (owner, on an iPhone and an iPad): screen-record Home → Settings → Home → Play → Pause → Home and step through the frames. Expect one fade per change, no black or empty first frame, and never two menus. Repeat with Reduce Motion on, with VoiceOver (each screen spoken once), and with switch scanning (scanning resumes on the new screen after the fade). If a fade starts on a black or empty frame, make `makeTransitionSnapshot` use `compositeSnapshot` only.
 
 Make each menu screen a plain UIKit view controller. SpriteKit is used only for gameplay and, optionally, an animated backdrop.
 
@@ -114,7 +130,7 @@ RootViewController (owns navigation and transitions)
 | Switch or VoiceOver regressions | Keep `FocusScanner` unchanged; reuse the Settings scanning pattern that is already tested. Manual switch session after each step. |
 | Snapshot blank on Metal (Stage A) | Use `SKView.texture(from:)` fallback; verify on a device. |
 | Players lose settings | Do not rename any key; add a test that loads a saved 2.0 settings set. |
-| Large change, long branch | Ship Stage A first. Do Stage B steps as separate commits; each can ship. |
+| Large change, long branch | Do Stage B steps as separate commits on `master`, each keeping the app working and tests green. Release 2.1 only after all of steps 1–5 (owner decision 2026-10-08: no partial releases). |
 
 ## 5. Done when
 

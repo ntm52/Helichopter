@@ -221,3 +221,9 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Tests: new `ScreenTransitionTests` (5): only the helper calls `presentScene` (source scan); after each of Home→Settings→Home→Play→Pause→Home exactly one menu is live, the overlay's `hostScene` equals `SKView.scene` with no timer tick, and exactly one `screenChanged` is posted; input, a second navigation, and scanners are held during the fade; Reduce Motion picks the shorter no-movement fade; the composite fallback contains SpriteKit pixels. **87 tests pass** (`-parallel-testing-enabled NO`).
 - Drafted the 2.0.1 What's New text in `Release/APP_STORE_COPY.md`.
 - **Owner, before submitting 2.0.1:** on an iPhone and an iPad, screen-record Home → Settings → Home → Play → Pause → Home (Control Centre → Screen Recording) and step through the frames. Each change should be one fade with no black or empty frame at the start, and no second menu. Repeat with Reduce Motion on, with VoiceOver (each screen spoken once), and with switch scanning on (scanning resumes on the new screen after the fade). If the first frame of a fade is black or empty, switch `makeTransitionSnapshot` to `compositeSnapshot` only.
+
+### 2026-10-08 — Decision: no 2.0.1; Stage B next as 2.1 (Claude Code)
+- **Owner decision:** 2.0.1 will not ship. The double page was accepted for 2.0, and a partial fix is not worth a release. Stage A stays on `master` as the transition foundation for Stage B, and 2.1 ships only when Stage B steps 1–5 are all done.
+- Set `MARKETING_VERSION` to 2.1. Build stays 3 (never uploaded).
+- Plan 01: added a "Start here" section to Stage B (what Stage A left to reuse, step 1 touch points, test notes, and the manual recording checklist moved from the entry above). Updated the roadmap, `HELICHOPTER_PROJECT.md`, and turned the 2.0.1 What's New draft into a 2.1 starting draft.
+- Next session: Plan 01 Stage B step 1 (event-driven HUD).

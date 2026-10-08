@@ -37,9 +37,9 @@ Menus and Settings offer scalable text and switch scanning. VoiceOver provides f
 
 Helichopter works offline without an account, ads, or in-app purchases. Settings and scores are saved on your device.
 
-**What's New (2.0.1, draft):**
+**What's New (2.1, starting draft; finish when Stage B is done):**
 
-Smoother screen changes. Moving between Home, Settings, and a game now fades one whole screen into the next, so two menus never appear at the same time. Taps and switch presses wait until the new screen is ready, and VoiceOver announces each screen once. With Reduce Motion on, the fade is shorter.
+Rebuilt menus. Home, Settings, Pause, and Round Over are now built directly as app screens, and moving between them fades one whole screen into the next, so two menus never appear at the same time. Taps and switch presses wait until the new screen is ready, and VoiceOver announces each screen once. With Reduce Motion on, the fade is shorter.
 
 **What's New (2.0, as submitted):**
 

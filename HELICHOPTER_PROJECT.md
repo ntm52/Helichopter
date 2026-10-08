@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Version 2.0.1 (build 3, Plan 01 Stage A) is in progress and not yet submitted. 87 automated tests pass.
+**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own. 87 automated tests pass.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -87,7 +87,7 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 
 ## Known issues and debt
 
-- **Double page during screen changes:** fixed for 2.0.1 by Plan 01 Stage A (one snapshot cross-fade of both layers). Still needs the device screen recording from the plan. The underlying cause (two drawing layers per screen) remains until Stage B: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
+- **Double page during screen changes:** live in 2.0 (owner accepted it). On `master`, Plan 01 Stage A hides it with one snapshot cross-fade of both layers, but each screen is still drawn by two layers. Stage B removes the cause and ships as 2.1: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
 - **50 ms overlay polling** in `GameViewController` runs 20 times a second, even on the home screen. It is the only thing that keeps UIKit in step with SpriteKit. Removed by the same plan.
 - **Hidden `.sks` menus** duplicate every menu and have iPad copies. They are the root of the "two versions of a screen" bug class. Removed by the same plan.
 - `fatalError` remains in the legacy `ToggleButtonNode`/`TriggleButtonNode` responders.
