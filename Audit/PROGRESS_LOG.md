@@ -227,3 +227,12 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Set `MARKETING_VERSION` to 2.1. Build stays 3 (never uploaded).
 - Plan 01: added a "Start here" section to Stage B (what Stage A left to reuse, step 1 touch points, test notes, and the manual recording checklist moved from the entry above). Updated the roadmap, `HELICHOPTER_PROJECT.md`, and turned the 2.0.1 What's New draft into a 2.1 starting draft.
 - Next session: Plan 01 Stage B step 1 (event-driven HUD).
+
+### 2026-10-08 — Plan 01 Stage B step 1: event-driven HUD (Claude Code)
+- Commit `562fd83`. Added `GameSceneHUDDelegate` and `GamePhase` (`GameScene.swift`). `GameScene` and `GameSceneAdapter` report score, best, new-high-score start and end, flight hint shown/hidden, and playing/paused/round-over. `SceneTextOverlay` adopts the delegate and no longer polls any HUD state.
+- Pause and Round Over now replace the HUD on `stateDidChange`, so hold-to-pause, VoiceOver Pause, interruptions, and collisions no longer wait up to 50 ms for the timer.
+- The flight hint fades in UIKit (0.5 s) instead of mirroring a SpriteKit fade. The new-high-score banner ends on a real-time `Timer` (3 s) instead of a polled `Date`.
+- The 50 ms timer is **kept**: menus (Pause, Round Over, Home, Guide) still mirror archived labels and scanner focus through it. It goes when steps 2–4 rebuild those screens.
+- Tests: new `HUDEventTests` (3): the exact event sequence for a run, the banner ending by itself, and a HUD built once that follows score, hint, pause, resume, Round Over, and retry with no `refresh` call. Updated three existing tests that called `refresh` to see HUD changes. **90 tests pass** (`-parallel-testing-enabled NO`).
+- Simulator check (iPhone 17): HUD shows score, best, and hint; the hint fades on the first tap; Pause shows the menu.
+- Next: Stage B step 2 (Pause and Round Over in UIKit).
