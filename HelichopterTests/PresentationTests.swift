@@ -42,16 +42,13 @@ struct PresentationTests {
     /// Before UIKit's first refresh (e.g. during a scene transition), archived menus,
     /// labels, and the Pause sprite must already be hidden so two versions never overlap.
     @Test func archivedScenesNeverRenderBeforeUIKitRefresh() throws {
-        for archive in ["TitleScene", "TitleScene iPad", "GameScene", "GameScene iPad"] {
+        for archive in ["GameScene", "GameScene iPad"] {
             let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
             let scene = try #require(SKScene(fileNamed: archive))
             #expect(archivedContentIsInvisible(scene))
             view.presentScene(scene)
             defer { view.presentScene(nil) }
             #expect(archivedContentIsInvisible(scene))
-            if scene is TitleScene {
-                #expect(scene.childNode(withName: "Animated Helicopter")?.isHidden == true)
-            }
             if let game = scene as? GameScene {
                 // Pause and Round Over add no SpriteKit content; UIKit draws them.
                 for _ in 0..<2 {
@@ -71,14 +68,15 @@ struct PresentationTests {
     }
 
     @Test func menusAreCentredAndHUDStaysAtTop() throws {
-        let guideKey = "onboarding_completed_v1"
-        let guideCompleted = UserDefaults.standard.object(forKey: guideKey)
-        UserDefaults.standard.set(true, forKey: guideKey)
-        defer {
-            if let guideCompleted = guideCompleted { UserDefaults.standard.set(guideCompleted, forKey: guideKey) }
-            else { UserDefaults.standard.removeObject(forKey: guideKey) }
-        }
         for size in [CGSize(width: 390, height: 844), CGSize(width: 1024, height: 1366)] {
+            let home = HomeViewController()
+            home.view.frame = CGRect(origin: .zero, size: size)
+            home.view.layoutIfNeeded()
+            home.view.layoutIfNeeded()
+            let homeStack = home.menu.stack.convert(home.menu.stack.bounds, to: home.view)
+            #expect(abs(homeStack.midY - home.view.bounds.midY) < 30)
+            #expect(homeStack.minY > size.height * 0.15)
+
             let view = SKView(frame: CGRect(origin: .zero, size: size))
             let overlay = SceneTextOverlay(frame: view.bounds)
             view.addSubview(overlay)
@@ -88,13 +86,6 @@ struct PresentationTests {
                 let stack = try #require(descendants(overlay, UIScrollView.self).first?.subviews.first { $0 is UIStackView })
                 return stack.convert(stack.bounds, to: overlay)
             }
-            let title = try #require(TitleScene(fileNamed: "TitleScene"))
-            view.presentScene(title)
-            overlay.refresh(in: view)
-            let menu = try stackFrame()
-            #expect(abs(menu.midY - overlay.bounds.midY) < 30)
-            #expect(menu.minY > overlay.bounds.height * 0.15)
-
             let game = try #require(GameScene(fileNamed: "GameScene"))
             view.presentScene(game)
             overlay.refresh(in: view)
@@ -198,9 +189,6 @@ struct PresentationTests {
         let hide = gs.hideGameWhilePaused
         let show = gs.showScore
         let scanning = gs.scanningEnabled
-        let guideKey = "onboarding_completed_v1"
-        let guideCompleted = UserDefaults.standard.object(forKey: guideKey)
-        UserDefaults.standard.set(true, forKey: guideKey)
         gs.scanningEnabled = false
         gs.showScore = true
         defer {
@@ -208,10 +196,8 @@ struct PresentationTests {
             gs.hideGameWhilePaused = hide
             gs.showScore = show
             gs.scanningEnabled = scanning
-            if let guideCompleted = guideCompleted { UserDefaults.standard.set(guideCompleted, forKey: guideKey) }
-            else { UserDefaults.standard.removeObject(forKey: guideKey) }
         }
-        for archive in ["TitleScene", "TitleScene iPad", "GameScene", "GameScene iPad"] {
+        for archive in ["GameScene", "GameScene iPad"] {
             gs.helicopterOutline = false
             gs.hideGameWhilePaused = false
             let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -224,12 +210,6 @@ struct PresentationTests {
             overlay.layoutIfNeeded()
             #expect(scene.findAllButtonsInScene().allSatisfy { $0.isPresentedInUIKit && $0.alpha == 0 && !$0.isUserInteractionEnabled })
             try capture(view, overlay: overlay, name: "Unified-" + archive)
-            if scene is TitleScene {
-                let mascot = try #require(scene.childNode(withName: "Animated Helicopter"))
-                #expect(mascot.isHidden && !mascot.hasActions())
-                #expect(descendants(overlay, UIImageView.self).count == 1)
-                #expect(descendants(overlay, UIButton.self).filter { $0.currentTitle == "Play" }.count == 1)
-            }
             if let game = scene as? GameScene {
                 let player = try #require(game.sceneAdapter?.playerCharacter as? HelicopterNode)
                 #expect(player.childNode(withName: "flightBoundary")?.isHidden == true)
@@ -268,6 +248,29 @@ struct PresentationTests {
                 game.switchPrimaryEnded()
                 #expect(game.stateMachine.currentState is PlayingState)
             }
+        }
+    }
+
+    /// Home is one UIKit screen: one mascot, one title, Play, Settings, and How to Play
+    /// in scanning order, each labelled. Reduce Motion keeps the mascot still.
+    @Test func homeIsOneLabelledScreen() throws {
+        let saved = HomeViewController.prefersReducedMotion
+        defer { HomeViewController.prefersReducedMotion = saved }
+        for reduceMotion in [false, true] {
+            HomeViewController.prefersReducedMotion = { reduceMotion }
+            let home = HomeViewController()
+            home.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            home.view.layoutIfNeeded()
+            #expect(descendants(home.view, UIImageView.self).filter { $0 === home.mascot }.count == 1)
+            #expect(home.mascot.isAnimating == !reduceMotion)
+            #expect(home.mascot.animationImages?.count == (reduceMotion ? nil : 60))
+            #expect(home.mascot.image != nil)
+            #expect(home.titleLabel.text == "Helichopter" && home.titleLabel.accessibilityTraits.contains(.header))
+            #expect(home.menu.buttons.map(\.currentTitle) == ["Play", "Settings", "How to Play"])
+            #expect(home.menu.buttons.allSatisfy { !($0.accessibilityHint ?? "").isEmpty })
+            #expect(home.scanner.items.map(\.accessibilityScanLabel) == ["Play", "Settings", "How to Play"])
+            #expect(home.view.accessibilityViewIsModal)
+            #expect(home.announcement as? UILabel === home.titleLabel)
         }
     }
 }

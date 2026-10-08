@@ -2,11 +2,11 @@ import UIKit
 import SpriteKit
 import GameplayKit
 import GameController
+import AVFoundation
 
 // MARK: - Scene helpers
 
 enum Scenes: String {
-    case title   = "TitleScene"
     case game    = "GameScene"
     case setting = "SettingsScene"
 }
@@ -63,7 +63,40 @@ enum ScreenTransition: Equatable {
     }
 }
 
-/// Scenes report the scanners that must freeze while their screen fades in.
+/// Everything `GameViewController.present` can show. Home and the guide are UIKit
+/// screens; Settings and gameplay are SpriteKit scenes.
+enum Screen {
+    case home
+    case guide
+    case scene(SKScene)
+
+    var scene: SKScene? {
+        if case .scene(let scene) = self { return scene }
+        return nil
+    }
+}
+
+/// The main theme on Home and the guide. It keeps playing between those two screens.
+final class MenuMusic {
+    private var player: AVAudioPlayer?
+    var isPlaying: Bool { player?.isPlaying == true }
+
+    func play() {
+        guard UserDefaults.standard.bool(for: .isMusicOn) else { return stop() }
+        if player == nil, let url = Bundle.main.url(forResource: "MainTheme", withExtension: "caf") {
+            player = try? AVAudioPlayer(contentsOf: url)
+            player?.numberOfLoops = -1
+        }
+        if player?.isPlaying == false { player?.play() }
+    }
+
+    func stop() {
+        player?.stop()
+        player = nil
+    }
+}
+
+/// Scenes and screens report the scanners that must freeze while their screen fades in.
 protocol ScreenTransitionScanning: AnyObject {
     var scannersDuringTransition: [FocusScanner] { get }
 }
@@ -123,13 +156,15 @@ class GameViewController: UIViewController {
 
     private var inputSuspended = false
     let sceneTextOverlay = SceneTextOverlay()
-    private var textRefreshTimer: Timer?
     /// True while one screen fades into the next; all input and scanning is held.
     private(set) var isChangingScreen = false
     private var transitionSnapshot: UIView?
+    /// Home or the guide, while one is showing in place of a scene.
+    private(set) var menuScreen: MenuViewController?
+    let menuMusic = MenuMusic()
 
-    deinit { textRefreshTimer?.invalidate() }
-
+    /// Rebuilds the gameplay HUD after a screen change. Nothing polls it: the HUD
+    /// and menus otherwise change only through `GameSceneHUDDelegate`.
     func refreshSceneText() {
         guard let skView = viewIfLoaded as? SKView else { return }
         sceneTextOverlay.refresh(in: skView)
@@ -154,14 +189,7 @@ class GameViewController: UIViewController {
         sceneTextOverlay.frame = view.bounds
         sceneTextOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(sceneTextOverlay)
-        if let scene = TitleScene(fileNamed: Scenes.title.getName()) {
-            present(scene, transition: .instant)
-        }
-        // UIKit continues refreshing when SpriteKit is paused. Capture weakly so
-        // the run loop cannot retain the controller or a departed scene.
-        let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.refreshSceneText() }
-        RunLoop.main.add(timer, forMode: .common)
-        textRefreshTimer = timer
+        present(GuideViewController.isCompleted() ? .home : .guide, transition: .instant)
         setupGameControllerObservers()
         NotificationCenter.default.addObserver(self, selector: #selector(voiceOverStatusChanged),
                                                name: UIAccessibility.voiceOverStatusDidChangeNotification, object: nil)
@@ -202,24 +230,34 @@ class GameViewController: UIViewController {
         controller(for: view)?.isChangingScreen != true
     }
 
-    /// The only way to change screens. Views without a controller (tests) swap directly.
-    static func present(_ scene: SKScene, in view: SKView?, transition: ScreenTransition = .preferred()) {
+    /// The only way to change screens from a scene. Views without a controller (tests)
+    /// swap scenes directly and show nothing for Home or the guide.
+    static func present(_ screen: Screen, in view: SKView?, transition: ScreenTransition = .preferred()) {
         guard let view = view else { return }
         if let controller = controller(for: view) {
-            controller.present(scene, transition: transition)
+            controller.present(screen, transition: transition)
         } else {
-            scene.scaleMode = scaleMode(for: scene, in: view.bounds.size)
-            view.presentScene(scene)
+            if let scene = screen.scene { scene.scaleMode = scaleMode(for: scene, in: view.bounds.size) }
+            view.presentScene(screen.scene)
         }
     }
 
     /// Replaces the whole screen as one unit: a snapshot of SpriteKit and UIKit together
     /// covers the swap, then fades away. Input, scanning, and VoiceOver announcements
-    /// are held until the new screen is fully visible.
-    func present(_ scene: SKScene, transition: ScreenTransition = .preferred()) {
+    /// are held until the new screen is fully visible. A UIKit screen (Home, the guide)
+    /// is a child controller over an empty SpriteKit view.
+    func present(_ screen: Screen, transition: ScreenTransition = .preferred()) {
         guard let skView = viewIfLoaded as? SKView, !isChangingScreen else { return }
-        scene.scaleMode = Self.scaleMode(for: scene, in: skView.bounds.size)
-        let animated = transition.duration > 0 && skView.scene != nil && skView.window != nil
+        let scene = screen.scene
+        if let scene = scene { scene.scaleMode = Self.scaleMode(for: scene, in: skView.bounds.size) }
+        let incoming: MenuViewController?
+        switch screen {
+        case .home: incoming = HomeViewController()
+        case .guide: incoming = GuideViewController()
+        case .scene: incoming = nil
+        }
+        let showsSomething = skView.scene != nil || menuScreen != nil
+        let animated = transition.duration > 0 && showsSomething && skView.window != nil
         let snapshot = animated ? makeTransitionSnapshot(of: skView) : nil
 
         isChangingScreen = true
@@ -232,11 +270,30 @@ class GameViewController: UIViewController {
             transitionSnapshot = snapshot
         }
 
+        if let outgoing = menuScreen {
+            outgoing.screenWillDisappear()
+            outgoing.willMove(toParent: nil)
+            outgoing.view.removeFromSuperview()
+            outgoing.removeFromParent()
+        }
+        menuScreen = incoming
         skView.presentScene(scene)
+        if let incoming = incoming {
+            addChild(incoming)
+            incoming.view.frame = skView.bounds
+            incoming.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            skView.addSubview(incoming.view)
+            incoming.didMove(toParent: self)
+            incoming.screenDidAppear()
+            menuMusic.play()
+        } else {
+            menuMusic.stop()
+        }
         refreshSceneText()
-        let scanners = (scene as? ScreenTransitionScanning)?.scannersDuringTransition ?? []
+        let scanners = incoming?.scannersDuringTransition
+            ?? (scene as? ScreenTransitionScanning)?.scannersDuringTransition ?? []
         scanners.forEach { $0.suspend() }
-        // Scenes add UIKit panels in didMove; the outgoing image must stay on top of them.
+        // Screens add UIKit views as they arrive; the outgoing image must stay on top of them.
         if let snapshot = snapshot { skView.bringSubviewToFront(snapshot) }
 
         let finish = { [weak self, weak skView] in
@@ -261,8 +318,18 @@ class GameViewController: UIViewController {
 
     /// Fallback from Plan 01: draw the scene with SpriteKit itself, then UIKit on top.
     /// Use this alone if device recordings show `snapshotView` coming out blank.
+    /// With no scene (Home or the guide showing), only the UIKit screen is drawn.
     static func compositeSnapshot(of skView: SKView) -> UIImage? {
-        guard let scene = skView.scene, skView.bounds.width > 0, skView.bounds.height > 0 else { return nil }
+        guard skView.bounds.width > 0, skView.bounds.height > 0 else { return nil }
+        guard let scene = skView.scene else {
+            return UIGraphicsImageRenderer(bounds: skView.bounds).image { context in
+                (skView.backgroundColor ?? .black).setFill()
+                context.fill(skView.bounds)
+                for subview in skView.subviews where !subview.isHidden {
+                    subview.drawHierarchy(in: subview.frame, afterScreenUpdates: false)
+                }
+            }
+        }
         let sceneRect = CGRect(x: -scene.anchorPoint.x * scene.size.width, y: -scene.anchorPoint.y * scene.size.height,
                                width: scene.size.width, height: scene.size.height)
         let topLeft = skView.convert(CGPoint(x: sceneRect.minX, y: sceneRect.maxY), from: scene)
@@ -374,11 +441,16 @@ class GameViewController: UIViewController {
         super.pressesCancelled(presses, with: event)
     }
 
+    /// The screen that switch, keyboard, and game-controller input goes to.
+    private var switchReceiver: SwitchInputReceivable? {
+        if let menuScreen = menuScreen { return menuScreen }
+        return (viewIfLoaded as? SKView)?.scene as? SwitchInputReceivable
+    }
+
     @discardableResult
     private func forwardPresses(_ presses: Set<UIPress>, ended: Bool) -> Bool {
         guard !inputSuspended, !isChangingScreen else { return true }
-        guard let skView = view as? SKView,
-              let scene = skView.scene as? SwitchInputReceivable else { return false }
+        guard let scene = switchReceiver else { return false }
         var handled = false
         for press in presses {
             guard let key = press.key else { continue }
@@ -436,8 +508,7 @@ class GameViewController: UIViewController {
 
     private func forwardController(primary: Bool, pressed: Bool) {
         guard !inputSuspended, !isChangingScreen else { return }
-        guard let skView = view as? SKView,
-              let scene = skView.scene as? SwitchInputReceivable else { return }
+        guard let scene = switchReceiver else { return }
         if primary {
             pressed ? scene.switchPrimaryBegan() : scene.switchPrimaryEnded()
         } else {

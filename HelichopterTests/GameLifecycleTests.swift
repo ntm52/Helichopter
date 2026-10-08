@@ -153,7 +153,8 @@ struct GameLifecycleTests {
             scene.switchPrimaryEnded()
             let scanner = try #require(scene.overlayScanner)
             try await activateGameItem(.home, in: scene)
-            #expect(view.scene is TitleScene)
+            // A bare view has no Home screen to show; it just leaves the game.
+            #expect(view.scene == nil)
             #expect(!scanner.isActive)
         }
     }
@@ -273,7 +274,7 @@ struct GameLifecycleTests {
 
     @Test func bundledScenesAndAtlasLoad() throws {
         try withSettings {
-            for name in ["TitleScene", "SettingsScene", "GameScene"] {
+            for name in ["SettingsScene", "GameScene"] {
                 for suffix in ["", " iPad"] {
                     #expect(SKScene(fileNamed: name + suffix) != nil)
                 }
@@ -284,52 +285,23 @@ struct GameLifecycleTests {
         }
     }
 
-    @Test func titleReplacesLegacyFourFrameAnimationOnPhoneAndPad() throws {
+    /// Home's mascot is the 60-frame rotor animation at the game's frame rate, and the
+    /// title shows on phone and tablet widths.
+    @Test func homeShowsTitleAndAnimatedMascotOnPhoneAndPad() throws {
+        let saved = HomeViewController.prefersReducedMotion
+        HomeViewController.prefersReducedMotion = { false }
+        defer { HomeViewController.prefersReducedMotion = saved }
         try withSettings {
-            for suffix in ["", " iPad"] {
-                let scene = try #require(TitleScene(fileNamed: "TitleScene" + suffix))
-                let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
-                scene.didMove(to: view)
-                #expect(scene.childNode(withName: "Animated Bird") == nil)
-                let helicopter = try #require(scene.childNode(withName: "Animated Helicopter") as? HelicopterNode)
-                #expect(helicopter.flyTextures?.count == 60)
-                #expect(helicopter.animationTimeInterval == HelicopterNode.rotorFrameInterval)
-                #expect(helicopter.physicsBody == nil)
-                #expect(!helicopter.shouldAcceptTouches)
-                // UIKit draws the visible mascot; the SpriteKit placeholder never renders or animates.
-                #expect(helicopter.isHidden && helicopter.action(forKey: "rotorAnimation") == nil)
-                // Re-presenting the same scene must not duplicate or restart the mascot.
-                scene.didMove(to: view)
-                #expect(scene.children.compactMap { $0 as? HelicopterNode }.count == 1)
-                #expect(scene.childNode(withName: "Animated Helicopter") === helicopter)
-            }
-        }
-    }
-
-    @Test func titleTextShowsOnPhoneAndPad() throws {
-        let guideKey = SceneTextOverlay.guideCompletedKey
-        let guideCompleted = UserDefaults.standard.object(forKey: guideKey)
-        UserDefaults.standard.set(true, forKey: guideKey)
-        defer {
-            if let guideCompleted = guideCompleted { UserDefaults.standard.set(guideCompleted, forKey: guideKey) }
-            else { UserDefaults.standard.removeObject(forKey: guideKey) }
-        }
-        try withSettings {
-            for suffix in ["", " iPad"] {
-                let scene = try #require(TitleScene(fileNamed: "TitleScene" + suffix))
-                let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
-                view.presentScene(scene)
-                defer { view.presentScene(nil) }
-                let overlay = SceneTextOverlay(frame: view.bounds)
-                view.addSubview(overlay)
-                overlay.refresh(in: view)
-                var labels: [UILabel] = []
-                var pending: [UIView] = [overlay]
-                while let next = pending.popLast() {
-                    if let label = next as? UILabel { labels.append(label) }
-                    pending += next.subviews
-                }
-                #expect(labels.contains { $0.text == "Helichopter" }, "TitleScene\(suffix)")
+            for size in [CGSize(width: 390, height: 844), CGSize(width: 1024, height: 1366)] {
+                let home = HomeViewController()
+                home.view.frame = CGRect(origin: .zero, size: size)
+                home.view.layoutIfNeeded()
+                #expect(home.mascot.animationImages?.count == 60)
+                #expect(abs(home.mascot.animationDuration - 60 * HelicopterNode.rotorFrameInterval) < 0.001)
+                #expect(home.mascot.isAnimating)
+                #expect(!home.mascot.isAccessibilityElement)
+                #expect(home.titleLabel.text == "Helichopter")
+                #expect(home.titleLabel.bounds.width > 0 && !home.titleLabel.isHidden)
             }
         }
     }

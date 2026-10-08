@@ -46,17 +46,17 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
         guard let identifier = button.buttonIdentifier else { return }
         selection.selectionChanged()
 
-        let sceneToPresent: SKScene?
+        let screen: Screen?
         switch identifier {
-        case .play:     sceneToPresent = GameScene(fileNamed: Scenes.game.getName())
-        case .settings: sceneToPresent = SettingsScene(fileNamed: Scenes.setting.getName())
-        case .menu:     sceneToPresent = TitleScene(fileNamed: Scenes.title.getName())
+        case .play:     screen = GameScene(fileNamed: Scenes.game.getName()).map(Screen.scene)
+        case .settings: screen = SettingsScene(fileNamed: Scenes.setting.getName()).map(Screen.scene)
+        case .menu, .home: screen = .home
         default:
             debugPrint(#function, "unhandled identifier:", identifier)
-            sceneToPresent = nil
+            screen = nil
         }
-        guard let scene = sceneToPresent else { return }
-        GameViewController.present(scene, in: view)
+        guard let screen = screen else { return }
+        GameViewController.present(screen, in: view)
     }
 
     // Switch handlers live in the class so UIKit-based scenes can override routing.

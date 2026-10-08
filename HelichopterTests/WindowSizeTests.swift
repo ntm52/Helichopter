@@ -54,18 +54,31 @@ struct WindowSizeTests {
     }
 
     @Test func menusAndHUDFitEveryWindowSize() throws {
-        let guideKey = "onboarding_completed_v1"
-        let guideCompleted = UserDefaults.standard.object(forKey: guideKey)
-        UserDefaults.standard.set(true, forKey: guideKey)
-        defer {
-            if let guideCompleted = guideCompleted { UserDefaults.standard.set(guideCompleted, forKey: guideKey) }
-            else { UserDefaults.standard.removeObject(forKey: guideKey) }
-        }
+        let suite = "WindowSizeTests-\(UUID())"
+        let guideDefaults = try #require(UserDefaults(suiteName: suite))
+        defer { guideDefaults.removePersistentDomain(forName: suite) }
         for size in Self.sizes {
+            for screen in [HomeViewController() as MenuViewController, GuideViewController(defaults: guideDefaults)] {
+                screen.view.frame = CGRect(origin: .zero, size: size)
+                screen.view.layoutIfNeeded()
+                screen.view.layoutIfNeeded()
+                #expect(!screen.menu.buttons.isEmpty)
+                for button in screen.menu.buttons {
+                    let frame = button.convert(button.bounds, to: screen.view)
+                    // Horizontally inside the window; tall menus may scroll vertically.
+                    #expect(frame.minX >= 0 && frame.maxX <= size.width + 0.5,
+                            "\(type(of: screen)) at \(size): \(button.currentTitle ?? "") off screen")
+                    #expect(frame.height >= 44, "\(type(of: screen)) at \(size): \(button.currentTitle ?? "") too small to tap")
+                }
+                // The backdrop reaches the bottom of every window shape.
+                if let sky = (screen.view as? BackdropView)?.sky {
+                    #expect(sky.frame.maxY >= size.height, "\(type(of: screen)) at \(size): sky stops short")
+                }
+            }
             let view = SKView(frame: CGRect(origin: .zero, size: size))
             let overlay = SceneTextOverlay(frame: view.bounds)
             view.addSubview(overlay)
-            for archive in ["TitleScene", "GameScene"] {
+            for archive in ["GameScene"] {
                 let scene = try #require(SKScene(fileNamed: archive))
                 view.presentScene(scene)
                 overlay.refresh(in: view)

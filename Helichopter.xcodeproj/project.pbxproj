@@ -17,7 +17,8 @@
 		A92E72EE209D87570015F647 /* ButtonNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92E72ED209D87570015F647 /* ButtonNode.swift */; };
 		A94A97F721A287890087C018 /* InfiniteSpriteScrollNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94A97F621A287890087C018 /* InfiniteSpriteScrollNode.swift */; };
 		A992D8B620A03B90003A9998 /* GameMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A992D8B520A03B90003A9998 /* GameMenuView.swift */; };
-		A9A3139920B0006400B36175 /* TitleScene iPad.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9A3139820B0006400B36175 /* TitleScene iPad.sks */; };
+		D10000000000000000000003 /* GuideViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* GuideViewController.swift */; };
+		D10000000000000000000005 /* MenuStackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000006 /* MenuStackView.swift */; };
 		A9A3139D20B0226D00B36175 /* SettingsScene iPad.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9A3139C20B0226D00B36175 /* SettingsScene iPad.sks */; };
 		A9A313A120B0239100B36175 /* GameScene iPad.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9A313A020B0239100B36175 /* GameScene iPad.sks */; };
 		A9ACB91D2099A1F200966991 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9ACB91C2099A1F200966991 /* AppDelegate.swift */; };
@@ -34,8 +35,7 @@
 		A9ACB9992099F1D200966991 /* PhysicsCategories.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9ACB9982099F1D200966991 /* PhysicsCategories.swift */; };
 		A9ACB99C209A0DE100966991 /* CGFloat+MathUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9ACB99B209A0DE100966991 /* CGFloat+MathUtils.swift */; };
 		A9ACB99F209A0F4D00966991 /* GameSceneAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9ACB99E209A0F4D00966991 /* GameSceneAdapter.swift */; };
-		A9B9C729209EE31C0045548D /* TitleScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B9C728209EE31C0045548D /* TitleScene.swift */; };
-		A9B9C72B209EE3290045548D /* TitleScene.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9B9C72A209EE3290045548D /* TitleScene.sks */; };
+		A9B9C729209EE31C0045548D /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B9C728209EE31C0045548D /* HomeViewController.swift */; };
 		A9B9F83620B449EC00FC0BDA /* Playable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B9F83520B449EC00FC0BDA /* Playable.swift */; };
 		A9CC5C3720A0216500040E61 /* ControlInputDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9CC5C3620A0216500040E61 /* ControlInputDirection.swift */; };
 		A9D4CFD9209AF53E006461AF /* SKTextureAtlas+FrameUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFD8209AF53E006461AF /* SKTextureAtlas+FrameUploader.swift */; };
@@ -77,7 +77,8 @@
 		A92E72ED209D87570015F647 /* ButtonNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonNode.swift; sourceTree = "<group>"; };
 		A94A97F621A287890087C018 /* InfiniteSpriteScrollNode.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = InfiniteSpriteScrollNode.swift; sourceTree = "<group>"; };
 		A992D8B520A03B90003A9998 /* GameMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMenuView.swift; sourceTree = "<group>"; };
-		A9A3139820B0006400B36175 /* TitleScene iPad.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = "TitleScene iPad.sks"; sourceTree = "<group>"; };
+		D10000000000000000000004 /* GuideViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideViewController.swift; sourceTree = "<group>"; };
+		D10000000000000000000006 /* MenuStackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuStackView.swift; sourceTree = "<group>"; };
 		A9A3139C20B0226D00B36175 /* SettingsScene iPad.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = "SettingsScene iPad.sks"; sourceTree = "<group>"; };
 		A9A313A020B0239100B36175 /* GameScene iPad.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = "GameScene iPad.sks"; sourceTree = "<group>"; };
 		A9ACB9192099A1F200966991 /* Helichopter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Helichopter.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -96,8 +97,7 @@
 		A9ACB9982099F1D200966991 /* PhysicsCategories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicsCategories.swift; sourceTree = "<group>"; };
 		A9ACB99B209A0DE100966991 /* CGFloat+MathUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CGFloat+MathUtils.swift"; sourceTree = "<group>"; };
 		A9ACB99E209A0F4D00966991 /* GameSceneAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneAdapter.swift; sourceTree = "<group>"; };
-		A9B9C728209EE31C0045548D /* TitleScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitleScene.swift; sourceTree = "<group>"; };
-		A9B9C72A209EE3290045548D /* TitleScene.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = TitleScene.sks; sourceTree = "<group>"; };
+		A9B9C728209EE31C0045548D /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
 		A9B9F83520B449EC00FC0BDA /* Playable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playable.swift; sourceTree = "<group>"; };
 		A9CC5C3620A0216500040E61 /* ControlInputDirection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlInputDirection.swift; sourceTree = "<group>"; };
 		A9D4CFD8209AF53E006461AF /* SKTextureAtlas+FrameUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SKTextureAtlas+FrameUploader.swift"; sourceTree = "<group>"; };
@@ -289,10 +289,12 @@
 		A9ACB9902099F13700966991 /* Scenes */ = {
 			isa = PBXGroup;
 			children = (
-				A9B9C728209EE31C0045548D /* TitleScene.swift */,
+				A9B9C728209EE31C0045548D /* HomeViewController.swift */,
 				A9ACB9222099A1F200966991 /* GameScene.swift */,
 				A9EC756320A6D3E9007C42EC /* SettingsScene.swift */,
 				A992D8B520A03B90003A9998 /* GameMenuView.swift */,
+				D10000000000000000000004 /* GuideViewController.swift */,
+				D10000000000000000000006 /* MenuStackView.swift */,
 				D10000000000000000000002 /* SceneTextOverlay.swift */,
 				A9EC756720A6E479007C42EC /* RoutingUtilityScene.swift */,
 			);
@@ -379,8 +381,6 @@
 		A9EC756220A6D10F007C42EC /* Main Scenes */ = {
 			isa = PBXGroup;
 			children = (
-				A9B9C72A209EE3290045548D /* TitleScene.sks */,
-				A9A3139820B0006400B36175 /* TitleScene iPad.sks */,
 				A9ACB91E2099A1F200966991 /* GameScene.sks */,
 				A9A313A020B0239100B36175 /* GameScene iPad.sks */,
 				A9EC755D20A6CB03007C42EC /* SettingsScene.sks */,
@@ -498,10 +498,8 @@
 				A9ACB96B2099B42300966991 /* Actions.sks in Resources */,
 				A9ACB9282099A1F200966991 /* Main.storyboard in Resources */,
 				A9EC755E20A6CB03007C42EC /* SettingsScene.sks in Resources */,
-				A9A3139920B0006400B36175 /* TitleScene iPad.sks in Resources */,
 				A9ACB91F2099A1F200966991 /* GameScene.sks in Resources */,
 				A9ACB92A2099A1F300966991 /* Assets.xcassets in Resources */,
-				A9B9C72B209EE3290045548D /* TitleScene.sks in Resources */,
 				A9ACB92D2099A1F300966991 /* LaunchScreen.storyboard in Resources */,
 				D8986E513048ADCF00B4D8C4 /* Dead.caf in Resources */,
 				D8986E5930499C6600B4D8C4 /* PrivacyInfo.xcprivacy in Resources */,
@@ -529,6 +527,8 @@
 				A92E72EE209D87570015F647 /* ButtonNode.swift in Sources */,
 				A9092FA5216B35C800D773BC /* TriggleButtonNode.swift in Sources */,
 				A992D8B620A03B90003A9998 /* GameMenuView.swift in Sources */,
+				D10000000000000000000003 /* GuideViewController.swift in Sources */,
+				D10000000000000000000005 /* MenuStackView.swift in Sources */,
 				D10000000000000000000001 /* SceneTextOverlay.swift in Sources */,
 				A9ACB9232099A1F200966991 /* GameScene.swift in Sources */,
 				A9ACB98D2099F0FC00966991 /* Touchable.swift in Sources */,
@@ -557,7 +557,7 @@
 				D8986E573048EC2800B4D8C4 /* SKNode+Theme.swift in Sources */,
 				A9D4CFE0209B4040006461AF /* PipeFactory.swift in Sources */,
 				A903943F20ADB24000376CC3 /* ToggleButtonNode.swift in Sources */,
-				A9B9C729209EE31C0045548D /* TitleScene.swift in Sources */,
+				A9B9C729209EE31C0045548D /* HomeViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

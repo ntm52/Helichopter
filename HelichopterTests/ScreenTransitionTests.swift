@@ -11,10 +11,10 @@ struct ScreenTransitionTests {
 
     /// Runs `work` with the real storyboard controller in its own window, guide finished,
     /// and every `screenChanged` post counted instead of sent.
-    private func withController(scanning: Bool = false,
+    private func withController(scanning: Bool = false, guideDone: Bool = true,
                                 _ work: (GameViewController, SKView, () -> Int) async throws -> Void) async throws {
         let defaults = UserDefaults.standard
-        let guideKey = SceneTextOverlay.guideCompletedKey
+        let guideKey = GuideViewController.completedKey
         let savedGuide = defaults.object(forKey: guideKey)
         let savedScanning = GameSettings.shared.scanningEnabled
         let savedTheme = GameSettings.shared.selectedThemeID
@@ -28,7 +28,7 @@ struct ScreenTransitionTests {
             GameSettings.shared.selectedThemeID = savedTheme
             ScreenChangeAnnouncer.poster = savedPoster
         }
-        defaults.set(true, forKey: guideKey)
+        defaults.set(guideDone, forKey: guideKey)
         defaults.set(false, for: .isMusicOn)
         GameSettings.shared.scanningEnabled = scanning
         GameSettings.shared.selectedThemeID = "nightSky"
@@ -61,6 +61,16 @@ struct ScreenTransitionTests {
         try #require(game.menuItems.first { $0.action == action })
     }
 
+    private func homeItem(_ action: HomeAction, in controller: GameViewController) throws -> MenuItem {
+        let home = try #require(controller.menuScreen as? HomeViewController)
+        return try #require(home.items.first { $0.title == action.title })
+    }
+
+    private func guideItem(_ title: String, in controller: GameViewController) throws -> MenuItem {
+        let guide = try #require(controller.menuScreen as? GuideViewController)
+        return try #require(guide.scanner.items.compactMap { $0 as? MenuItem }.first { $0.title == title })
+    }
+
     private func settingsPanels(in view: UIView) -> [SettingsOverlayView] {
         view.subviews.compactMap { $0 as? SettingsOverlayView }
     }
@@ -85,21 +95,42 @@ struct ScreenTransitionTests {
         #expect(callers == ["GameViewController.swift": 2])
     }
 
-    /// Straight after each navigation exactly one menu is live, and the UIKit overlay
-    /// already describes the scene SpriteKit shows: no waiting for the refresh timer.
+    /// Straight after each navigation exactly one screen is live: Home and the guide are
+    /// UIKit screens over an empty SpriteKit view, and the overlay already describes
+    /// the scene SpriteKit shows, with no refresh timer.
     @Test func eachNavigationShowsOneCurrentScreen() async throws {
         try await withController { controller, skView, posts in
             let overlay = controller.sceneTextOverlay
             func expectCurrent() {
                 #expect(overlay.hostScene === skView.scene)
             }
-            #expect(skView.scene is TitleScene)
+            func expectHome() {
+                #expect(controller.menuScreen is HomeViewController)
+                #expect(skView.scene == nil)
+                #expect(overlay.isHidden)
+                #expect(controller.children.count == 1)
+            }
+            expectHome()
             expectCurrent()
 
-            // Home → Settings
+            // Home → How to Play → Home
             var before = posts()
-            try button(.settings, in: skView.scene).scannerActivate()
+            try homeItem(.howToPlay, in: controller).scannerActivate()
+            #expect(controller.menuScreen is GuideViewController)
+            #expect(controller.children.count == 1 && skView.scene == nil)
+            try await waitForTransition(controller)
+            #expect(posts() - before == 1)
+            before = posts()
+            try guideItem("Skip guide", in: controller).scannerActivate()
+            expectHome()
+            try await waitForTransition(controller)
+            #expect(posts() - before == 1)
+
+            // Home → Settings
+            before = posts()
+            try homeItem(.settings, in: controller).scannerActivate()
             #expect(skView.scene is SettingsScene)
+            #expect(controller.menuScreen == nil && controller.children.isEmpty)
             expectCurrent()
             #expect(overlay.isHidden)
             #expect(settingsPanels(in: skView).count == 1)
@@ -110,17 +141,17 @@ struct ScreenTransitionTests {
             // Settings → Home
             before = posts()
             try #require(settingsPanels(in: skView).first).onBack?()
-            #expect(skView.scene is TitleScene)
+            expectHome()
             expectCurrent()
-            #expect(!overlay.isHidden)
             #expect(settingsPanels(in: skView).isEmpty)
             try await waitForTransition(controller)
             #expect(posts() - before == 1)
 
             // Home → Play
             before = posts()
-            try button(.play, in: skView.scene).scannerActivate()
+            try homeItem(.play, in: controller).scannerActivate()
             let game = try #require(skView.scene as? GameScene)
+            #expect(controller.menuScreen == nil && controller.children.isEmpty)
             expectCurrent()
             #expect(!overlay.isHidden)
             #expect(settingsPanels(in: skView).isEmpty)
@@ -128,18 +159,61 @@ struct ScreenTransitionTests {
             try await waitForTransition(controller)
             #expect(posts() - before == 1)
 
-            // Pause → Home
+            // Pause → Home, with no refresh between: the HUD follows the scene's events.
             try button(.pause, in: game).scannerActivate()
             #expect(game.stateMachine.currentState is PausedState)
-            controller.refreshSceneText()
+            #expect(overlay.gameMenu != nil)
             before = posts()
             try menuItem(.home, in: game).scannerActivate()
-            #expect(skView.scene is TitleScene)
+            expectHome()
             expectCurrent()
-            #expect(!overlay.subviewsOfType(UIButton.self).contains { $0.currentTitle == "Resume" })
+            #expect(overlay.gameMenu == nil)
             try await waitForTransition(controller)
             #expect(posts() - before == 1)
-            #expect(skView.subviews == [overlay])
+            let home = try #require(controller.menuScreen)
+            #expect(skView.subviews.count == 2 && skView.subviews.first === overlay && skView.subviews.last === home.view)
+        }
+    }
+
+    /// A player who has not finished the guide starts there; finishing it saves the
+    /// 2.0 key and goes Home, and the next launch starts on Home.
+    @Test func firstLaunchShowsTheGuideUntilFinished() async throws {
+        try await withController(guideDone: false) { controller, skView, posts in
+            let guide = try #require(controller.menuScreen as? GuideViewController)
+            #expect(skView.scene == nil && controller.sceneTextOverlay.isHidden)
+            #expect(guide.page == 0)
+            try guideItem("Next", in: controller).scannerActivate()
+            #expect(guide.page == 1 && controller.menuScreen === guide)
+            #expect(!GuideViewController.isCompleted())
+            try guideItem("Skip guide", in: controller).scannerActivate()
+            #expect(GuideViewController.isCompleted())
+            #expect(controller.menuScreen is HomeViewController)
+            try await waitForTransition(controller)
+        }
+        try await withController { controller, _, _ in
+            #expect(controller.menuScreen is HomeViewController)
+        }
+    }
+
+    /// Switch, keyboard, and controller input goes to the UIKit screen when one shows.
+    @Test func switchInputReachesHomeScanner() async throws {
+        let savedScheme = GameSettings.shared.scanScheme
+        defer { GameSettings.shared.scanScheme = savedScheme }
+        GameSettings.shared.scanScheme = .twoSwitch
+        try await withController { controller, _, _ in
+            let home = try #require(controller.menuScreen as? HomeViewController)
+            #expect(!home.scanner.isActive)
+            home.switchPrimaryBegan()
+            #expect(home.scanner.isActive && home.items[0].isFocused)
+            #expect(home.menu.buttons[0].layer.borderWidth == 4)
+            home.switchSecondaryBegan()
+            #expect(home.items[1].isFocused && home.menu.buttons[1].layer.borderWidth == 4)
+            #expect(home.menu.buttons[0].layer.borderWidth == 0)
+            home.switchSecondaryBegan()
+            home.switchPrimaryBegan() // How to Play
+            #expect(controller.menuScreen is GuideViewController)
+            #expect(!home.scanner.isActive)
+            try await waitForTransition(controller)
         }
     }
 
@@ -147,7 +221,7 @@ struct ScreenTransitionTests {
     /// screen fades, so a double-tap can never act on a screen that is leaving.
     @Test func inputDuringTransitionIsIgnored() async throws {
         try await withController(scanning: true) { controller, skView, _ in
-            try button(.play, in: skView.scene).scannerActivate()
+            try homeItem(.play, in: controller).scannerActivate()
             let game = try #require(skView.scene as? GameScene)
             #expect(controller.isChangingScreen)
             #expect(!skView.isUserInteractionEnabled)
@@ -155,8 +229,8 @@ struct ScreenTransitionTests {
             try button(.pause, in: game).scannerActivate()
             #expect(game.stateMachine.currentState is PlayingState)
 
-            controller.present(try #require(TitleScene(fileNamed: Scenes.title.getName())))
-            #expect(skView.scene === game)
+            controller.present(.home)
+            #expect(skView.scene === game && controller.menuScreen == nil)
 
             try await waitForTransition(controller)
             #expect(skView.isUserInteractionEnabled)
@@ -165,12 +239,15 @@ struct ScreenTransitionTests {
 
             // A scanner on the incoming screen is frozen until the fade ends.
             try menuItem(.home, in: game).scannerActivate()
-            let title = try #require(skView.scene as? TitleScene)
-            let scanner = try #require(title.focusScanner)
+            let home = try #require(controller.menuScreen as? HomeViewController)
+            let scanner = home.scanner
             #expect(scanner.isActive && scanner.isSuspended)
             let focused = scanner.currentIndex
             scanner.secondaryAdvance()
             #expect(scanner.currentIndex == focused)
+            // A Home choice made (e.g. by VoiceOver) while Home fades in is ignored.
+            home.items[0].scannerActivate()
+            #expect(controller.menuScreen === home && skView.scene == nil)
             try await waitForTransition(controller)
             #expect(scanner.isActive && !scanner.isSuspended)
         }
@@ -179,6 +256,7 @@ struct ScreenTransitionTests {
     /// The plan's fallback image must contain the SpriteKit layer, not just UIKit.
     @Test func compositeSnapshotIncludesSpriteKit() async throws {
         try await withController { controller, skView, _ in
+            controller.present(.scene(try #require(GameScene(fileNamed: Scenes.game.getName()))), transition: .instant)
             controller.sceneTextOverlay.isHidden = true
             let image = try #require(GameViewController.compositeSnapshot(of: skView)?.cgImage)
             #expect(image.width > 0)
@@ -203,8 +281,10 @@ struct ScreenTransitionTests {
 
         // The snapshot only fades: it never leaves its place or changes size.
         try await withController { controller, skView, _ in
-            controller.present(try #require(SettingsScene(fileNamed: Scenes.setting.getName())),
+            let home = try #require(controller.menuScreen)
+            controller.present(.scene(try #require(SettingsScene(fileNamed: Scenes.setting.getName()))),
                                transition: .preferred(reduceMotion: true))
+            #expect(home.view.superview == nil)
             let snapshot = try #require(skView.subviews.last)
             #expect(!(snapshot is SettingsOverlayView) && snapshot !== controller.sceneTextOverlay)
             #expect(snapshot.frame == skView.bounds)

@@ -1101,10 +1101,10 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
     }
 
     private func navigateBack(from view: SKView?) {
-        guard let view = view, let scene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
+        guard let view = view else { return }
         settingsOverlay?.stopScanning()
         // The transition snapshot carries the panel away; willMove removes the live one.
-        GameViewController.present(scene, in: view)
+        GameViewController.present(.home, in: view)
     }
 
     override var scannersDuringTransition: [FocusScanner] {

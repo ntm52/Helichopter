@@ -168,13 +168,14 @@ struct GameMenuTests {
         }
     }
 
-    @Test func homeReturnsToTitle() throws {
+    @Test func homeLeavesTheRound() throws {
         try withDefaults {
             let (view, game, overlay) = try makeGame()
             defer { view.presentScene(nil) }
             #expect(game.stateMachine.enter(GameOverState.self))
             try #require(overlay.gameMenu?.buttons.first).sendActions(for: .touchUpInside)
-            #expect(view.scene is TitleScene)
+            // A bare view has no Home screen to show; ScreenTransitionTests covers the app.
+            #expect(view.scene == nil)
             #expect(overlay.gameMenu == nil)
         }
     }

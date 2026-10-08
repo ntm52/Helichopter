@@ -63,9 +63,38 @@ struct DynamicTypeTests {
 
     @Test func menusAndHUDUseScalableTextAndPreserveActions() throws {
         let saved = GameSettings.shared.scanningEnabled
+        let defaults = UserDefaults.standard
+        // Round Over below records a best score; the player's real one must survive the test.
+        let savedBest = defaults.object(forKey: Setting.bestScore.rawValue)
         GameSettings.shared.scanningEnabled = false
-        defer { GameSettings.shared.scanningEnabled = saved }
-        for archive in ["TitleScene", "TitleScene iPad", "GameScene", "GameScene iPad"] {
+        defer {
+            GameSettings.shared.scanningEnabled = saved
+            if let savedBest = savedBest { defaults.set(savedBest, forKey: Setting.bestScore.rawValue) }
+            else { defaults.removeObject(forKey: Setting.bestScore.rawValue) }
+        }
+        // Home and the guide are UIKit screens hosted in a window, as in the app.
+        let suite = "DynamicTypeTests-\(UUID())"
+        let guideDefaults = try #require(UserDefaults(suiteName: suite))
+        defer { guideDefaults.removePersistentDomain(forName: suite) }
+        for (name, screen) in [("Home", HomeViewController() as MenuViewController), ("Guide", GuideViewController(defaults: guideDefaults))] {
+            screen.navigate = { _ in }
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+            window.rootViewController = screen
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true }
+            for category in [UIContentSizeCategory.large, .accessibilityExtraExtraExtraLarge] {
+                screen.traitOverrides.preferredContentSizeCategory = category
+                screen.view.updateTraitsIfNeeded()
+                let labels = descendants(screen.view, UILabel.self)
+                #expect(!labels.isEmpty)
+                #expect(labels.allSatisfy { $0.adjustsFontForContentSizeCategory })
+                if category == .accessibilityExtraExtraExtraLarge {
+                    #expect(screen.menu.buttons.allSatisfy { ($0.titleLabel?.font.pointSize ?? 0) > 30 }, "\(name)")
+                }
+                try capture(screen.view, name: "Dynamic-\(name)-\(category.rawValue)")
+            }
+        }
+        for archive in ["GameScene", "GameScene iPad"] {
             let view = SKView(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
             let scene = try #require(SKScene(fileNamed: archive))
             scene.scaleMode = .aspectFit

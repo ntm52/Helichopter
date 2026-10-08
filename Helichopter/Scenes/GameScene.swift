@@ -152,13 +152,12 @@ class GameScene: SKScene {
             teardownOverlayScanner()
 
         case .home:
-            guard let titleScene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
             // A paused scene must not depend on render-loop progress to leave its menu.
-            // The Title screen makes the only screen-change announcement.
+            // The Home screen makes the only screen-change announcement.
             overlayScanner?.stop()
             overlayScanner = nil
             cancelSwitchPauseHold()
-            GameViewController.present(titleScene, in: view)
+            GameViewController.present(.home, in: view)
         }
     }
 
