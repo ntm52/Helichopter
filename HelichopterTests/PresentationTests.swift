@@ -134,14 +134,15 @@ struct PresentationTests {
                 #expect(hint.text == expected)
                 #expect(!expected.localizedCaseInsensitiveContains("click"))
                 texts.insert(GameScene.flightHintText(for: scheme, voiceOver: false))
-                // First input fades it; a retry restores it for the next run.
+                #expect(game.flightHintText == expected)
+                // First input hides it; a retry restores it for the next run.
                 let heli = try #require(game.sceneAdapter?.playerCharacter as? HelicopterNode)
                 heli.switchPrimaryBegan()
                 heli.switchPrimaryEnded()
-                #expect(hint.hasActions())
+                #expect(game.flightHintText == nil)
                 #expect(game.stateMachine.enter(GameOverState.self))
                 #expect(game.stateMachine.enter(PlayingState.self))
-                #expect(hint.alpha == 1 && !hint.hasActions() && hint.text == expected)
+                #expect(game.flightHintText == expected && hint.text == expected)
             }
         }
         #expect(texts.count == 4)
@@ -234,15 +235,19 @@ struct PresentationTests {
                 #expect(player.childNode(withName: "flightBoundary")?.isHidden == true)
                 let pauses = descendants(overlay, UIButton.self).filter { $0.currentTitle == "Pause" }
                 #expect(pauses.count == 1)
+                // Score changes reach the HUD as events; no refresh is needed.
                 game.sceneAdapter?.score = 999999
-                overlay.refresh(in: view)
                 let best = try #require(descendants(overlay, UILabel.self).first { $0.text == "Best 999999" })
                 #expect(!best.isHidden)
+                // Show Score is read when the HUD is built (Settings is never open mid-round).
                 gs.showScore = false
-                overlay.refresh(in: view)
-                #expect(best.isHidden)
+                #expect(game.stateMachine.enter(PausedState.self))
+                #expect(game.stateMachine.enter(PlayingState.self))
+                #expect(descendants(overlay, UILabel.self).first { $0.text == "Best 999999" }?.isHidden == true)
                 gs.showScore = true
-                let pause = try #require(pauses.first)
+                #expect(game.stateMachine.enter(PausedState.self))
+                #expect(game.stateMachine.enter(PlayingState.self))
+                let pause = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Pause" })
                 pause.sendActions(for: .touchUpInside)
                 #expect(game.stateMachine.currentState is PausedState)
                 overlay.refresh(in: view)

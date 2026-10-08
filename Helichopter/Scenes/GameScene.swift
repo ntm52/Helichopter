@@ -1,6 +1,22 @@
 import SpriteKit
 import GameplayKit
 
+/// Which part of a round is on screen; the HUD shows only while `playing`.
+enum GamePhase: Equatable {
+    case playing, paused, roundOver
+}
+
+/// The scene reports every change the HUD shows as it happens, so the HUD never
+/// polls the scene. Calls arrive on the main thread.
+protocol GameSceneHUDDelegate: AnyObject {
+    func scoreDidChange(_ score: Int)
+    func bestScoreDidChange(_ best: Int)
+    func stateDidChange(_ phase: GamePhase)
+    /// The hint's wording, or nil when it should fade away after the first input.
+    func flightHintDidChange(_ text: String?)
+    func newHighScoreDidChange(_ isShowing: Bool)
+}
+
 class GameScene: SKScene {
 
     // MARK: - Constants
@@ -23,6 +39,7 @@ class GameScene: SKScene {
 
     var sceneAdapter: GameSceneAdapter?
     let selection = UISelectionFeedbackGenerator()
+    weak var hudDelegate: GameSceneHUDDelegate?
 
     // Drives focus-ring scanning in pause / game-over overlays.
     private(set) var overlayScanner: FocusScanner?
@@ -81,6 +98,30 @@ class GameScene: SKScene {
 
     var flightHint: SKLabelNode? {
         childNode(withName: "//\(GameScene.flightHintName)") as? SKLabelNode
+    }
+
+    /// The hint the HUD shows, or nil once the player has started flying this run.
+    private(set) var flightHintText: String?
+
+    func showFlightHint(_ text: String) {
+        flightHint?.text = text
+        flightHintText = text
+        hudDelegate?.flightHintDidChange(text)
+    }
+
+    func hideFlightHint() {
+        guard flightHintText != nil else { return }
+        flightHintText = nil
+        hudDelegate?.flightHintDidChange(nil)
+    }
+
+    /// What the HUD shows for the current state, read once when the HUD is built.
+    var phase: GamePhase {
+        switch stateMachine.currentState {
+        case is PausedState: return .paused
+        case is GameOverState: return .roundOver
+        default: return .playing
+        }
     }
 
     /// Shown until the first flight input; worded for how this player actually flies.

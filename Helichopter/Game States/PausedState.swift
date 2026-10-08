@@ -33,6 +33,7 @@ class PausedState: GKState {
         overlay.applyUITheme(GameSettings.shared.selectedTheme)
         adapter.overlay = overlay
         adapter.isHUDHidden = true
+        adapter.reportPhase(.paused)
     }
     
     override func willExit(to nextState: GKState) {

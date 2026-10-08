@@ -35,6 +35,7 @@ class PlayingState: GKState {
 
     override func didEnter(from previousState: GKState?) {
         super.didEnter(from: previousState)
+        defer { adapter.reportPhase(.playing) }
 
         // Pipes are NOT started here for fresh starts/retries — they wait for first input below.
         // For resume from pause, the pipe action was already running and resumes automatically
@@ -64,13 +65,9 @@ class PlayingState: GKState {
             }
         }
 
-        if let hint = (scene as? GameScene)?.flightHint {
-            hint.removeAllActions()
-            hint.alpha = 1
-            // Refreshed each run so it matches the current scheme and VoiceOver state.
-            hint.text = GameScene.flightHintText(for: GameSettings.shared.controlScheme,
-                                                 voiceOver: UIAccessibility.isVoiceOverRunning)
-        }
+        // Refreshed each run so it matches the current scheme and VoiceOver state.
+        (scene as? GameScene)?.showFlightHint(GameScene.flightHintText(for: GameSettings.shared.controlScheme,
+                                                                        voiceOver: UIAccessibility.isVoiceOverRunning))
         adapter.isHUDHidden = false
 
         // Pipes and the hint both wait for the player's first input.
@@ -78,7 +75,7 @@ class PlayingState: GKState {
         (adapter.playerCharacter as? HelicopterNode)?.onFirstInput = { [weak self, weak scene] in
             guard let self = self, let scene = scene else { return }
             self.adapter.scene?.run(self.infinitePipeProducer, withKey: self.infinitePipeProducerKey)
-            (scene as? GameScene)?.flightHint?.run(.fadeOut(withDuration: 0.5))
+            (scene as? GameScene)?.hideFlightHint()
         }
 
         let character = PlayableCharacter.helicopter

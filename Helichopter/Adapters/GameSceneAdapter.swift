@@ -35,18 +35,45 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         return UserDefaults.standard.bool(for: .isMusicOn)
     }()
 
-    var score: Int = 0
+    var score: Int = 0 {
+        didSet {
+            guard score != oldValue else { return }
+            scoreLabel?.text = "Score \(score)"
+            hudDelegate?.scoreDidChange(score)
+            let saved = UserDefaults.standard.integer(for: .bestScore)
+            if max(score, saved) != max(oldValue, saved) { hudDelegate?.bestScoreDidChange(bestScore) }
+        }
+    }
     private(set) var scoreLabel: SKLabelNode?
+
+    /// The best the HUD shows: the saved record, or this run's score once it is higher.
+    var bestScore: Int { max(score, UserDefaults.standard.integer(for: .bestScore)) }
 
     // New-high-score celebration: once per run, only when beating an existing record.
     private(set) var bestAtRunStart = 0
     private var celebratedThisRun = false
-    private var newHighScoreUntil: Date?
+    private var isCelebrating = false
+    private var celebrationTimer: Timer?
     static let newHighScoreDisplayDuration: TimeInterval = 3
 
     /// True while the HUD should show the "New high score!" banner.
     var isShowingNewHighScore: Bool {
-        GameSettings.shared.showScore && newHighScoreUntil.map { Date() < $0 } == true
+        GameSettings.shared.showScore && isCelebrating
+    }
+
+    private var hudDelegate: GameSceneHUDDelegate? { (scene as? GameScene)?.hudDelegate }
+
+    /// States call this once they have finished entering, so the HUD sees the final state.
+    func reportPhase(_ phase: GamePhase) {
+        hudDelegate?.stateDidChange(phase)
+    }
+
+    private func setCelebrating(_ celebrating: Bool) {
+        celebrationTimer?.invalidate()
+        celebrationTimer = nil
+        guard celebrating != isCelebrating else { return }
+        isCelebrating = celebrating
+        hudDelegate?.newHighScoreDidChange(isShowingNewHighScore)
     }
 
     private(set) var scoreSound = SKAction.playSoundFileNamed("Score.caf", waitForCompletion: false)
@@ -142,6 +169,8 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         prepareInfiniteBackgroundScroller(for: scene)
     }
 
+    deinit { celebrationTimer?.invalidate() }
+
     convenience init?(with scene: SKScene, stateMachine: GKStateMachine) {
         self.init(with: scene)
         self.stateMachine = stateMachine
@@ -157,21 +186,26 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     func beginRun() {
         bestAtRunStart = UserDefaults.standard.integer(for: .bestScore)
         celebratedThisRun = false
-        newHighScoreUntil = nil
+        setCelebrating(false)
     }
 
     /// Adds a point, saves a new best immediately (No-Fail runs may never reach
     /// Round Over), and celebrates the first time this run beats the old record.
     func scorePoint() {
         score += 1
-        scoreLabel?.text = "Score \(score)"
         if score > UserDefaults.standard.integer(for: .bestScore) {
             UserDefaults.standard.set(score, for: .bestScore)
         }
         let isNewHighScore = !celebratedThisRun && bestAtRunStart > 0 && score > bestAtRunStart
         if isNewHighScore {
             celebratedThisRun = true
-            newHighScoreUntil = Date().addingTimeInterval(Self.newHighScoreDisplayDuration)
+            setCelebrating(true)
+            // A real-time timer, so the banner also expires while the game is paused.
+            let timer = Timer(timeInterval: Self.newHighScoreDisplayDuration, repeats: false) { [weak self] _ in
+                self?.setCelebrating(false)
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            celebrationTimer = timer
         }
 
         if isSoundEffectsOn { scene?.run(scoreSound) }

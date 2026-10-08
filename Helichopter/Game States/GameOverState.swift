@@ -55,6 +55,7 @@ class GameOverState: GKState {
                 levelScene.menuAudio.run(SKAction.play())
             }
         }
+        levelScene.reportPhase(.roundOver)
     }
 
     override func willExit(to nextState: GKState) {

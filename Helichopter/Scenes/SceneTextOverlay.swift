@@ -12,8 +12,10 @@ final class SceneTextOverlay: UIView {
     /// The scene this overlay was last built for; must match `SKView.scene` after a refresh.
     private(set) weak var hostScene: SKScene?
     private var menu = false
+    private var scoreLabel: UILabel?
     private var bestScoreLabel: UILabel?
     private var newHighScoreLabel: UILabel?
+    private var flightHintLabel: UILabel?
     private weak var hudStack: UIStackView?
     private var flightElement: FlightAccessibilityElement?
     // Stack constraints survive removing the scroll view, so track them per rebuild.
@@ -54,7 +56,8 @@ final class SceneTextOverlay: UIView {
             menu = isMenu
             rebuild(scene: scene, root: root)
         }
-        for (node, label) in labels {
+        // The HUD changes only through GameSceneHUDDelegate; menus still mirror their archive.
+        for (node, label) in labels where menu {
             if label.text != node.text { label.text = node.text }
             var visible = true
             var alpha: CGFloat = 1
@@ -67,15 +70,6 @@ final class SceneTextOverlay: UIView {
             label.isHidden = !visible
             label.alpha = alpha
         }
-        if let game = scene as? GameScene, !menu {
-            let best = "Best \(max(game.sceneAdapter?.score ?? 0, UserDefaults.standard.integer(for: .bestScore)))"
-            if bestScoreLabel?.text != best { bestScoreLabel?.text = best }
-            bestScoreLabel?.isHidden = !GameSettings.shared.showScore
-            let celebrate = game.sceneAdapter?.isShowingNewHighScore == true
-                && game.stateMachine.currentState is PlayingState
-            if newHighScoreLabel?.isHidden == celebrate { newHighScoreLabel?.isHidden = !celebrate }
-        }
-        flightElement?.accessibilityHint = (scene as? GameScene)?.accessibilityFlightHint
         for (node, button) in links {
             let focused = node.isFocused
             if focused && button.layer.borderWidth == 0 {
@@ -92,8 +86,10 @@ final class SceneTextOverlay: UIView {
         links = []
         labels = []
         let theme = GameSettings.shared.selectedTheme
+        scoreLabel = nil
         bestScoreLabel = nil
         newHighScoreLabel = nil
+        flightHintLabel = nil
         let isPaused = (scene as? GameScene)?.stateMachine.currentState is PausedState
         backgroundColor = isPaused
             ? (GameSettings.shared.hideGameWhilePaused ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
@@ -186,7 +182,9 @@ final class SceneTextOverlay: UIView {
                 label.backgroundColor = theme.sceneBackgroundColor
                 label.isUserInteractionEnabled = false
             }
+            if !menu && node.name == GameScene.flightHintName { flightHintLabel = label }
             if !menu && node.name == "Score Label" {
+                scoreLabel = label
                 hud.addArrangedSubview(label)
                 let best = UILabel()
                 best.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
@@ -268,12 +266,24 @@ final class SceneTextOverlay: UIView {
             element.accessibilityCustomActions = actions
             flightElement = element
             accessibilityElements = [element, scroll]
+            showCurrentHUD(of: game)
         } else {
             accessibilityElements = [scroll]
         }
+        (scene as? GameScene)?.hudDelegate = self
         accessibilityViewIsModal = menu
         ScreenChangeAnnouncer.post( flightElement)
 
+    }
+
+    /// Fills a freshly built HUD from the scene once; after that only delegate calls change it.
+    private func showCurrentHUD(of game: GameScene) {
+        guard let adapter = game.sceneAdapter else { return }
+        scoreDidChange(adapter.score)
+        bestScoreDidChange(adapter.bestScore)
+        newHighScoreDidChange(adapter.isShowingNewHighScore)
+        flightHintLabel?.text = game.flightHintText ?? game.flightHint?.text
+        flightHintLabel?.alpha = game.flightHintText == nil ? 0 : 1
     }
 
     private func guideLabel(_ text: String, style: UIFont.TextStyle) -> UILabel {
@@ -374,6 +384,39 @@ final class SceneTextOverlay: UIView {
         scanner?.items = items
         if wasScanning { scanner?.start() }
         ScreenChangeAnnouncer.post( heading)
+    }
+}
+
+extension SceneTextOverlay: GameSceneHUDDelegate {
+    func scoreDidChange(_ score: Int) {
+        scoreLabel?.text = "Score \(score)"
+        scoreLabel?.isHidden = !GameSettings.shared.showScore
+    }
+
+    func bestScoreDidChange(_ best: Int) {
+        bestScoreLabel?.text = "Best \(best)"
+        bestScoreLabel?.isHidden = !GameSettings.shared.showScore
+    }
+
+    func newHighScoreDidChange(_ isShowing: Bool) {
+        newHighScoreLabel?.isHidden = !isShowing
+    }
+
+    func flightHintDidChange(_ text: String?) {
+        guard let label = flightHintLabel else { return }
+        label.layer.removeAllAnimations()
+        if let text = text {
+            label.text = text
+            label.alpha = 1
+        } else {
+            UIView.animate(withDuration: 0.5) { label.alpha = 0 }
+        }
+    }
+
+    /// Pause and Round Over replace the HUD at once, without waiting for any timer.
+    func stateDidChange(_ phase: GamePhase) {
+        guard let view = superview as? SKView, let scene = hostScene, view.scene === scene else { return }
+        refresh(in: view)
     }
 }
 

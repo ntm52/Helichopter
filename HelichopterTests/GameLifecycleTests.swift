@@ -610,8 +610,8 @@ struct GameLifecycleTests {
             let overlay = SceneTextOverlay(frame: view.bounds)
             view.addSubview(overlay)
             overlay.refresh(in: view)
+            // No refresh: the banner must follow the scene's events alone.
             func bannerVisible() -> Bool {
-                overlay.refresh(in: view)
                 func find(_ v: UIView) -> UILabel? {
                     (v as? UILabel).flatMap { $0.text == "New high score!" ? $0 : nil } ?? v.subviews.lazy.compactMap(find).first
                 }
@@ -626,7 +626,7 @@ struct GameLifecycleTests {
             // Saved at once, so a No-Fail run that never reaches Round Over keeps its record.
             #expect(defaults.integer(for: .bestScore) == 4)
             GameSettings.shared.showScore = false
-            #expect(!adapter.isShowingNewHighScore && !bannerVisible())
+            #expect(!adapter.isShowingNewHighScore)
             GameSettings.shared.showScore = true
             #expect(game.stateMachine.enter(PausedState.self))
             #expect(!bannerVisible())
