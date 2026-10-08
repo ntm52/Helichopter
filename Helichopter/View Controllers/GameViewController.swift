@@ -9,8 +9,6 @@ enum Scenes: String {
     case title   = "TitleScene"
     case game    = "GameScene"
     case setting = "SettingsScene"
-    case pause   = "PauseScene"
-    case failed  = "FailedScene"
 }
 
 extension Scenes {

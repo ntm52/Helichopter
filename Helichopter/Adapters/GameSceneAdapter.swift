@@ -21,8 +21,6 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
 
     // MARK: - Properties
 
-    private let overlayDuration: TimeInterval = 0.25
-
     var gravity: CGFloat { GameSettings.shared.gravity }
     let playerSize = CGSize(width: 100, height: 100)
     let backgroundResourceName = "Background"
@@ -45,6 +43,9 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         }
     }
     private(set) var scoreLabel: SKLabelNode?
+
+    /// The score the last round ended on, shown by the Round Over menu.
+    var roundScore = 0
 
     /// The best the HUD shows: the saved record, or this run's score once it is higher.
     var bestScore: Int { max(score, UserDefaults.standard.integer(for: .bestScore)) }
@@ -104,27 +105,6 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     var updatables = [Updatable]()
     var touchables = [Touchable]()
 
-    var buttons = [ButtonNode]()
-
-    var overlay: SceneOverlay? {
-        didSet {
-            buttons = []
-
-            // Remove synchronously: a paused scene cannot finish a fade-out action,
-            // and outgoing buttons must stop accepting input immediately.
-            oldValue?.backgroundNode.removeAllActions()
-            oldValue?.backgroundNode.removeFromParent()
-
-            if let overlay = overlay, let scene = scene {
-                overlay.backgroundNode.removeFromParent()
-                scene.addChild(overlay.backgroundNode)
-                overlay.backgroundNode.alpha = 1.0
-                overlay.backgroundNode.run(SKAction.fadeIn(withDuration: overlayDuration))
-                buttons = scene.findAllButtonsInScene()
-            }
-        }
-    }
-
     private var _isHUDHidden: Bool = false
     var isHUDHidden: Bool {
         get { _isHUDHidden }
@@ -140,7 +120,7 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     }
 
     /// Called on the main thread when GameOverState is entered via collision.
-    /// GameScene uses this to set up the overlay focus scanner.
+    /// GameScene uses this to set up the menu focus scanner.
     var onGameOverEntered: (() -> Void)?
 
     // MARK: - Private properties

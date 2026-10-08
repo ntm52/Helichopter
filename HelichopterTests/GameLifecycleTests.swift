@@ -38,18 +38,18 @@ struct GameLifecycleTests {
         try await work()
     }
 
-    private func activateGameItem(_ identifier: ButtonIdentifier, in scene: GameScene) async throws {
+    private func activateGameItem(_ action: MenuAction, in scene: GameScene) async throws {
         for _ in 0..<150 {
             if let scanner = scene.overlayScanner, scanner.isActive,
-               let button = scanner.items[scanner.currentIndex] as? ButtonNode,
-               button.buttonIdentifier == identifier {
+               let item = scanner.items[scanner.currentIndex] as? GameMenuItem,
+               item.action == action {
                 scene.switchPrimaryBegan()
                 scene.switchPrimaryEnded()
                 return
             }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
-        Issue.record("Switch menu item not reachable: \(identifier)")
+        Issue.record("Switch menu item not reachable: \(action)")
     }
 
     @Test func heldPrimaryPausesEveryFlightSchemeAndResumesWithOneSwitch() async throws {
@@ -178,7 +178,7 @@ struct GameLifecycleTests {
             try await Task.sleep(nanoseconds: 150_000_000)
             #expect(scanner.currentIndex == originalIndex)
             for _ in scanner.items.indices {
-                if (scanner.items[scanner.currentIndex] as? ButtonNode)?.buttonIdentifier == .resume { break }
+                if (scanner.items[scanner.currentIndex] as? GameMenuItem)?.action == .resume { break }
                 scene.switchSecondaryBegan()
                 scene.switchSecondaryEnded()
             }
@@ -273,7 +273,7 @@ struct GameLifecycleTests {
 
     @Test func bundledScenesAndAtlasLoad() throws {
         try withSettings {
-            for name in ["TitleScene", "SettingsScene", "GameScene", "PauseScene", "FailedScene"] {
+            for name in ["TitleScene", "SettingsScene", "GameScene"] {
                 for suffix in ["", " iPad"] {
                     #expect(SKScene(fileNamed: name + suffix) != nil)
                 }
@@ -427,7 +427,7 @@ struct GameLifecycleTests {
             #expect(adapter.score == 0)
             #expect(!heli.isAffectedByGravity)
             #expect(heli.onFirstInput != nil)
-            #expect(adapter.overlay == nil)
+            #expect(scene.phase == .playing && scene.menuItems.isEmpty)
         }
     }
 
@@ -483,12 +483,13 @@ struct GameLifecycleTests {
             scene.switchSecondaryBegan()
             scene.sceneAdapter?.score = 4
             controller.suspendInput()
-            let overlay = scene.sceneAdapter?.overlay
+            let menu = scene.menuItems
             controller.suspendInput()
             controller.resumeInput()
             #expect(scene.stateMachine.currentState is PausedState)
             #expect(scene.isPaused)
-            #expect(scene.sceneAdapter?.overlay === overlay)
+            #expect(scene.menuItems.map(\.action) == [.resume, .home])
+            #expect(zip(scene.menuItems, menu).allSatisfy { $0 === $1 })
             #expect(scene.sceneAdapter?.score == 4)
             #expect(!heli.isTwoSwitchUpHeld && !heli.isTwoSwitchDownHeld)
             #expect(scene.stateMachine.enter(PlayingState.self))
@@ -526,10 +527,9 @@ struct GameLifecycleTests {
             #expect(!heli.isAffectedByGravity)
             scene.sceneAdapter?.score = 8
             #expect(scene.stateMachine.enter(GameOverState.self))
-            let overlay = scene.sceneAdapter?.overlay
             scene.pauseForInterruption()
             #expect(scene.stateMachine.currentState is GameOverState)
-            #expect(scene.sceneAdapter?.overlay === overlay)
+            #expect(scene.menuItems.map(\.action) == [.home, .retry])
             #expect(UserDefaults.standard.integer(for: .lastScore) == 8)
         }
     }

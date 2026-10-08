@@ -47,18 +47,18 @@ These apply to every change, including cosmetics and the store.
 
 ## Architecture
 
-The app has one `GameViewController` holding an `SKView`. Each screen is an `SKScene` loaded from an `.sks` archive. **UIKit draws everything the player sees in menus and the HUD.** The `.sks` buttons and labels are kept only as invisible models that supply text, actions, and scanner order.
+The app has one `GameViewController` holding an `SKView`. Each screen is an `SKScene` loaded from an `.sks` archive. **UIKit draws everything the player sees in menus and the HUD.** On Home and Settings, the `.sks` buttons and labels are kept only as invisible models that supply text, actions, and scanner order. Pause and Round Over have no archive: they are built in Swift (`GameMenuView`).
 
 | File (under `Helichopter/`) | Role |
 |---|---|
 | `View Controllers/GameViewController.swift` | Hosts the `SKView` and the `SceneTextOverlay`. Refreshes the overlay every 50 ms. **Owns every screen change:** `present(_:transition:)` (static form `present(_:in:)` for scenes) is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
-| `Scenes/SceneTextOverlay.swift` | UIKit drawing for the title menu, first-run guide, gameplay HUD, and pause/round-over menus. Mirrors archived `SKLabelNode`/`ButtonNode`s into `UILabel`/`UIButton`s. Defines `suppressArchivedPresentation()` and the VoiceOver `FlightAccessibilityElement`. |
+| `Scenes/SceneTextOverlay.swift` | UIKit drawing for the title menu, first-run guide, and gameplay HUD; hosts `GameMenuView` during Pause and Round Over. Mirrors archived `SKLabelNode`/`ButtonNode`s into `UILabel`/`UIButton`s on Home. Defines `suppressArchivedPresentation()` and the VoiceOver `FlightAccessibilityElement`. |
 | `Scenes/SettingsScene.swift` | `SettingsScene` hides its whole archive and shows `SettingsOverlayView`, a full UIKit Settings panel with its own switch scanner. Also holds `AppLinks` (privacy URL, support email, acknowledgements text). ~1,160 lines. |
 | `Scenes/RoutingUtilityScene.swift` | Base class for Title and Settings scenes. Owns the SpriteKit `FocusScanner` and picks the next scene in `buttonTriggered`, which it hands to `GameViewController.present`. |
 | `Scenes/TitleScene.swift` | Home screen. Draws the background and keeps a hidden placeholder mascot. |
-| `Scenes/GameScene.swift` | Gameplay. `GKStateMachine` (Playing, Paused, GameOver), switch routing, hold-to-pause, VoiceOver flight, flight hint text. |
-| `Scenes/SceneOverlay.swift` | Loads `PauseScene`/`FailedScene` archives as overlays inside `GameScene`. |
-| `Adapters/GameSceneAdapter.swift` | Gameplay hub: physics, scoring, best-score saving, sounds, collisions, overlay management. |
+| `Scenes/GameScene.swift` | Gameplay. `GKStateMachine` (Playing, Paused, GameOver), switch routing, hold-to-pause, VoiceOver flight, flight hint text. Owns the Pause and Round Over menu items (`GameMenuItem`) that the switch scanner moves through, and acts on them in `perform(_:from:)`. |
+| `Scenes/GameMenuView.swift` | Pause and Round Over in UIKit: `MenuAction`, `GameMenuItem` (scanner model owned by the scene), `GameMenuView`, and `GameMenuButton`, whose focus border follows its item with no polling. |
+| `Adapters/GameSceneAdapter.swift` | Gameplay hub: physics, scoring, best-score saving, sounds, collisions, HUD visibility. |
 | `Game States/*.swift` | `PlayingState` (pipe spawning, first-input start), `PausedState`, `GameOverState`. |
 | `Nodes/Playables/HelicopterNode.swift` | Player sprite: atlas animation, physics, all four control schemes, contrast marker, No-Fail pulse. |
 | `Nodes/Game Componens/PipeNode.swift` | 9-slice pipe body and cap, tinted by palette, with a contrast border. (The folder name's typo is real.) |
@@ -88,8 +88,8 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 ## Known issues and debt
 
 - **Double page during screen changes:** live in 2.0 (owner accepted it). On `master`, Plan 01 Stage A hides it with one snapshot cross-fade of both layers, but each screen is still drawn by two layers. Stage B removes the cause and ships as 2.1: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
-- **50 ms overlay polling** in `GameViewController` runs 20 times a second, even on the home screen. It is the only thing that keeps UIKit in step with SpriteKit. Removed by the same plan.
-- **Hidden `.sks` menus** duplicate every menu and have iPad copies. They are the root of the "two versions of a screen" bug class. Removed by the same plan.
+- **50 ms overlay polling** in `GameViewController` runs 20 times a second, even on the home screen. The HUD, Pause, and Round Over no longer need it; it still keeps the Home menu and its focus border in step. Removed by the same plan.
+- **Hidden `.sks` menus** (Home and Settings; Pause and Round Over are gone) duplicate their menus and have iPad copies. They are the root of the "two versions of a screen" bug class. Removed by the same plan.
 - `fatalError` remains in the legacy `ToggleButtonNode`/`TriggleButtonNode` responders.
 - Narrow iPad windows show wide top and bottom bars instead of a larger phone-shaped layout.
 - The full test suite occasionally hangs with parallel simulator clones. Use `-parallel-testing-enabled NO` if it does.

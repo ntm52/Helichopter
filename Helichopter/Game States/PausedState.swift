@@ -5,13 +5,8 @@ class PausedState: GKState {
     
     // MARK: - Properites
     
-    var overlaySceneFileName: String {
-        return Scenes.pause.getName()
-    }
-    
     unowned var levelScene: SKScene
     unowned var adapter: GameSceneAdapter
-    var overlay: SceneOverlay!
     
     // MARK: - Intializers
     
@@ -19,7 +14,6 @@ class PausedState: GKState {
         self.levelScene = scene
         self.adapter = adapter
         super.init()
-        overlay = SceneOverlay(overlaySceneFileName: overlaySceneFileName, zPosition: 1000)
     }
     
     // MARK: GKState Life Cycle
@@ -30,8 +24,6 @@ class PausedState: GKState {
         (adapter.playerCharacter as? HelicopterNode)?.prepareForNewRun()
         adapter.playerCharacter?.shouldAcceptTouches = false
         levelScene.isPaused = true
-        overlay.applyUITheme(GameSettings.shared.selectedTheme)
-        adapter.overlay = overlay
         adapter.isHUDHidden = true
         adapter.reportPhase(.paused)
     }
@@ -41,7 +33,6 @@ class PausedState: GKState {
         
         adapter.playerCharacter?.shouldAcceptTouches = true
         levelScene.isPaused = false
-        adapter.overlay = nil
         adapter.isHUDHidden = false
     }
     

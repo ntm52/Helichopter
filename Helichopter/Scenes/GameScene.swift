@@ -124,6 +124,44 @@ class GameScene: SKScene {
         }
     }
 
+    // MARK: - Pause and Round Over menus
+
+    /// Menu choices in focus order. The scene owns them so switch scanning works
+    /// without a view; `GameMenuView` draws whichever menu is current.
+    private(set) lazy var pauseMenu = [MenuAction.resume, .home].map { GameMenuItem($0, phase: .paused, scene: self) }
+    private(set) lazy var roundOverMenu = [MenuAction.home, .retry].map { GameMenuItem($0, phase: .roundOver, scene: self) }
+
+    /// The menu for the current state; empty during play.
+    var menuItems: [GameMenuItem] {
+        switch phase {
+        case .paused: return pauseMenu
+        case .roundOver: return roundOverMenu
+        case .playing: return []
+        }
+    }
+
+    /// Every menu route (tap, scanner, VoiceOver) ends here. A choice from a menu that
+    /// has already closed, or one made during a screen change, is ignored.
+    func perform(_ action: MenuAction, from menuPhase: GamePhase) {
+        guard phase == menuPhase, GameViewController.acceptsInput(in: view) else { return }
+        selection.selectionChanged()
+
+        switch action {
+        case .resume, .retry:
+            stateMachine.enter(PlayingState.self)
+            teardownOverlayScanner()
+
+        case .home:
+            guard let titleScene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
+            // A paused scene must not depend on render-loop progress to leave its menu.
+            // The Title screen makes the only screen-change announcement.
+            overlayScanner?.stop()
+            overlayScanner = nil
+            cancelSwitchPauseHold()
+            GameViewController.present(titleScene, in: view)
+        }
+    }
+
     /// Shown until the first flight input; worded for how this player actually flies.
     static func flightHintText(for scheme: ControlScheme, voiceOver: Bool) -> String {
         if voiceOver { return "Double-tap the flight control to start" }
@@ -238,11 +276,11 @@ class GameScene: SKScene {
 
     // MARK: - Overlay scanner management
 
-    /// Called when PausedState or GameOverState presents an overlay.
+    /// Called when the game enters Pause or Round Over.
     func setupOverlayScanner(forceStart: Bool = false) {
         overlayScanner?.stop()
         let scanner = FocusScanner()
-        scanner.items = findAllButtonsInScene()
+        scanner.items = menuItems
         overlayScanner = scanner
         if forceStart || GameSettings.shared.scanningEnabled {
             scanner.start()
@@ -303,23 +341,6 @@ extension GameScene: ButtonNodeResponderType {
         case .pause:
             sceneAdapter?.stateMachine?.enter(PausedState.self)
             setupOverlayScanner()
-
-        case .resume:
-            sceneAdapter?.stateMachine?.enter(PlayingState.self)
-            teardownOverlayScanner()
-
-        case .home:
-            guard let titleScene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
-            // A paused scene must not depend on render-loop progress to leave its menu.
-            // The Title screen makes the only screen-change announcement.
-            overlayScanner?.stop()
-            overlayScanner = nil
-            cancelSwitchPauseHold()
-            GameViewController.present(titleScene, in: view)
-
-        case .retry:
-            sceneAdapter?.stateMachine?.enter(PlayingState.self)
-            teardownOverlayScanner()
 
         default:
             debugPrint(#function, "unhandled identifier:", identifier)

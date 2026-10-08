@@ -57,6 +57,10 @@ struct ScreenTransitionTests {
         try #require(scene?.findAllButtonsInScene().first { $0.buttonIdentifier == id })
     }
 
+    private func menuItem(_ action: MenuAction, in game: GameScene) throws -> GameMenuItem {
+        try #require(game.menuItems.first { $0.action == action })
+    }
+
     private func settingsPanels(in view: UIView) -> [SettingsOverlayView] {
         view.subviews.compactMap { $0 as? SettingsOverlayView }
     }
@@ -129,7 +133,7 @@ struct ScreenTransitionTests {
             #expect(game.stateMachine.currentState is PausedState)
             controller.refreshSceneText()
             before = posts()
-            try button(.home, in: game).scannerActivate()
+            try menuItem(.home, in: game).scannerActivate()
             #expect(skView.scene is TitleScene)
             expectCurrent()
             #expect(!overlay.subviewsOfType(UIButton.self).contains { $0.currentTitle == "Resume" })
@@ -160,7 +164,7 @@ struct ScreenTransitionTests {
             #expect(game.stateMachine.currentState is PausedState)
 
             // A scanner on the incoming screen is frozen until the fade ends.
-            try button(.home, in: game).scannerActivate()
+            try menuItem(.home, in: game).scannerActivate()
             let title = try #require(skView.scene as? TitleScene)
             let scanner = try #require(title.focusScanner)
             #expect(scanner.isActive && scanner.isSuspended)

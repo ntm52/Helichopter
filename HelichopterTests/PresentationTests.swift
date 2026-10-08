@@ -53,12 +53,12 @@ struct PresentationTests {
                 #expect(scene.childNode(withName: "Animated Helicopter")?.isHidden == true)
             }
             if let game = scene as? GameScene {
-                // Re-theming on every pause must not resurrect the archived pause menu.
+                // Pause and Round Over add no SpriteKit content; UIKit draws them.
                 for _ in 0..<2 {
+                    // Music nodes come and go with play; nothing else may be added.
+                    let nodeCount = scene.children.filter { !($0 is SKAudioNode) }.count
                     #expect(game.stateMachine.enter(PausedState.self))
-                    let overlay = try #require(game.sceneAdapter?.overlay)
-                    #expect(overlay.backgroundNode.color.cgColor.alpha == 0)
-                    #expect(overlay.contentNode.texture == nil)
+                    #expect(scene.children.filter { !($0 is SKAudioNode) }.count == nodeCount)
                     #expect(archivedContentIsInvisible(scene))
                     #expect(game.stateMachine.enter(PlayingState.self))
                 }
@@ -112,7 +112,7 @@ struct PresentationTests {
             let resume = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Resume" })
             resume.sendActions(for: .touchUpInside)
             #expect(game.stateMachine.currentState is PlayingState)
-            #expect(resume.superview == nil)
+            #expect(!descendants(overlay, UIButton.self).contains(resume))
             resume.sendActions(for: .touchUpInside)
             #expect(game.stateMachine.currentState is PlayingState)
             #expect(try stackFrame().minY < 40)
@@ -254,7 +254,6 @@ struct PresentationTests {
                 try capture(view, overlay: overlay, name: "Unified-Pause-" + archive)
                 #expect(!descendants(overlay, UILabel.self).contains { $0.text == game.flightHint?.text })
                 #expect(overlay.backgroundColor?.cgColor.alpha == 0.25)
-                #expect(game.sceneAdapter?.overlay?.backgroundNode.color.cgColor.alpha == 0)
                 #expect(!scene.findAllButtonsInScene().contains { $0.buttonIdentifier == .pause })
                 let resume = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Resume" })
                 resume.sendActions(for: .touchUpInside)

@@ -12,6 +12,10 @@ final class SceneTextOverlay: UIView {
     /// The scene this overlay was last built for; must match `SKView.scene` after a refresh.
     private(set) weak var hostScene: SKScene?
     private var menu = false
+    /// The game phase the overlay was built for; Pause and Round Over replace the HUD.
+    private var builtPhase: GamePhase?
+    /// The Pause or Round Over menu, while one is showing.
+    private(set) var gameMenu: GameMenuView?
     private var scoreLabel: UILabel?
     private var bestScoreLabel: UILabel?
     private var newHighScoreLabel: UILabel?
@@ -45,16 +49,16 @@ final class SceneTextOverlay: UIView {
             return
         }
         isHidden = false
-        let root = (scene as? GameScene)?.sceneAdapter?.overlay?.contentNode ?? scene
-        let isMenu = scene is TitleScene || root !== scene
-        if source !== root || hostScene !== scene {
+        let phase = (scene as? GameScene)?.phase
+        if source !== scene || hostScene !== scene || builtPhase != phase {
             if hostScene !== scene {
                 guidePage = scene is TitleScene && !guideDefaults.bool(forKey: Self.guideCompletedKey) ? 0 : nil
             }
-            source = root
+            source = scene
             hostScene = scene
-            menu = isMenu
-            rebuild(scene: scene, root: root)
+            builtPhase = phase
+            menu = scene is TitleScene || (phase != nil && phase != .playing)
+            rebuild(scene: scene, root: scene)
         }
         // The HUD changes only through GameSceneHUDDelegate; menus still mirror their archive.
         for (node, label) in labels where menu {
@@ -95,9 +99,14 @@ final class SceneTextOverlay: UIView {
             ? (GameSettings.shared.hideGameWhilePaused ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
             : (menu && !(scene is TitleScene) ? theme.sceneBackgroundColor : .clear)
         // The archive supplies actions and text only; never draw a second menu.
-        // Scenes and overlays also suppress at load, so this only covers late additions.
+        // Scenes also suppress at load, so this only covers late additions.
         scene.suppressArchivedPresentation()
-        (scene as? GameScene)?.sceneAdapter?.overlay?.suppressArchivedPresentation()
+        gameMenu = nil
+        flightElement = nil
+        if let game = scene as? GameScene, game.phase != .playing {
+            buildGameMenu(for: game)
+            return
+        }
         scroll.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
@@ -274,6 +283,24 @@ final class SceneTextOverlay: UIView {
         accessibilityViewIsModal = menu
         ScreenChangeAnnouncer.post( flightElement)
 
+    }
+
+    /// Pause and Round Over are built in Swift and fill the overlay.
+    private func buildGameMenu(for game: GameScene) {
+        let menuView = GameMenuView(game: game, phase: game.phase, traits: traitCollection)
+        menuView.frame = bounds
+        menuView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        // Update at once, so a second tap cannot reach a menu that has closed.
+        menuView.onAction = { [weak self] in
+            guard let self = self, let view = self.superview as? SKView else { return }
+            self.refresh(in: view)
+        }
+        addSubview(menuView)
+        gameMenu = menuView
+        game.hudDelegate = self
+        accessibilityElements = [menuView]
+        accessibilityViewIsModal = true
+        ScreenChangeAnnouncer.post(menuView.titleLabel)
     }
 
     /// Fills a freshly built HUD from the scene once; after that only delegate calls change it.
@@ -475,15 +502,6 @@ extension SKNode {
             if let label = child as? SKLabelNode { label.fontColor = .clear }
             child.suppressArchivedPresentation()
         }
-    }
-}
-
-extension SceneOverlay {
-    func suppressArchivedPresentation() {
-        contentNode.texture = nil
-        contentNode.color = .clear
-        backgroundNode.color = .clear
-        contentNode.suppressArchivedPresentation()
     }
 }
 
