@@ -210,3 +210,4 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Owner published the Accessibility Nutrition Labels in App Store Connect: Larger Text, Dark Interface, Sufficient Contrast, Reduced Motion, Differentiate Without Color Alone. VoiceOver and Voice Control still wait on device testing (roadmap step 2).
 - Updated `Plans/ROADMAP.md`, `HELICHOPTER_PROJECT.md`, and `Release/APP_STORE_COPY.md` to match. Committed the post-launch document rewrite and `Plans/` from the previous entry.
 - Still open from step 0: weekly Organizer crash/hang check until about 2026-11-08. Next: Plan 01 Stage A.
+- Owner confirmed 2.0 (build 2) is the official release. Pushed `master` and tag `2.0`. Decided: Plan 01 Stage A ships as 2.0.1 (build 3); Stage B ships as 2.1.

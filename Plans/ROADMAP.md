@@ -12,8 +12,10 @@ Written 2026-10-08, after version 2.0 went live. Work top to bottom unless the o
 
 ## 1. Remove the "double page" effect — [Plan 01](01_SINGLE_LAYER_UI.md)
 
-- [ ] **Stage A (quick fix, can ship as 2.0.1):** route every screen change through one helper that animates SpriteKit and UIKit together as a single snapshot.
-- [ ] **Stage B (proper fix, several sessions):** make Home, Guide, Settings, Pause, and Round Over plain UIKit screens; SpriteKit only for gameplay and the backdrop. Deletes the hidden `.sks` menus, the 50 ms timer, the legacy toggle classes, and the iPad archive copies. Splits the 1,160-line `SettingsScene.swift`.
+Version numbering: bug fixes with no new features ship as `2.0.x`; anything that changes screens or adds features ships as `2.x`. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` at the start of the release's work so test builds are never confused with the live 2.0 (2).
+
+- [ ] **Stage A (quick fix) → release 2.0.1, build 3:** route every screen change through one helper that animates SpriteKit and UIKit together as a single snapshot.
+- [ ] **Stage B (proper fix, several sessions) → release 2.1:** make Home, Guide, Settings, Pause, and Round Over plain UIKit screens; SpriteKit only for gameplay and the backdrop. Deletes the hidden `.sks` menus, the 50 ms timer, the legacy toggle classes, and the iPad archive copies. Splits the 1,160-line `SettingsScene.swift`.
 
 ## 2. Device accessibility testing (can run alongside step 1)
 
