@@ -27,7 +27,7 @@ xcodebuild test -project Helichopter.xcodeproj -scheme Helichopter -destination 
 
 - **UIKit draws everything visible** in menus and the HUD (`Scenes/SceneTextOverlay.swift`). The `.sks` archives are kept only as invisible action and text models. Any code that calls `applyUITheme` or adds archived nodes must then call `suppressArchivedPresentation()`, or the old SpriteKit screen renders alongside the UIKit one.
 - Settings is a separate UIKit panel (`SettingsOverlayView` in `SettingsScene.swift`); its scene hides all archived children.
-- Screen changes use SpriteKit transitions that UIKit does not follow, which causes the "double page" effect. Do not add new screens on this pattern; follow `Plans/01_SINGLE_LAYER_UI.md`.
+- Change screens only with `GameViewController.present(_:in:)`. Never call `presentScene` elsewhere or use an `SKTransition` (a test enforces this). New code that posts `screenChanged` must use `ScreenChangeAnnouncer.post`, and a scene with its own scanner must list it in `scannersDuringTransition`. Do not add new screens as `.sks` scenes; follow `Plans/01_SINGLE_LAYER_UI.md` Stage B.
 - `GameViewController` refreshes the overlay every 50 ms. Replacing that timer is part of the single-layer plan.
 - The sprite atlas folder must keep its `.spriteatlas` extension.
 - Switch access (`FocusScanner`), VoiceOver, and Dynamic Type are core features. Every new control must be scannable, labelled, and use scalable text.

@@ -297,7 +297,7 @@ final class SettingsOverlayView: UIView {
         }
         switchScanner.items = controls(in: panel).map { scanItem(for: $0) }
         switchScanner.start()
-        UIAccessibility.post(notification: .screenChanged, argument: title)
+        ScreenChangeAnnouncer.post( title)
     }
 
     private func closeAdjustment() {
@@ -308,7 +308,7 @@ final class SettingsOverlayView: UIView {
         let label = returnControlLabel
         returnControlLabel = nil
         startScanning(focusing: label)
-        UIAccessibility.post(notification: .screenChanged, argument: focusedControl)
+        ScreenChangeAnnouncer.post( focusedControl)
     }
 
     var isAdjusting: Bool { adjustmentPanel != nil }
@@ -1060,7 +1060,7 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
         view.addSubview(overlay)
         settingsOverlay = overlay
         if GameSettings.shared.scanningEnabled { overlay.startScanning() }
-        UIAccessibility.post(notification: .screenChanged, argument: overlay)
+        ScreenChangeAnnouncer.post( overlay)
     }
 
     private func makeOverlay(in view: SKView) -> SettingsOverlayView {
@@ -1094,30 +1094,21 @@ class SettingsScene: RoutingUtilityScene, ToggleButtonNodeResponderType, Triggle
                 overlay?.alpha = 0
             } completion: { _ in
                 overlay?.removeFromSuperview()
-                UIAccessibility.post(notification: .screenChanged, argument: newOverlay)
+                ScreenChangeAnnouncer.post( newOverlay)
             }
         }
         return overlay
     }
 
     private func navigateBack(from view: SKView?) {
-        guard let view = view else { return }
+        guard let view = view, let scene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
         settingsOverlay?.stopScanning()
-        settingsOverlay?.isUserInteractionEnabled = false
-        UIView.animate(withDuration: 0.15) { [weak self] in
-            self?.settingsOverlay?.alpha = 0
-        } completion: { [weak self, weak view] _ in
-            self?.settingsOverlay?.removeFromSuperview()
-            self?.settingsOverlay = nil
-            guard let view = view,
-                  let scene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
-            scene.scaleMode = GameViewController.scaleMode(for: scene, in: view.bounds.size)
-            let fade = UIAccessibility.isReduceMotionEnabled || UIAccessibility.prefersCrossFadeTransitions
-            let tx = SKTransition.fade(withDuration: fade ? 0.4 : 1.0)
-            tx.pausesIncomingScene = false
-            tx.pausesOutgoingScene = false
-            view.presentScene(scene, transition: tx)
-        }
+        // The transition snapshot carries the panel away; willMove removes the live one.
+        GameViewController.present(scene, in: view)
+    }
+
+    override var scannersDuringTransition: [FocusScanner] {
+        settingsOverlay.map { [$0.switchScanner] } ?? []
     }
 
     // MARK: - SpriteKit protocol conformance (fallback if .sks buttons appear behind overlay)

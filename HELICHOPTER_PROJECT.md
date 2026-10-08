@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). 82 automated tests pass.
+**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Version 2.0.1 (build 3, Plan 01 Stage A) is in progress and not yet submitted. 87 automated tests pass.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -51,10 +51,10 @@ The app has one `GameViewController` holding an `SKView`. Each screen is an `SKS
 
 | File (under `Helichopter/`) | Role |
 |---|---|
-| `View Controllers/GameViewController.swift` | Hosts the `SKView` and the `SceneTextOverlay`. Refreshes the overlay every 50 ms. Routes keyboard and game-controller switch input. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
+| `View Controllers/GameViewController.swift` | Hosts the `SKView` and the `SceneTextOverlay`. Refreshes the overlay every 50 ms. **Owns every screen change:** `present(_:transition:)` (static form `present(_:in:)` for scenes) is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
 | `Scenes/SceneTextOverlay.swift` | UIKit drawing for the title menu, first-run guide, gameplay HUD, and pause/round-over menus. Mirrors archived `SKLabelNode`/`ButtonNode`s into `UILabel`/`UIButton`s. Defines `suppressArchivedPresentation()` and the VoiceOver `FlightAccessibilityElement`. |
 | `Scenes/SettingsScene.swift` | `SettingsScene` hides its whole archive and shows `SettingsOverlayView`, a full UIKit Settings panel with its own switch scanner. Also holds `AppLinks` (privacy URL, support email, acknowledgements text). ~1,160 lines. |
-| `Scenes/RoutingUtilityScene.swift` | Base class for Title and Settings scenes. Owns the SpriteKit `FocusScanner` and the scene-to-scene transitions (`buttonTriggered`). |
+| `Scenes/RoutingUtilityScene.swift` | Base class for Title and Settings scenes. Owns the SpriteKit `FocusScanner` and picks the next scene in `buttonTriggered`, which it hands to `GameViewController.present`. |
 | `Scenes/TitleScene.swift` | Home screen. Draws the background and keeps a hidden placeholder mascot. |
 | `Scenes/GameScene.swift` | Gameplay. `GKStateMachine` (Playing, Paused, GameOver), switch routing, hold-to-pause, VoiceOver flight, flight hint text. |
 | `Scenes/SceneOverlay.swift` | Loads `PauseScene`/`FailedScene` archives as overlays inside `GameScene`. |
@@ -87,7 +87,7 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 
 ## Known issues and debt
 
-- **Double page during screen changes.** Title ↔ Settings and Title → Game use 1-second SpriteKit push/fade transitions. SpriteKit animates the scenes, but the UIKit menus and Settings panel do not move with them. The new UIKit screen appears at once over the old scene, which keeps sliding or fading underneath. Fix: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
+- **Double page during screen changes:** fixed for 2.0.1 by Plan 01 Stage A (one snapshot cross-fade of both layers). Still needs the device screen recording from the plan. The underlying cause (two drawing layers per screen) remains until Stage B: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
 - **50 ms overlay polling** in `GameViewController` runs 20 times a second, even on the home screen. It is the only thing that keeps UIKit in step with SpriteKit. Removed by the same plan.
 - **Hidden `.sks` menus** duplicate every menu and have iPad copies. They are the root of the "two versions of a screen" bug class. Removed by the same plan.
 - `fatalError` remains in the legacy `ToggleButtonNode`/`TriggleButtonNode` responders.

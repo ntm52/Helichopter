@@ -1,6 +1,6 @@
 # Plan 01 — One drawing layer per screen (remove the "double page" effect)
 
-**Status:** Not started. Written 2026-10-08.
+**Status:** Stage A implemented 2026-10-08 for 2.0.1 (build 3); device recording still to do. Stage B not started. Written 2026-10-08.
 **Goal:** Every screen change looks like one page replacing another. No screen ever shows two menus, two backgrounds, or a menu sitting still while the page behind it slides.
 **Order:** Do this before the cosmetics store ([Plan 02](02_COSMETICS_AND_STORE.md)), so the Hangar/Store screen is built on the new pattern instead of adding another screen with the same problem.
 
@@ -36,6 +36,8 @@ This is the same root cause as the earlier "two versions of a screen" and "two P
 ## 3. The fix, in two stages
 
 ### Stage A — Quick fix: move both layers together (small, shippable as 2.0.1)
+
+> **Done 2026-10-08.** `GameViewController.present(_:transition:)`, `ScreenTransition`, `ScreenChangeAnnouncer`, and `FocusScanner.suspend()/resume()`. Snapshot check: `snapshotView(afterScreenUpdates: false)` included the Metal layer on the iPhone 17 simulator (8-second probe fade showed starfield and menu together), so it is used. The fallback `GameViewController.compositeSnapshot(of:)` is built and tested; it is used when the system snapshot returns nil, and should replace it outright if a device recording shows a blank or black first frame. Tests: `ScreenTransitionTests`. Still open: the device recording (step 0) on iPhone and iPad.
 
 Replace the SpriteKit transitions with one UIKit transition of the whole screen.
 

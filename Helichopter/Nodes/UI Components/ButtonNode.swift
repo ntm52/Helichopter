@@ -135,6 +135,8 @@ class ButtonNode: SKSpriteNode {
     }
 
     func buttonTriggered() {
+        // Every activation route (touch, UIKit mirror, scanner, VoiceOver) ends here.
+        guard GameViewController.acceptsInput(in: scene?.view) else { return }
         if isUserInteractionEnabled || isPresentedInUIKit {
             responder?.buttonTriggered(button: self)
         }

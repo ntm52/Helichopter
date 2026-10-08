@@ -41,6 +41,62 @@ extension CGPoint {
     }
 }
 
+// MARK: - Screen transitions
+
+/// How one screen replaces another. SpriteKit and UIKit always change together.
+enum ScreenTransition: Equatable {
+    /// The old screen's snapshot fades out over the new one. Nothing moves.
+    case crossFade(duration: TimeInterval)
+    /// Swap with no animation (first launch, or no window to animate in).
+    case instant
+
+    static let standardDuration: TimeInterval = 0.3
+    static let reducedMotionDuration: TimeInterval = 0.2
+
+    /// A cross-fade; shorter when the player asks for less motion.
+    static func preferred(reduceMotion: Bool = UIAccessibility.isReduceMotionEnabled
+                                            || UIAccessibility.prefersCrossFadeTransitions) -> ScreenTransition {
+        .crossFade(duration: reduceMotion ? reducedMotionDuration : standardDuration)
+    }
+
+    var duration: TimeInterval {
+        if case .crossFade(let duration) = self { return duration }
+        return 0
+    }
+}
+
+/// Scenes report the scanners that must freeze while their screen fades in.
+protocol ScreenTransitionScanning: AnyObject {
+    var scannersDuringTransition: [FocusScanner] { get }
+}
+
+/// Every `screenChanged` post goes through here, so a screen change announces itself
+/// exactly once: posts made while a transition runs are held and the last one with a
+/// focus target (or the last one at all) is sent when the transition finishes.
+enum ScreenChangeAnnouncer {
+    static var poster: (Any?) -> Void = { UIAccessibility.post(notification: .screenChanged, argument: $0) }
+    private static var holding = false
+    private static var pending: Any??
+
+    static func post(_ argument: Any? = nil) {
+        guard holding else { return poster(argument) }
+        if argument != nil || pending == nil { pending = .some(argument) }
+    }
+
+    static func hold() {
+        holding = true
+        pending = nil
+    }
+
+    static func release() {
+        guard holding else { return }
+        holding = false
+        let argument = pending
+        pending = nil
+        poster(argument ?? nil)
+    }
+}
+
 // MARK: - ButtonAccessibilityElement
 
 /// UIKit accessibility proxy that wraps a ButtonNode for iOS Switch Control item scanning.
@@ -57,7 +113,7 @@ private final class ButtonAccessibilityElement: UIAccessibilityElement {
     }
 
     override func accessibilityActivate() -> Bool {
-        guard let button = buttonNode else { return false }
+        guard let button = buttonNode, GameViewController.acceptsInput(in: skView) else { return false }
         button.scannerActivate()
         return true
     }
@@ -68,8 +124,11 @@ private final class ButtonAccessibilityElement: UIAccessibilityElement {
 class GameViewController: UIViewController {
 
     private var inputSuspended = false
-    private let sceneTextOverlay = SceneTextOverlay()
+    let sceneTextOverlay = SceneTextOverlay()
     private var textRefreshTimer: Timer?
+    /// True while one screen fades into the next; all input and scanning is held.
+    private(set) var isChangingScreen = false
+    private var transitionSnapshot: UIView?
 
     deinit { textRefreshTimer?.invalidate() }
 
@@ -93,18 +152,13 @@ class GameViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let sceneName = Scenes.title.getName()
-        if let scene = SKScene(fileNamed: sceneName) as? TitleScene,
-           let skView = self.view as? SKView {
-            scene.scaleMode = GameViewController.scaleMode(for: scene, in: skView.bounds.size)
-            skView.presentScene(scene)
-            skView.ignoresSiblingOrder = true
-        }
-
+        (view as? SKView)?.ignoresSiblingOrder = true
         sceneTextOverlay.frame = view.bounds
         sceneTextOverlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(sceneTextOverlay)
-        refreshSceneText()
+        if let scene = TitleScene(fileNamed: Scenes.title.getName()) {
+            present(scene, transition: .instant)
+        }
         // UIKit continues refreshing when SpriteKit is paused. Capture weakly so
         // the run loop cannot retain the controller or a departed scene.
         let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.refreshSceneText() }
@@ -135,6 +189,98 @@ class GameViewController: UIViewController {
         // Changing input methods must not leave a toggled climb/descent running.
         ((viewIfLoaded as? SKView)?.scene as? GameScene)?.pauseForInterruption()
         refreshSceneText()
+    }
+
+    // MARK: - Screen changes
+
+    /// The controller that owns `view`, when the view is its root SKView.
+    static func controller(for view: SKView?) -> GameViewController? {
+        guard let controller = view?.next as? GameViewController, controller.viewIfLoaded === view else { return nil }
+        return controller
+    }
+
+    /// False while a screen change is animating in `view`.
+    static func acceptsInput(in view: SKView?) -> Bool {
+        controller(for: view)?.isChangingScreen != true
+    }
+
+    /// The only way to change screens. Views without a controller (tests) swap directly.
+    static func present(_ scene: SKScene, in view: SKView?, transition: ScreenTransition = .preferred()) {
+        guard let view = view else { return }
+        if let controller = controller(for: view) {
+            controller.present(scene, transition: transition)
+        } else {
+            scene.scaleMode = scaleMode(for: scene, in: view.bounds.size)
+            view.presentScene(scene)
+        }
+    }
+
+    /// Replaces the whole screen as one unit: a snapshot of SpriteKit and UIKit together
+    /// covers the swap, then fades away. Input, scanning, and VoiceOver announcements
+    /// are held until the new screen is fully visible.
+    func present(_ scene: SKScene, transition: ScreenTransition = .preferred()) {
+        guard let skView = viewIfLoaded as? SKView, !isChangingScreen else { return }
+        scene.scaleMode = Self.scaleMode(for: scene, in: skView.bounds.size)
+        let animated = transition.duration > 0 && skView.scene != nil && skView.window != nil
+        let snapshot = animated ? makeTransitionSnapshot(of: skView) : nil
+
+        isChangingScreen = true
+        skView.isUserInteractionEnabled = false
+        ScreenChangeAnnouncer.hold()
+        if let snapshot = snapshot {
+            snapshot.frame = skView.bounds
+            snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            skView.addSubview(snapshot)
+            transitionSnapshot = snapshot
+        }
+
+        skView.presentScene(scene)
+        refreshSceneText()
+        let scanners = (scene as? ScreenTransitionScanning)?.scannersDuringTransition ?? []
+        scanners.forEach { $0.suspend() }
+        // Scenes add UIKit panels in didMove; the outgoing image must stay on top of them.
+        if let snapshot = snapshot { skView.bringSubviewToFront(snapshot) }
+
+        let finish = { [weak self, weak skView] in
+            self?.transitionSnapshot?.removeFromSuperview()
+            self?.transitionSnapshot = nil
+            self?.isChangingScreen = false
+            skView?.isUserInteractionEnabled = true
+            scanners.forEach { $0.resume() }
+            ScreenChangeAnnouncer.release()
+        }
+        guard let fading = snapshot else { return finish() }
+        UIView.animate(withDuration: transition.duration, delay: 0, options: [.curveEaseInOut]) {
+            fading.alpha = 0
+        } completion: { _ in finish() }
+    }
+
+    /// An image of everything on screen, SpriteKit layer included. The system snapshot
+    /// was checked on the simulator (2026-10-08) and includes the Metal layer.
+    private func makeTransitionSnapshot(of skView: SKView) -> UIView? {
+        skView.snapshotView(afterScreenUpdates: false) ?? Self.compositeSnapshot(of: skView).map(UIImageView.init)
+    }
+
+    /// Fallback from Plan 01: draw the scene with SpriteKit itself, then UIKit on top.
+    /// Use this alone if device recordings show `snapshotView` coming out blank.
+    static func compositeSnapshot(of skView: SKView) -> UIImage? {
+        guard let scene = skView.scene, skView.bounds.width > 0, skView.bounds.height > 0 else { return nil }
+        let sceneRect = CGRect(x: -scene.anchorPoint.x * scene.size.width, y: -scene.anchorPoint.y * scene.size.height,
+                               width: scene.size.width, height: scene.size.height)
+        let topLeft = skView.convert(CGPoint(x: sceneRect.minX, y: sceneRect.maxY), from: scene)
+        let bottomRight = skView.convert(CGPoint(x: sceneRect.maxX, y: sceneRect.minY), from: scene)
+        let drawRect = CGRect(x: topLeft.x, y: topLeft.y, width: bottomRight.x - topLeft.x, height: bottomRight.y - topLeft.y)
+        let texture = skView.texture(from: scene, crop: sceneRect)
+        return UIGraphicsImageRenderer(bounds: skView.bounds).image { context in
+            (skView.backgroundColor ?? scene.backgroundColor).setFill()
+            context.fill(skView.bounds)
+            scene.backgroundColor.setFill()
+            context.fill(drawRect)
+            if let texture = texture { UIImage(cgImage: texture.cgImage()).draw(in: drawRect) }
+            for subview in skView.subviews where !subview.isHidden {
+                subview.drawHierarchy(in: subview.frame, afterScreenUpdates: false)
+            }
+        }
     }
 
     // MARK: - Orientation
@@ -232,7 +378,7 @@ class GameViewController: UIViewController {
 
     @discardableResult
     private func forwardPresses(_ presses: Set<UIPress>, ended: Bool) -> Bool {
-        guard !inputSuspended else { return true }
+        guard !inputSuspended, !isChangingScreen else { return true }
         guard let skView = view as? SKView,
               let scene = skView.scene as? SwitchInputReceivable else { return false }
         var handled = false
@@ -291,7 +437,7 @@ class GameViewController: UIViewController {
     }
 
     private func forwardController(primary: Bool, pressed: Bool) {
-        guard !inputSuspended else { return }
+        guard !inputSuspended, !isChangingScreen else { return }
         guard let skView = view as? SKView,
               let scene = skView.scene as? SwitchInputReceivable else { return }
         if primary {

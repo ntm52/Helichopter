@@ -37,7 +37,11 @@ Menus and Settings offer scalable text and switch scanning. VoiceOver provides f
 
 Helichopter works offline without an account, ads, or in-app purchases. Settings and scores are saved on your device.
 
-**What's New:**
+**What's New (2.0.1, draft):**
+
+Smoother screen changes. Moving between Home, Settings, and a game now fades one whole screen into the next, so two menus never appear at the same time. Taps and switch presses wait until the new screen is ready, and VoiceOver announces each screen once. With Reduce Motion on, the fade is shorter.
+
+**What's New (2.0, as submitted):**
 
 This update adds adjustable flight controls, switch-scanning menus and Settings, VoiceOver flight actions and gap guidance, scalable text, colour themes, No-Fail and Calm modes, a replayable guide, refreshed helicopter animation, and a settings reset that preserves scores.
 

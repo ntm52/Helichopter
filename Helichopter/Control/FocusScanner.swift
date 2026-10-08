@@ -35,6 +35,8 @@ final class FocusScanner {
     var items: [FocusScannable] = []
 
     private(set) var isActive = false
+    /// Held during a screen transition: focus is kept, but nothing advances, speaks, or activates.
+    private(set) var isSuspended = false
     private(set) var currentIndex: Int = 0
     private var scanTimer: Timer?
     private let synthesizer = AVSpeechSynthesizer()
@@ -60,10 +62,31 @@ final class FocusScanner {
 
     func stop() {
         isActive = false
+        isSuspended = false
         scanTimer?.invalidate()
         scanTimer = nil
         synthesizer.stopSpeaking(at: .immediate)
         items.forEach { $0.isFocused = false }
+    }
+
+    /// Freeze an active scan (timer and speech) without losing the focused item.
+    func suspend() {
+        guard isActive else { return }
+        isSuspended = true
+        scanTimer?.invalidate()
+        scanTimer = nil
+        synthesizer.stopSpeaking(at: .immediate)
+    }
+
+    /// Continue a suspended scan, announcing the focused item again.
+    func resume() {
+        guard isSuspended else { return }
+        isSuspended = false
+        guard isActive else { return }
+        focusItem(at: currentIndex)
+        if settings.scanScheme == .autoScan {
+            scheduleTimer()
+        }
     }
 
     /// Read help without a scan timer interrupting it. The next switch press resumes scanning.
@@ -75,6 +98,7 @@ final class FocusScanner {
     /// Primary switch: activate the focused button.
     /// If scanning hasn't started yet, this call starts it instead of activating.
     func primaryActivate() {
+        guard !isSuspended else { return }
         guard isActive else {
             start()
             return
@@ -93,6 +117,7 @@ final class FocusScanner {
     /// Secondary switch: manually advance to the next item.
     /// Starts scanning if not yet active.
     func secondaryAdvance() {
+        guard !isSuspended else { return }
         guard isActive else {
             start()
             return

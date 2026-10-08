@@ -206,13 +206,13 @@ class GameScene: SKScene {
         if forceStart || GameSettings.shared.scanningEnabled {
             scanner.start()
         }
-        UIAccessibility.post(notification: .screenChanged, argument: nil)
+        ScreenChangeAnnouncer.post()
     }
 
     private func teardownOverlayScanner() {
         overlayScanner?.stop()
         overlayScanner = nil
-        UIAccessibility.post(notification: .screenChanged, argument: nil)
+        ScreenChangeAnnouncer.post()
     }
 
     // MARK: - Touch handling
@@ -269,11 +269,12 @@ extension GameScene: ButtonNodeResponderType {
 
         case .home:
             guard let titleScene = TitleScene(fileNamed: Scenes.title.getName()) else { return }
-            titleScene.scaleMode = GameViewController.scaleMode(for: titleScene, in: view?.bounds.size ?? .zero)
             // A paused scene must not depend on render-loop progress to leave its menu.
-            teardownOverlayScanner()
+            // The Title screen makes the only screen-change announcement.
+            overlayScanner?.stop()
+            overlayScanner = nil
             cancelSwitchPauseHold()
-            view?.presentScene(titleScene)
+            GameViewController.present(titleScene, in: view)
 
         case .retry:
             sceneAdapter?.stateMachine?.enter(PlayingState.self)
@@ -286,6 +287,10 @@ extension GameScene: ButtonNodeResponderType {
 }
 
 // MARK: - SwitchInputReceivable
+
+extension GameScene: ScreenTransitionScanning {
+    var scannersDuringTransition: [FocusScanner] { overlayScanner.map { [$0] } ?? [] }
+}
 
 extension GameScene: SwitchInputReceivable {
 

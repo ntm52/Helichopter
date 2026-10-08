@@ -5,7 +5,6 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
     // MARK: - Properties
 
     let selection = UISelectionFeedbackGenerator()
-    private static var lastPushTransitionDirection: SKTransitionDirection?
 
     // Focus scanner drives the ButtonNode focus-ring for switch / keyboard / controller navigation.
     // Nil until the first didMove(to:) — subclasses share the same instance.
@@ -17,7 +16,7 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
         super.didMove(to: view)
         setupFocusScanner()
         // Notify Switch Control that a new screen is available
-        UIAccessibility.post(notification: .screenChanged, argument: nil)
+        ScreenChangeAnnouncer.post()
     }
 
     override func willMove(from view: SKView) {
@@ -26,6 +25,8 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
     }
 
     // MARK: - Scanner setup
+
+    var scannersDuringTransition: [FocusScanner] { focusScanner.map { [$0] } ?? [] }
 
     private func setupFocusScanner() {
         focusScanner?.stop()
@@ -45,58 +46,17 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
         guard let identifier = button.buttonIdentifier else { return }
         selection.selectionChanged()
 
-        var sceneToPresent: SKScene?
-        var transition: SKTransition?
-
-        // Honour system motion preferences: push/slide transitions are suppressed when
-        // Reduce Motion is enabled or the user has requested cross-fade transitions.
-        let reduceMotion = UIAccessibility.isReduceMotionEnabled || UIAccessibility.prefersCrossFadeTransitions
-
+        let sceneToPresent: SKScene?
         switch identifier {
-        case .play:
-            sceneToPresent = GameScene(fileNamed: Scenes.game.getName())
-            transition = SKTransition.fade(withDuration: 1.0)
-
-        case .settings:
-            sceneToPresent = SettingsScene(fileNamed: Scenes.setting.getName())
-            if reduceMotion {
-                transition = SKTransition.fade(withDuration: 0.4)
-            } else {
-                RoutingUtilityScene.lastPushTransitionDirection = .down
-                transition = SKTransition.push(with: .down, duration: 1.0)
-            }
-
-        case .menu:
-            sceneToPresent = TitleScene(fileNamed: Scenes.title.getName())
-            if reduceMotion {
-                RoutingUtilityScene.lastPushTransitionDirection = nil
-                transition = SKTransition.fade(withDuration: 0.4)
-            } else {
-                var pushDir: SKTransitionDirection?
-                if let last = RoutingUtilityScene.lastPushTransitionDirection {
-                    switch last {
-                    case .up:    pushDir = .down
-                    case .down:  pushDir = .up
-                    case .left:  pushDir = .right
-                    case .right: pushDir = .left
-                    @unknown default:
-                        fatalError("Unhandled SKTransitionDirection in RoutingUtilityScene")
-                    }
-                    RoutingUtilityScene.lastPushTransitionDirection = pushDir
-                }
-                transition = pushDir.map { SKTransition.push(with: $0, duration: 1.0) }
-                          ?? SKTransition.fade(withDuration: 1.0)
-            }
-
+        case .play:     sceneToPresent = GameScene(fileNamed: Scenes.game.getName())
+        case .settings: sceneToPresent = SettingsScene(fileNamed: Scenes.setting.getName())
+        case .menu:     sceneToPresent = TitleScene(fileNamed: Scenes.title.getName())
         default:
             debugPrint(#function, "unhandled identifier:", identifier)
+            sceneToPresent = nil
         }
-
-        guard let scene = sceneToPresent, let tx = transition else { return }
-        scene.scaleMode = GameViewController.scaleMode(for: scene, in: view?.bounds.size ?? .zero)
-        tx.pausesIncomingScene = false
-        tx.pausesOutgoingScene = false
-        view?.presentScene(scene, transition: tx)
+        guard let scene = sceneToPresent else { return }
+        GameViewController.present(scene, in: view)
     }
 
     // Switch handlers live in the class so UIKit-based scenes can override routing.
@@ -115,3 +75,5 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
 }
 
 extension RoutingUtilityScene: SwitchInputReceivable { }
+
+extension RoutingUtilityScene: ScreenTransitionScanning { }

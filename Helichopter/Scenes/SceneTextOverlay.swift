@@ -9,7 +9,8 @@ final class SceneTextOverlay: UIView {
     private var links: [(ButtonNode, UIButton)] = []
     private var labels: [(SKLabelNode, UILabel)] = []
     private weak var source: SKNode?
-    private weak var hostScene: SKScene?
+    /// The scene this overlay was last built for; must match `SKView.scene` after a refresh.
+    private(set) weak var hostScene: SKScene?
     private var menu = false
     private var bestScoreLabel: UILabel?
     private var newHighScoreLabel: UILabel?
@@ -35,6 +36,7 @@ final class SceneTextOverlay: UIView {
     func refresh(in view: SKView) {
         guard let scene = view.scene, !(scene is SettingsScene) else {
             isHidden = true
+            hostScene = view.scene
             source = nil
             links = []
             labels = []
@@ -270,7 +272,7 @@ final class SceneTextOverlay: UIView {
             accessibilityElements = [scroll]
         }
         accessibilityViewIsModal = menu
-        UIAccessibility.post(notification: .screenChanged, argument: flightElement)
+        ScreenChangeAnnouncer.post( flightElement)
 
     }
 
@@ -371,7 +373,7 @@ final class SceneTextOverlay: UIView {
         })
         scanner?.items = items
         if wasScanning { scanner?.start() }
-        UIAccessibility.post(notification: .screenChanged, argument: heading)
+        ScreenChangeAnnouncer.post( heading)
     }
 }
 
