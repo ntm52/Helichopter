@@ -47,17 +47,21 @@ These apply to every change, including cosmetics and the store.
 
 ## Architecture
 
-The app has one `GameViewController` holding an `SKView`. Home and the first-run guide are UIKit child view controllers shown over an empty `SKView`; Settings and gameplay are `SKScene`s loaded from `.sks` archives. **UIKit draws everything the player sees in menus and the HUD.** On Settings, the `.sks` buttons and labels are kept only as invisible models. Pause and Round Over have no archive: they are built in Swift (`GameMenuView`). Nothing polls the UI: there is no refresh timer.
+The app has one `GameViewController` holding an `SKView`. Home, the first-run guide, and Settings are UIKit child view controllers shown over an empty `SKView`; gameplay is an `SKScene` loaded from `GameScene.sks`. **UIKit draws everything the player sees in menus and the HUD.** Pause and Round Over have no archive: they are built in Swift (`GameMenuView`). Nothing polls the UI: there is no refresh timer.
 
 | File (under `Helichopter/`) | Role |
 |---|---|
-| `View Controllers/GameViewController.swift` | Hosts the `SKView`, the `SceneTextOverlay`, and Home or the guide as a child controller; plays the menu theme (`MenuMusic`) on those two. **Owns every screen change:** `present(_:transition:)` takes a `Screen` (`.home`, `.guide`, `.scene(_:)`; static form `present(_:in:)` for scenes) and is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input to the UIKit screen or the scene. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
+| `View Controllers/GameViewController.swift` | Hosts the `SKView`, the `SceneTextOverlay`, and Home, the guide, or Settings as a child controller; plays the menu theme (`MenuMusic`) on Home and the guide. **Owns every screen change:** `present(_:transition:)` takes a `Screen` (`.home`, `.guide`, `.settings`, `.scene(_:)`; static form `present(_:in:)` for scenes) and is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input to the UIKit screen or the scene. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
 | `Scenes/SceneTextOverlay.swift` | The gameplay HUD (updated only through `GameSceneHUDDelegate`); hosts `GameMenuView` during Pause and Round Over; hidden and emptied on every other screen. Defines `suppressArchivedPresentation()` and the VoiceOver `FlightAccessibilityElement`. |
-| `Scenes/MenuStackView.swift` | Shared UIKit menu pieces: `MenuChoice`/`MenuItem` (scanner models), `MenuButton` (focus border by callback), `MenuStackView` (centred scrolling column), `BackdropView` (starry sky or theme colour), and `MenuViewController` (base for Home and the guide: owns a `FocusScanner`, takes switch input, ignores choices during a fade). |
+| `Scenes/MenuStackView.swift` | Shared UIKit menu pieces: `MenuChoice`/`MenuItem` (scanner models), `MenuButton` (focus border by callback), `MenuStackView` (centred scrolling column), `BackdropView` (starry sky or theme colour), `ScreenViewController` (base for every UIKit screen: navigation, announcement, switch input, scanners to freeze during a fade), and `MenuViewController` (base for Home and the guide: owns a `FocusScanner`, ignores choices during a fade). |
 | `Scenes/HomeViewController.swift` | Home: mascot (60-frame `UIImageView` animation, still under Reduce Motion), title, and `HomeAction` Play, Settings, How to Play. |
 | `Scenes/GuideViewController.swift` | First-run guide: three pages, Read this step aloud, Next/Back/Skip/Done. Shown at launch until `onboarding_completed_v1` is set, and from How to Play. |
-| `Scenes/SettingsScene.swift` | `SettingsScene` hides its whole archive and shows `SettingsOverlayView`, a full UIKit Settings panel with its own switch scanner. Also holds `AppLinks` (privacy URL, support email, acknowledgements text). ~1,160 lines. |
-| `Scenes/RoutingUtilityScene.swift` | Base class for the Settings scene (removed in Stage B step 5). Owns a `FocusScanner` and routes archived buttons through `GameViewController.present`. |
+| `Scenes/SettingsViewController.swift` | The Settings screen. Hosts a `SettingsPanelView` and swaps in a fresh one (0.25 s fade) when the theme, a preset, the lock, Reset, or text size changes, keeping scroll position, scanner focus, and an open adjustment page. Back goes Home. |
+| `Scenes/SettingsPanelView.swift` | The Settings list: sections, its own switch scanner (`SettingsScanItem`), focus ring, and the caregiver lock. |
+| `Scenes/SettingsRows.swift` | `SettingsStyle` (theme-derived colours), the row builders (preset, slider, toggle, segmented, palette), and font/label/button helpers. |
+| `Scenes/SettingsAdjustmentPanel.swift` | The full-panel page of plain choices for sliders, segmented controls, Reset, Privacy, and Acknowledgements, so one switch press changes one thing. |
+| `Scenes/AppLinks.swift` | Privacy URL, support email, privacy summary, and acknowledgements text. |
+| `Scenes/RoutingUtilityScene.swift` | Base class of `GameScene` (removed in Stage B step 5). Owns a `FocusScanner` and routes archived buttons through `GameViewController.present`. |
 | `Scenes/GameScene.swift` | Gameplay. `GKStateMachine` (Playing, Paused, GameOver), switch routing, hold-to-pause, VoiceOver flight, flight hint text. Owns the Pause and Round Over menu items (`GameMenuItem`) that the switch scanner moves through, and acts on them in `perform(_:from:)`. |
 | `Scenes/GameMenuView.swift` | Pause and Round Over in UIKit: `MenuAction`, `GameMenuItem` (scanner model owned by the scene), and `GameMenuView`, a `MenuStackView` whose buttons follow their items' focus with no polling. |
 | `Adapters/GameSceneAdapter.swift` | Gameplay hub: physics, scoring, best-score saving, sounds, collisions, HUD visibility. |
@@ -67,7 +71,6 @@ The app has one `GameViewController` holding an `SKView`. Home and the first-run
 | `Nodes/Game Componens/InfiniteSpriteScrollNode.swift` | Tiling parallax background. |
 | `Factories/PipeFactory.swift` | Spawns pipe pairs from `GameSettings`. Texture names `pipe-yellow`/`cap-yellow` are hard-coded here. |
 | `Nodes/UI Components/ButtonNode.swift` | Archived button model: identifier, labels, scanner focus, activation. |
-| `Nodes/UI Components/ToggleButtonNode.swift`, `TriggleButtonNode.swift` | Legacy classes referenced by `SettingsScene.sks`. Must stay while that archive exists. |
 | `Control/FocusScanner.swift` | Timed and manual scanning shared by SpriteKit buttons and UIKit Settings (`FocusScannable`). |
 | `Extensions/SKNode+Theme.swift` | `applyUITheme(_:)`: recursive theming of archived nodes. |
 | `Utils/GameSettings.swift` | Singleton for every setting, preset, palette, and theme. Bounded, validated, persisted with `gs_` keys. |
@@ -90,8 +93,7 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 ## Known issues and debt
 
 - **Double page during screen changes:** live in 2.0 (owner accepted it). On `master`, Plan 01 Stage A hides it with one snapshot cross-fade of both layers, but each screen is still drawn by two layers. Stage B removes the cause and ships as 2.1: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
-- **Hidden `.sks` menus** (Settings only; Home, Pause, and Round Over are gone) duplicate their menus and have iPad copies. They are the root of the "two versions of a screen" bug class. Removed by the same plan.
-- `fatalError` remains in the legacy `ToggleButtonNode`/`TriggleButtonNode` responders.
+- **Hidden `.sks` menus are gone** (Home, Settings, Pause, and Round Over are UIKit). `GameScene.sks` and its iPad copy still carry hidden archived labels and buttons; step 5 removes what gameplay does not need.
 - Narrow iPad windows show wide top and bottom bars instead of a larger phone-shaped layout.
 - The full test suite occasionally hangs with parallel simulator clones. Use `-parallel-testing-enabled NO` if it does.
 - **Not yet verified on a physical device:** VoiceOver, Voice Control, Switch Control, hardware switches, adaptive controllers, the oldest supported device, iPad window resizing, and real transitions.

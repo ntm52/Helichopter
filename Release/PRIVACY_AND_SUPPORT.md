@@ -6,7 +6,7 @@ The published pages live in [`docs/`](../docs/) and are served by GitHub Pages:
 - Support: https://ntm52.github.io/Helichopter/support.html
 - Contact: helichopter.support@gmail.com
 
-Edit the HTML in `docs/` directly; there is no separate draft. If the app's data practices ever change (analytics, purchases, crash reporting, or any network access), update `privacy.html` and its effective date, `AppLinks.privacySummary` in `SettingsScene.swift`, `PrivacyInfo.xcprivacy`, and the App Privacy answers in App Store Connect together.
+Edit the HTML in `docs/` directly; there is no separate draft. If the app's data practices ever change (analytics, purchases, crash reporting, or any network access), update `privacy.html` and its effective date, `AppLinks.privacySummary` in `Scenes/AppLinks.swift`, `PrivacyInfo.xcprivacy`, and the App Privacy answers in App Store Connect together.
 
 GitHub Pages must be enabled once: repository Settings → Pages → Build and deployment → Source: "Deploy from a branch", Branch: `master`, folder `/docs`.
 

@@ -15,7 +15,7 @@ Written 2026-10-08, after version 2.0 went live. Work top to bottom unless the o
 Version numbering: bug fixes with no new features ship as `2.0.x`; anything that changes screens or adds features ships as `2.x`. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` at the start of the release's work so test builds are never confused with the live 2.0 (2).
 
 - [x] **Stage A (quick fix):** route every screen change through one helper that animates SpriteKit and UIKit together as a single snapshot. Done 2026-10-08 (`0bb33a1`). **Not released as 2.0.1** (owner decision: no partial hotfix); it ships inside 2.1.
-- [ ] **Stage B (proper fix, several sessions) → release 2.1, build 3 (version already set):** start at "Start here" in Plan 01 Stage B. Release only after steps 1–5 are all done. Steps 1 (event-driven HUD), 2 (Pause and Round Over in UIKit), and 3 (Home and guide in UIKit; 50 ms timer deleted) done 2026-10-08; next is step 4 (Settings). Make Home, Guide, Settings, Pause, and Round Over plain UIKit screens; SpriteKit only for gameplay and the backdrop. Deletes the hidden `.sks` menus, the 50 ms timer, the legacy toggle classes, and the iPad archive copies. Splits the 1,160-line `SettingsScene.swift`.
+- [ ] **Stage B (proper fix, several sessions) → release 2.1, build 3 (version already set):** start at "Start here" in Plan 01 Stage B. Release only after steps 1–5 are all done. Steps 1 (event-driven HUD), 2 (Pause and Round Over in UIKit), 3 (Home and guide in UIKit; 50 ms timer deleted), and 4 (Settings in UIKit; `SettingsScene.swift` split) done 2026-10-08; next is step 5 (clean-up). Make Home, Guide, Settings, Pause, and Round Over plain UIKit screens; SpriteKit only for gameplay and the backdrop. Deletes the hidden `.sks` menus, the 50 ms timer, the legacy toggle classes, and the iPad archive copies. Splits the 1,160-line `SettingsScene.swift`.
 
 ## 2. Device accessibility testing (can run alongside step 1)
 
@@ -52,7 +52,7 @@ Ordered by value to players, highest first.
 
 - [ ] Fix the full test suite hanging with parallel simulator clones, then remove the `-parallel-testing-enabled NO` advice from `CLAUDE.md`.
 - [ ] Review timing-sensitive tests (hold-to-pause, scanner dwell) so they cannot fail under load.
-- [ ] Remove `fatalError` from `ToggleButtonNode`/`TriggleButtonNode` responders, unless Plan 01 Stage B deletes them first.
+- [x] Remove `fatalError` from `ToggleButtonNode`/`TriggleButtonNode` responders, unless Plan 01 Stage B deletes them first. (Both classes deleted in Stage B step 4, 2026-10-08.)
 - [ ] Rename the `Nodes/Game Componens/` folder to `Game Components` (update the Xcode project group at the same time).
 - [ ] Remove the inherited particle sprites in `Assets/Particles/` if unused (see `Release/ASSET_RIGHTS.md`).
 - [ ] **Owner (optional):** download the lossless music original from Freesound to replace the preview-quality encode.
