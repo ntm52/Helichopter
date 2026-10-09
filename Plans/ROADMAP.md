@@ -8,6 +8,7 @@ Written 2026-10-08, after version 2.0 went live. Work top to bottom unless the o
 
 - [x] Commit the build-number change in `project.pbxproj` (`CURRENT_PROJECT_VERSION` 1 → 2, the uploaded build) and tag the release `2.0` in git. Done 2026-10-08 (commit `1edfa21`, tag `2.0`).
 - [x] **Owner:** Publish the Accessibility Nutrition Label drafts in App Store Connect now that 2.0 is live (Larger Text, Dark Interface, Sufficient Contrast, Reduced Motion, Differentiate Without Color Alone). Published 2026-10-08.
+- [ ] **When 2.1 is released:** update `docs/support.html` (live site; push publishes it) to the 2.1 names: Timed / Step with Switch 2 scanning, Up/Down Switches flight. It still describes 2.0 on purpose.
 - [ ] **Owner:** Check Xcode → Window → Organizer → Crashes, Hangs, and Feedback weekly for the first month (until about 2026-11-08). Ongoing; does not block step 1. This needs no SDK and does not change the privacy answers.
 
 ## 1. Remove the "double page" effect — [Plan 01](01_SINGLE_LAYER_UI.md)
@@ -21,11 +22,11 @@ Version numbering: bug fixes with no new features ship as `2.0.x`; anything that
 
 These were never done on hardware and they gate two more Accessibility Nutrition Labels.
 
-- [ ] **Owner:** VoiceOver with Screen Curtain: full session from launch to Round Over. If it passes, add the VoiceOver label.
-- [ ] **Owner:** Voice Control: every button reachable by name or number. If it passes, add the Voice Control label.
+- [ ] **Owner:** VoiceOver with Screen Curtain: full session from launch to Round Over. If it passes, add the VoiceOver label. Check in particular (changed 2026-10-09, untested on a device): each Settings switch and slider is read once ("Calm Mode, switch, off", then its description as a hint); the rotor's Headings jumps between Settings sections; swipe up/down moves a slider, double-tap opens its Decrease/Increase page; time sliders say seconds; during play, the flight control is first and double-tap flies.
+- [ ] **Owner:** Voice Control: every button reachable by name or number. If it passes, add the Voice Control label. Check in particular: "Show names" in Settings; "Tap Back"; "Tap Gap Size" should open the Decrease/Increase page, then "Tap Increase". Unconfirmed: this works only if Voice Control activates through accessibility rather than a simulated finger tap. If it does nothing, Voice Control users have no easy way to adjust sliders; tell Claude so an alternative can be added; "Tap Calm Mode" toggles it; in play, "Tap Fly" flaps and "Tap Pause" pauses; for Hold to Hover, "Long press Fly". Every Settings choice now has a unique name ("Step with Switch 2", "Up/Down Switches"), so none should need numbers.
 - [ ] **Owner:** iOS Switch Control item scanning; a keyboard-emulating switch; an adaptive game controller.
 - [ ] **Owner:** Reduce Motion, largest text size, iPad in a resized window, and the oldest iOS 17.6 device available (performance and frame rate).
-- [ ] Run Xcode's Accessibility Inspector audit on every screen and fix what it reports.
+- [x] Run Xcode's Accessibility Inspector audit on every screen and fix what it reports. Done 2026-10-09 as an automated UI test (`HelichopterUITests`), which now passes on every screen; see the progress log for what it found.
 - [ ] **Owner:** TestFlight or in-person sessions with real players (occupational or speech therapists, a school, or an assistive-technology lab).
 
 Do a second pass of this list after Plan 01 Stage B, since every menu will have been rebuilt.

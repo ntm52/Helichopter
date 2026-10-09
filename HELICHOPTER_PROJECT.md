@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B code steps 1–5 are done, and 2.1 now waits on the owner's device recordings. 104 automated tests pass.
+**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B code steps 1–5 are done, and 2.1 now waits on the owner's device recordings. 110 unit tests and 1 UI test pass; the UI test runs Apple's accessibility audit on every screen.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -11,7 +11,7 @@
 
 Helichopter is a Flappy Bird–style helicopter game for iPhone and iPad (iOS 17.6+), built with Swift, SpriteKit, GameplayKit, and UIKit. Its purpose is to be playable by people with a wide range of disabilities. It is offline, has no accounts, ads, analytics, or purchases, and stores settings and scores in `UserDefaults` only.
 
-Main features: four flight schemes (Tap to Flap, Hold to Hover, Auto Hover, Two-Switch), one- and two-switch scanning in every menu, hold-to-pause for switch users, VoiceOver flight actions and spoken gap guidance, Dynamic Type everywhere, three UI themes, six colour palettes, contrast outlines, No-Fail and Calm modes, Reduce Motion handling, a replayable first-run guide, a caregiver Settings lock, and Settings reset.
+Main features: four flight schemes (Tap to Flap, Hold to Hover, Auto Hover, Up/Down Switches), Timed or Step with Switch 2 scanning in every menu, hold-to-pause for switch users, VoiceOver flight actions and spoken gap guidance, Dynamic Type everywhere, three UI themes, six colour palettes, contrast outlines, No-Fail and Calm modes, Reduce Motion handling, a replayable first-run guide, a caregiver Settings lock, and Settings reset.
 
 ## Design principles
 
@@ -58,7 +58,7 @@ The app has one `RootViewController` holding an `SKView`. Home, the first-run gu
 | `Scenes/GuideViewController.swift` | First-run guide: three pages, Read this step aloud, Next/Back/Skip/Done. Shown at launch until `onboarding_completed_v1` is set, and from How to Play. |
 | `Scenes/SettingsViewController.swift` | The Settings screen. Hosts a `SettingsPanelView` and swaps in a fresh one (0.25 s fade) when the theme, a preset, the lock, Reset, or text size changes, keeping scroll position, scanner focus, and an open adjustment page. Back goes Home. |
 | `Scenes/SettingsPanelView.swift` | The Settings list: sections, its own switch scanner (`SettingsScanItem`), focus ring, and the caregiver lock. |
-| `Scenes/SettingsRows.swift` | `SettingsStyle` (theme-derived colours), the row builders (preset, slider, toggle, segmented, palette), and font/label/button helpers. |
+| `Scenes/SettingsRows.swift` | `SettingsStyle` (theme-derived colours), the row builders (preset, slider, toggle, segmented, palette), and font/label/button helpers. Also `SettingsSlider` and `SettingsSwitch`: their accessibility frame covers the whole row (the row's own text is hidden from VoiceOver), and assistive technology activating a slider (VoiceOver double-tap, Switch Control) opens the adjustment page; a finger tap does not. Time sliders speak seconds; others speak a percentage (`UISlider.spokenValue`). |
 | `Scenes/SettingsAdjustmentPanel.swift` | The full-panel page of plain choices for sliders, segmented controls, Reset, Privacy, and Acknowledgements, so one switch press changes one thing. |
 | `Scenes/AppLinks.swift` | Privacy URL, support email, privacy summary, and acknowledgements text. |
 | `Scenes/GameScene.swift` | Gameplay. `GKStateMachine` (Playing, Paused, GameOver), switch routing, hold-to-pause, VoiceOver flight, flight hint text, and `pauseFromHUD()`. Hides the starfield for plain-backdrop themes. Owns the Pause and Round Over menu items (`GameMenuItem`) that the switch scanner moves through, and acts on them in `perform(_:from:)`. |
@@ -75,6 +75,8 @@ The app has one `RootViewController` holding an `SKView`. Home, the first-run gu
 | `Utils/UserDefaults.swift` | Legacy `Setting` and `Difficulty` enums, kept for migration and best score. |
 
 Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle, onboarding, palette contrast, presentation, Dynamic Type, and window sizes.
+
+`HelichopterUITests/AccessibilityAuditTests.swift` (XCTest UI test) walks Guide → Home → Settings (top to bottom, Acknowledgements) → Play → Pause → Round Over and runs `performAccessibilityAudit()` on each, attaching each screen's accessibility tree to the result. VoiceOver and Voice Control do not exist in the simulator; this tree is what they read. `AssistiveTechTreeTests` (unit) checks what VoiceOver reads in Settings, Voice Control names, locked controls, and Settings rebuilds. While a UIKit screen is showing, `RootViewController` pauses the empty `SKView` so it stops drawing every frame; without this the app never goes idle and UI tests stall.
 
 ### Colour systems (both in `GameSettings.swift`)
 

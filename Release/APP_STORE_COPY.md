@@ -24,7 +24,7 @@ Choose how you fly:
 - Tap to Flap
 - Hold to Hover
 - Auto Hover with altitude nudges
-- Two-Switch up/down controls
+- Up/Down Switches: one switch to rise, another to descend
 
 Make the experience comfortable:
 - No-Fail Mode lets you keep going after collisions.
@@ -50,7 +50,7 @@ This update adds adjustable flight controls, switch-scanning menus and Settings,
 No login, purchase, server connection, or special account is needed. The first-run guide can be completed or skipped; How to Play on the home screen reopens it.
 
 1. Open Settings. Choose Gentle for slower play. No-Fail Mode is on by default; turn it off to reach Round Over after a collision.
-2. For keyboard-emulating switch input, Space or Enter selects. In Settings → Switch Access, Auto-Scan Menus starts timed scanning; Menu Scan Mode → Two-Switch uses secondary input (2) to advance and primary input to select. Sliders open Decrease/Increase/Done choices.
+2. For keyboard-emulating switch input, Space or Enter selects. In Settings → Switch Access, Auto-Scan Menus starts scanning when each menu opens; Menu Scan Mode → Step with Switch 2 uses secondary input (2) to advance and primary input to select. Sliders open Decrease/Increase/Done choices.
 3. During flight, hold the primary keyboard/controller switch for 3 seconds to pause. Release before selecting Resume or Home. The delay is adjustable from 2–10 seconds.
 4. With VoiceOver enabled, focus Helicopter flight control. Double-tap flaps, toggles hover, nudges up, or toggles rising according to the selected flight scheme. The Move down custom action provides downward control where applicable. Pause or accessibility escape opens the pause menu. Guidance is periodic, not continuous.
 5. Settings → Reset Settings → Restore Defaults restores Standard difficulty, default controls/theme/audio, while retaining scores and guide completion. Cancel leaves settings intact. Lock Settings must be off to reset.

@@ -22,6 +22,7 @@ xcodebuild test -project Helichopter.xcodeproj -scheme Helichopter -destination 
 - `HelichopterTests/` is a file-system-synchronized group, so new test files are picked up without editing the project.
 - Tests use Swift Testing (`@Test`, `#expect`). Many touch `GameSettings.shared` and `UserDefaults.standard`; save and restore values as the existing tests do.
 - Run `Tools/release_check.sh` before any submission (it also accepts a `.xcarchive`).
+- `HelichopterUITests` (about 1 minute) runs Apple's accessibility audit on every screen. For a quick loop, use `-only-testing:HelichopterTests`; run the UI test after any UI change. A new screen or control should be added to its walk.
 
 ## Architecture rules that bite
 
@@ -30,7 +31,7 @@ xcodebuild test -project Helichopter.xcodeproj -scheme Helichopter -destination 
 - Change screens only with `RootViewController.present(_:)` (a `Screen`: `.home`, `.guide`, `.settings`, or `.scene(_:)`; from a scene, `present(_:in:)`). Never call `presentScene` elsewhere or use an `SKTransition` (a test enforces this). New code that posts `screenChanged` must use `ScreenChangeAnnouncer.post`, and a scene or screen with its own scanner must list it in `scannersDuringTransition`. New UIKit screens subclass `ScreenViewController`; menu-style ones subclass `MenuViewController`. Do not add new screens as `.sks` scenes; follow `Plans/01_SINGLE_LAYER_UI.md` Stage B.
 - Nothing polls the UI: the overlay changes only on screen changes and `GameSceneHUDDelegate` calls, and buttons mirror scanner focus through callbacks. Do not add a refresh timer.
 - The sprite atlas folder must keep its `.spriteatlas` extension.
-- Switch access (`FocusScanner`), VoiceOver, and Dynamic Type are core features. Every new control must be scannable, labelled, and use scalable text.
+- Switch access (`FocusScanner`), VoiceOver, Voice Control, and Dynamic Type are core features. Every new control must be scannable, labelled, and use scalable text. Labels must be speakable words (no symbols like ◀), because Voice Control users say them. Visible text that a control already speaks should be hidden from VoiceOver, with the control's accessibility frame covering it (see `SettingsSwitch`).
 
 ## Privacy and release rules
 
