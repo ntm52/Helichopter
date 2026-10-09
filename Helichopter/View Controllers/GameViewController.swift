@@ -7,8 +7,7 @@ import AVFoundation
 // MARK: - Scene helpers
 
 enum Scenes: String {
-    case game    = "GameScene"
-    case setting = "SettingsScene"
+    case game = "GameScene"
 }
 
 extension Scenes {
@@ -63,11 +62,12 @@ enum ScreenTransition: Equatable {
     }
 }
 
-/// Everything `GameViewController.present` can show. Home and the guide are UIKit
-/// screens; Settings and gameplay are SpriteKit scenes.
+/// Everything `GameViewController.present` can show. Home, the guide, and Settings
+/// are UIKit screens; gameplay is a SpriteKit scene.
 enum Screen {
     case home
     case guide
+    case settings
     case scene(SKScene)
 
     var scene: SKScene? {
@@ -159,8 +159,8 @@ class GameViewController: UIViewController {
     /// True while one screen fades into the next; all input and scanning is held.
     private(set) var isChangingScreen = false
     private var transitionSnapshot: UIView?
-    /// Home or the guide, while one is showing in place of a scene.
-    private(set) var menuScreen: MenuViewController?
+    /// Home, the guide, or Settings, while one is showing in place of a scene.
+    private(set) var menuScreen: ScreenViewController?
     let menuMusic = MenuMusic()
 
     /// Rebuilds the gameplay HUD after a screen change. Nothing polls it: the HUD
@@ -231,7 +231,7 @@ class GameViewController: UIViewController {
     }
 
     /// The only way to change screens from a scene. Views without a controller (tests)
-    /// swap scenes directly and show nothing for Home or the guide.
+    /// swap scenes directly and show nothing for a UIKit screen.
     static func present(_ screen: Screen, in view: SKView?, transition: ScreenTransition = .preferred()) {
         guard let view = view else { return }
         if let controller = controller(for: view) {
@@ -244,16 +244,17 @@ class GameViewController: UIViewController {
 
     /// Replaces the whole screen as one unit: a snapshot of SpriteKit and UIKit together
     /// covers the swap, then fades away. Input, scanning, and VoiceOver announcements
-    /// are held until the new screen is fully visible. A UIKit screen (Home, the guide)
-    /// is a child controller over an empty SpriteKit view.
+    /// are held until the new screen is fully visible. A UIKit screen (Home, the guide,
+    /// Settings) is a child controller over an empty SpriteKit view.
     func present(_ screen: Screen, transition: ScreenTransition = .preferred()) {
         guard let skView = viewIfLoaded as? SKView, !isChangingScreen else { return }
         let scene = screen.scene
         if let scene = scene { scene.scaleMode = Self.scaleMode(for: scene, in: skView.bounds.size) }
-        let incoming: MenuViewController?
+        let incoming: ScreenViewController?
         switch screen {
         case .home: incoming = HomeViewController()
         case .guide: incoming = GuideViewController()
+        case .settings: incoming = SettingsViewController()
         case .scene: incoming = nil
         }
         let showsSomething = skView.scene != nil || menuScreen != nil
@@ -285,10 +286,9 @@ class GameViewController: UIViewController {
             skView.addSubview(incoming.view)
             incoming.didMove(toParent: self)
             incoming.screenDidAppear()
-            menuMusic.play()
-        } else {
-            menuMusic.stop()
         }
+        // The main theme plays on Home and the guide only, as in 2.0.
+        if incoming is MenuViewController { menuMusic.play() } else { menuMusic.stop() }
         refreshSceneText()
         let scanners = incoming?.scannersDuringTransition
             ?? (scene as? ScreenTransitionScanning)?.scannersDuringTransition ?? []
@@ -318,7 +318,7 @@ class GameViewController: UIViewController {
 
     /// Fallback from Plan 01: draw the scene with SpriteKit itself, then UIKit on top.
     /// Use this alone if device recordings show `snapshotView` coming out blank.
-    /// With no scene (Home or the guide showing), only the UIKit screen is drawn.
+    /// With no scene (a UIKit screen showing), only the UIKit screen is drawn.
     static func compositeSnapshot(of skView: SKView) -> UIImage? {
         guard skView.bounds.width > 0, skView.bounds.height > 0 else { return nil }
         guard let scene = skView.scene else {
@@ -387,7 +387,7 @@ class GameViewController: UIViewController {
     override var accessibilityElements: [Any]? {
         get {
             guard let skView = view as? SKView, let scene = skView.scene else { return nil }
-            if scene is SettingsScene || !sceneTextOverlay.isHidden { return nil }
+            if !sceneTextOverlay.isHidden { return nil }
             var elements: [Any] = []
 
             // Score element — present when GameScene is playing

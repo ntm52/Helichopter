@@ -104,11 +104,9 @@ struct WindowSizeTests {
 
     @Test func settingsPanelFitsEveryWindowSize() throws {
         for size in Self.sizes {
-            let view = SKView(frame: CGRect(origin: .zero, size: size))
-            let scene = try #require(SettingsScene(fileNamed: "SettingsScene"))
-            view.presentScene(scene)
-            defer { view.presentScene(nil) }
-            let panel = try #require(scene.settingsOverlay)
+            let screen = SettingsViewController()
+            screen.view.frame = CGRect(origin: .zero, size: size)
+            let panel = try #require(screen.panel)
             panel.layoutIfNeeded()
             panel.layoutIfNeeded()
             for control in descendants(panel, UIControl.self) where !(control.superview is UIControl) {

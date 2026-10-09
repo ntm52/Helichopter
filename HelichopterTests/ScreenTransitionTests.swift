@@ -71,8 +71,8 @@ struct ScreenTransitionTests {
         return try #require(guide.scanner.items.compactMap { $0 as? MenuItem }.first { $0.title == title })
     }
 
-    private func settingsPanels(in view: UIView) -> [SettingsOverlayView] {
-        view.subviews.compactMap { $0 as? SettingsOverlayView }
+    private func settingsPanels(in view: UIView) -> [SettingsPanelView] {
+        view.subviews.flatMap { ($0 as? SettingsPanelView).map { [$0] } ?? settingsPanels(in: $0) }
     }
 
     /// No code except the helper may call `presentScene`, or that screen change would
@@ -95,8 +95,8 @@ struct ScreenTransitionTests {
         #expect(callers == ["GameViewController.swift": 2])
     }
 
-    /// Straight after each navigation exactly one screen is live: Home and the guide are
-    /// UIKit screens over an empty SpriteKit view, and the overlay already describes
+    /// Straight after each navigation exactly one screen is live: Home, the guide, and
+    /// Settings are UIKit screens over an empty SpriteKit view, and the overlay already describes
     /// the scene SpriteKit shows, with no refresh timer.
     @Test func eachNavigationShowsOneCurrentScreen() async throws {
         try await withController { controller, skView, posts in
@@ -129,14 +129,15 @@ struct ScreenTransitionTests {
             // Home → Settings
             before = posts()
             try homeItem(.settings, in: controller).scannerActivate()
-            #expect(skView.scene is SettingsScene)
-            #expect(controller.menuScreen == nil && controller.children.isEmpty)
+            let settings = try #require(controller.menuScreen as? SettingsViewController)
+            #expect(skView.scene == nil && controller.children.count == 1)
             expectCurrent()
             #expect(overlay.isHidden)
             #expect(settingsPanels(in: skView).count == 1)
+            #expect(controller.menuMusic.isPlaying == false)
             try await waitForTransition(controller)
             #expect(posts() - before == 1)
-            #expect(skView.subviews.allSatisfy { $0 === overlay || $0 is SettingsOverlayView })
+            #expect(skView.subviews.count == 2 && skView.subviews.last === settings.view)
 
             // Settings → Home
             before = posts()
@@ -217,6 +218,37 @@ struct ScreenTransitionTests {
         }
     }
 
+    /// Settings is a UIKit screen: switch input reaches its panel's scanner, a theme
+    /// rebuild leaves exactly one panel with scanning kept, and Back goes Home.
+    @Test func settingsIsAUIKitScreenWithItsOwnScanner() async throws {
+        let savedScheme = GameSettings.shared.scanScheme
+        let savedLocked = GameSettings.shared.isSettingsLocked
+        defer {
+            GameSettings.shared.scanScheme = savedScheme
+            GameSettings.shared.isSettingsLocked = savedLocked
+        }
+        GameSettings.shared.scanScheme = .twoSwitch
+        GameSettings.shared.isSettingsLocked = false
+        try await withController { controller, skView, _ in
+            controller.present(.settings, transition: .instant)
+            let settings = try #require(controller.menuScreen as? SettingsViewController)
+            #expect(settings.scannersDuringTransition.first === settings.panel.switchScanner)
+            #expect(!settings.panel.switchScanner.isActive)
+            settings.switchPrimaryBegan()
+            #expect(settings.panel.switchScanner.isActive && settings.panel.switchScanner.currentIndex == 0)
+            let old = settings.panel
+            settings.panel.onThemeChanged?()
+            #expect(settings.panel !== old && settings.panel.switchScanner.isActive)
+            #expect(old?.switchScanner.isActive == false)
+            try await Task.sleep(for: .milliseconds(400))
+            #expect(settingsPanels(in: skView).count == 1)
+            settings.switchPrimaryBegan() // Back
+            #expect(controller.menuScreen is HomeViewController)
+            #expect(!settings.panel.switchScanner.isActive)
+            try await waitForTransition(controller)
+        }
+    }
+
     /// Taps, switches, scanners, and a second navigation are all ignored while the old
     /// screen fades, so a double-tap can never act on a screen that is leaving.
     @Test func inputDuringTransitionIsIgnored() async throws {
@@ -282,11 +314,10 @@ struct ScreenTransitionTests {
         // The snapshot only fades: it never leaves its place or changes size.
         try await withController { controller, skView, _ in
             let home = try #require(controller.menuScreen)
-            controller.present(.scene(try #require(SettingsScene(fileNamed: Scenes.setting.getName()))),
-                               transition: .preferred(reduceMotion: true))
+            controller.present(.settings, transition: .preferred(reduceMotion: true))
             #expect(home.view.superview == nil)
             let snapshot = try #require(skView.subviews.last)
-            #expect(!(snapshot is SettingsOverlayView) && snapshot !== controller.sceneTextOverlay)
+            #expect(snapshot !== controller.menuScreen?.view && snapshot !== controller.sceneTextOverlay)
             #expect(snapshot.frame == skView.bounds)
             #expect(snapshot.transform == .identity)
             #expect(snapshot.layer.animationKeys()?.allSatisfy { $0 == "opacity" } == true)

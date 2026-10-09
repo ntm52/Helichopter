@@ -63,8 +63,6 @@ struct PresentationTests {
                 #expect(archivedContentIsInvisible(scene))
             }
         }
-        let settings = try #require(SettingsScene(fileNamed: "SettingsScene"))
-        #expect(settings.children.allSatisfy { $0.isHidden })
     }
 
     @Test func menusAreCentredAndHUDStaysAtTop() throws {

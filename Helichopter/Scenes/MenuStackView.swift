@@ -179,20 +179,43 @@ final class BackdropView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
-/// A UIKit menu screen shown by `GameViewController.present(_:)`: a backdrop, a menu
-/// column, and a switch scanner over the screen's own choices.
-class MenuViewController: UIViewController, ScreenTransitionScanning, SwitchInputReceivable {
-    let scanner = FocusScanner()
-    private(set) var menu: MenuStackView!
-    private let selection = UISelectionFeedbackGenerator()
-
+/// A UIKit screen shown by `GameViewController.present(_:)` in place of a scene:
+/// Home, the guide, and Settings. The root controller installs it, freezes its
+/// scanners during the fade, and forwards switch input to it.
+class ScreenViewController: UIViewController, ScreenTransitionScanning, SwitchInputReceivable {
     /// Where choices that change screens go. In the app, the root controller.
     lazy var navigate: (Screen) -> Void = { [weak self] screen in
         (self?.parent as? GameViewController)?.present(screen)
     }
 
+    /// True while this screen is fading in or out; choices are ignored then.
+    var isChangingScreen: Bool { (parent as? GameViewController)?.isChangingScreen == true }
+
     /// The element VoiceOver moves to when this screen appears.
     var announcement: Any? { nil }
+
+    /// Called by the root controller once this screen is installed.
+    func screenDidAppear() {
+        ScreenChangeAnnouncer.post(announcement)
+    }
+
+    /// Called by the root controller before this screen is removed.
+    func screenWillDisappear() { }
+
+    var scannersDuringTransition: [FocusScanner] { [] }
+
+    func switchPrimaryBegan() { }
+    func switchPrimaryEnded() { }
+    func switchSecondaryBegan() { }
+    func switchSecondaryEnded() { }
+}
+
+/// A UIKit menu screen: a backdrop, a menu column, and a switch scanner over the
+/// screen's own choices.
+class MenuViewController: ScreenViewController {
+    let scanner = FocusScanner()
+    private(set) var menu: MenuStackView!
+    private let selection = UISelectionFeedbackGenerator()
 
     override func loadView() {
         let backdrop = BackdropView(theme: GameSettings.shared.selectedTheme)
@@ -214,28 +237,24 @@ class MenuViewController: UIViewController, ScreenTransitionScanning, SwitchInpu
     /// A choice that is ignored while a screen change is fading in or out.
     func item(_ title: String, hint: String, action: @escaping () -> Void) -> MenuItem {
         MenuItem(title, hint: hint) { [weak self] in
-            guard let self = self, (self.parent as? GameViewController)?.isChangingScreen != true else { return }
+            guard let self = self, !self.isChangingScreen else { return }
             self.selection.selectionChanged()
             action()
         }
     }
 
-    /// Called by the root controller once this screen is installed.
-    func screenDidAppear() {
+    override func screenDidAppear() {
         // Auto-start only for switch users; anyone else starts with a first switch press.
         if GameSettings.shared.scanningEnabled { scanner.start() }
-        ScreenChangeAnnouncer.post(announcement)
+        super.screenDidAppear()
     }
 
-    /// Called by the root controller before this screen is removed.
-    func screenWillDisappear() {
+    override func screenWillDisappear() {
         scanner.stop()
     }
 
-    var scannersDuringTransition: [FocusScanner] { [scanner] }
+    override var scannersDuringTransition: [FocusScanner] { [scanner] }
 
-    func switchPrimaryBegan() { scanner.primaryActivate() }
-    func switchPrimaryEnded() { }
-    func switchSecondaryBegan() { scanner.secondaryAdvance() }
-    func switchSecondaryEnded() { }
+    override func switchPrimaryBegan() { scanner.primaryActivate() }
+    override func switchSecondaryBegan() { scanner.secondaryAdvance() }
 }

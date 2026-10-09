@@ -52,7 +52,7 @@ private func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
                            blue: fb * fa + bb * (1 - fa), alpha: 1)
         }
         for theme in GameSettings.allThemes {
-            let panel = SettingsOverlayView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), theme: theme)
+            let panel = SettingsPanelView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), theme: theme)
             panel.layoutIfNeeded()
             func background(of view: UIView) -> UIColor {
                 var chain: [UIView] = []

@@ -21,7 +21,7 @@ struct DynamicTypeTests {
     @Test func settingsTextScalesAndControlsRemainReachable() throws {
         for size in [CGSize(width: 320, height: 568), CGSize(width: 1024, height: 768)] {
             let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
-            let panel = SettingsOverlayView(frame: CGRect(origin: .zero, size: size),
+            let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size),
                                             theme: GameSettings.shared.selectedTheme, fontTraits: traits)
             let window = UIWindow(frame: CGRect(origin: .zero, size: size))
             let host = UIViewController()

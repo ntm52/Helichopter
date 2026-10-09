@@ -71,8 +71,7 @@ final class HomeViewController: MenuViewController {
             guard let scene = GameScene(fileNamed: Scenes.game.getName()) else { return }
             navigate(.scene(scene))
         case .settings:
-            guard let scene = SettingsScene(fileNamed: Scenes.setting.getName()) else { return }
-            navigate(.scene(scene))
+            navigate(.settings)
         case .howToPlay:
             navigate(.guide)
         }

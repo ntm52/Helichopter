@@ -274,10 +274,8 @@ struct GameLifecycleTests {
 
     @Test func bundledScenesAndAtlasLoad() throws {
         try withSettings {
-            for name in ["SettingsScene", "GameScene"] {
-                for suffix in ["", " iPad"] {
-                    #expect(SKScene(fileNamed: name + suffix) != nil)
-                }
+            for suffix in ["", " iPad"] {
+                #expect(SKScene(fileNamed: "GameScene" + suffix) != nil)
             }
             let frames = try SKTextureAtlas.upload(named: "Helicopter Player") { _, index in "r_player\(index)" }
             #expect(frames.count == 60)
@@ -533,17 +531,18 @@ struct GameLifecycleTests {
         }
     }
 
-    private func settingsScene() throws -> (SKView, SettingsScene) {
+    /// The Settings screen as the root controller installs it, without a window.
+    private func settingsScreen() -> SettingsViewController {
         GameSettings.shared.isSettingsLocked = false
         GameSettings.shared.scanScheme = .twoSwitch
-        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
-        let scene = try #require(SettingsScene(fileNamed: "SettingsScene"))
-        view.presentScene(scene)
-        return (view, scene)
+        let screen = SettingsViewController()
+        screen.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        screen.screenDidAppear()
+        return screen
     }
 
-    private func focusSetting(_ label: String, in scene: SettingsScene) throws {
-        let overlay = try #require(scene.settingsOverlay)
+    private func focusSetting(_ label: String, in scene: SettingsViewController) throws {
+        let overlay = try #require(scene.panel)
         let input: SwitchInputReceivable = scene
         if !overlay.switchScanner.isActive { input.switchPrimaryBegan() }
         for _ in 0..<overlay.switchScanner.items.count {
@@ -628,12 +627,12 @@ struct GameLifecycleTests {
 
     @Test func privacyAndAcknowledgementsReachableBySwitchWhenLocked() throws {
         try withSettings {
-            let (view, scene) = try settingsScene()
-            defer { view.presentScene(nil) }
+            let scene = settingsScreen()
+            defer { scene.screenWillDisappear() }
             GameSettings.shared.isSettingsLocked = true
-            let overlay = try #require(scene.settingsOverlay)
+            let overlay = try #require(scene.panel)
             overlay.onThemeChanged?()
-            let locked = try #require(scene.settingsOverlay)
+            let locked = try #require(scene.panel)
             for (label, expected) in [("Privacy Policy", "Open Full Policy in Safari"), ("Acknowledgements", "Done")] {
                 try focusSetting(label, in: scene)
                 scene.switchPrimaryBegan()
@@ -658,11 +657,11 @@ struct GameLifecycleTests {
     @Test func resetCanBeCancelledAndConfirmedBySwitch() throws {
         try withSettings {
             GameSettings.shared.applyChallenge()
-            let (view, scene) = try settingsScene()
-            defer { view.presentScene(nil) }
+            let scene = settingsScreen()
+            defer { scene.screenWillDisappear() }
             try focusSetting("Reset Settings", in: scene)
             scene.switchPrimaryBegan()
-            let overlay = try #require(scene.settingsOverlay)
+            let overlay = try #require(scene.panel)
             #expect(overlay.isAdjusting)
             #expect(overlay.switchScanner.items[0].accessibilityScanLabel == "Cancel")
             scene.switchPrimaryBegan()
@@ -672,23 +671,22 @@ struct GameLifecycleTests {
             scene.switchSecondaryBegan()
             scene.switchPrimaryBegan()
             #expect(GameSettings.shared.gapMin == 240)
-            #expect(scene.settingsOverlay?.isAdjusting == false)
-            #expect(scene.settingsOverlay?.switchScanner.isActive == true)
+            #expect(scene.panel?.isAdjusting == false)
+            #expect(scene.panel?.switchScanner.isActive == true)
         }
     }
 
     @Test func settingsSwitchReachesControlsAndBackWithoutLegacyScanner() throws {
         try withSettings {
-            let (view, scene) = try settingsScene()
-            defer { view.presentScene(nil) }
-            let overlay = try #require(scene.settingsOverlay)
+            let scene = settingsScreen()
+            defer { scene.screenWillDisappear() }
+            let overlay = try #require(scene.panel)
             let expected = ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size",
                             "Background Scroll", "No-Fail Mode", "Calm Mode", "Show Score", "Auto-Scan Menus",
                             "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "Hold Switch to Pause", "Menu Theme",
                             "Sound Effects", "Music", "Lock Settings"] + GameSettings.allPalettes.map { $0.name }
             for label in expected { try focusSetting(label, in: scene) }
             #expect(overlay.scrollPosition.y > 0)
-            #expect(scene.focusScanner?.isActive == false)
             try focusSetting("No-Fail Mode", in: scene)
             let previous = GameSettings.shared.noFailMode
             scene.switchPrimaryBegan()
@@ -698,7 +696,7 @@ struct GameLifecycleTests {
             try focusSetting("◀  Back", in: scene)
             scene.switchPrimaryBegan()
             #expect(backActivated)
-            view.presentScene(nil)
+            scene.screenWillDisappear()
             #expect(!overlay.switchScanner.isActive)
         }
     }
@@ -706,10 +704,10 @@ struct GameLifecycleTests {
     @Test func settingsSwitchAdjustsSliderBothWaysAndReturnsToRow() throws {
         try withSettings {
             GameSettings.shared.backgroundScrollSpeed = 100
-            let (view, scene) = try settingsScene()
-            defer { view.presentScene(nil) }
+            let scene = settingsScreen()
+            defer { scene.screenWillDisappear() }
             try focusSetting("Background Scroll", in: scene)
-            let overlay = try #require(scene.settingsOverlay)
+            let overlay = try #require(scene.panel)
             scene.switchPrimaryBegan()
             #expect(overlay.switchScanner.items.count == 3)
             scene.switchPrimaryBegan() // Decrease.
@@ -728,38 +726,38 @@ struct GameLifecycleTests {
 
     @Test func settingsSwitchPreservesFocusAcrossThemePresetAndLockRebuilds() throws {
         try withSettings {
-            let (view, scene) = try settingsScene()
-            defer { view.presentScene(nil) }
+            let scene = settingsScreen()
+            defer { scene.screenWillDisappear() }
             try focusSetting("Menu Theme", in: scene)
-            let oldOverlay = try #require(scene.settingsOverlay)
+            let oldOverlay = try #require(scene.panel)
             scene.switchPrimaryBegan()
             scene.switchSecondaryBegan() // Parchment.
             scene.switchPrimaryBegan()
-            let themed = try #require(scene.settingsOverlay)
+            let themed = try #require(scene.panel)
             #expect(themed !== oldOverlay)
             #expect(!oldOverlay.switchScanner.isActive)
             #expect(themed.focusedSetting == "Menu Theme")
             #expect(GameSettings.shared.selectedThemeID == GameSettings.allThemes[1].id)
             try focusSetting("Gentle", in: scene)
             scene.switchPrimaryBegan()
-            #expect(scene.settingsOverlay?.focusedSetting == "Gentle")
+            #expect(scene.panel?.focusedSetting == "Gentle")
             #expect(GameSettings.shared.gapMin == GameSettings.gentlePreset.gapMin)
             try focusSetting("Lock Settings", in: scene)
             scene.switchPrimaryBegan()
             #expect(GameSettings.shared.isSettingsLocked)
             // Back, Lock Settings, Privacy Policy, Acknowledgements.
-            #expect(scene.settingsOverlay?.switchScanner.items.count == 4)
-            #expect(scene.settingsOverlay?.focusedSetting == "Lock Settings")
+            #expect(scene.panel?.switchScanner.items.count == 4)
+            #expect(scene.panel?.focusedSetting == "Lock Settings")
             scene.switchPrimaryBegan()
             #expect(!GameSettings.shared.isSettingsLocked)
-            #expect((scene.settingsOverlay?.switchScanner.items.count ?? 0) > 2)
+            #expect((scene.panel?.switchScanner.items.count ?? 0) > 2)
         }
     }
 
     @Test func settingsSwitchSelectsPaletteAndChangesScanMode() throws {
         try withSettings {
-            let (view, scene) = try settingsScene()
-            defer { view.presentScene(nil) }
+            let scene = settingsScreen()
+            defer { scene.screenWillDisappear() }
             let palette = try #require(GameSettings.allPalettes.last)
             try focusSetting(palette.name, in: scene)
             scene.switchPrimaryBegan()
@@ -768,7 +766,7 @@ struct GameLifecycleTests {
             scene.switchPrimaryBegan()
             scene.switchPrimaryBegan() // Auto-Advance.
             #expect(GameSettings.shared.scanScheme == .autoScan)
-            #expect(scene.settingsOverlay?.focusedSetting == "Menu Scan Mode")
+            #expect(scene.panel?.focusedSetting == "Menu Scan Mode")
             scene.switchPrimaryBegan()
             scene.switchSecondaryBegan()
             scene.switchPrimaryBegan() // Two-Switch.
@@ -793,11 +791,11 @@ struct GameLifecycleTests {
         }
         gs.scanningEnabled = false
         gs.backgroundScrollSpeed = 100
-        let (view, scene) = try settingsScene()
-        defer { view.presentScene(nil) }
+        let scene = settingsScreen()
+        defer { scene.screenWillDisappear() }
         gs.scanScheme = .autoScan
         gs.scanDwellTime = 0.5
-        let overlay = try #require(scene.settingsOverlay)
+        let overlay = try #require(scene.panel)
         let input: SwitchInputReceivable = scene
         input.switchPrimaryBegan()
 
@@ -824,7 +822,7 @@ struct GameLifecycleTests {
         overlay.onBack = { returned = true }
         try await activateWhenScanned("◀  Back")
         #expect(returned)
-        view.presentScene(nil)
+        scene.screenWillDisappear()
         let stoppedIndex = overlay.switchScanner.currentIndex
         try await Task.sleep(nanoseconds: 150_000_000)
         #expect(!overlay.switchScanner.isActive)
@@ -835,11 +833,11 @@ struct GameLifecycleTests {
     @Test func settingsAdjustmentLayoutsOnSmallPhoneAndLandscapeTablet() throws {
         try withSettings {
             for size in [CGSize(width: 320, height: 568), CGSize(width: 1024, height: 768)] {
-                let (view, scene) = try settingsScene()
-                defer { view.presentScene(nil) }
-                view.frame.size = size
-                let overlay = try #require(scene.settingsOverlay)
-                overlay.frame = view.bounds
+                let scene = settingsScreen()
+                defer { scene.screenWillDisappear() }
+                scene.view.frame.size = size
+                let overlay = try #require(scene.panel)
+                overlay.frame = scene.view.bounds
                 try focusSetting("Menu Theme", in: scene)
                 overlay.layoutIfNeeded()
                 let renderer = UIGraphicsImageRenderer(bounds: overlay.bounds)

@@ -49,7 +49,7 @@ class RoutingUtilityScene: SKScene, ButtonNodeResponderType {
         let screen: Screen?
         switch identifier {
         case .play:     screen = GameScene(fileNamed: Scenes.game.getName()).map(Screen.scene)
-        case .settings: screen = SettingsScene(fileNamed: Scenes.setting.getName()).map(Screen.scene)
+        case .settings: screen = .settings
         case .menu, .home: screen = .home
         default:
             debugPrint(#function, "unhandled identifier:", identifier)

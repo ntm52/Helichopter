@@ -9,8 +9,6 @@
 /* Begin PBXBuildFile section */
 		A90192FB21F1BDF40020C612 /* PhysicsContactable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90192FA21F1BDF40020C612 /* PhysicsContactable.swift */; };
 		A903943420AD94F000376CC3 /* UserDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = A903943320AD94F000376CC3 /* UserDefaults.swift */; };
-		A903943F20ADB24000376CC3 /* ToggleButtonNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A903943E20ADB24000376CC3 /* ToggleButtonNode.swift */; };
-		A9092FA5216B35C800D773BC /* TriggleButtonNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9092FA4216B35C800D773BC /* TriggleButtonNode.swift */; };
 		A92E72E2209D815B0015F647 /* PlayingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92E72E1209D815B0015F647 /* PlayingState.swift */; };
 		A92E72E4209D81820015F647 /* GameOverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92E72E3209D81820015F647 /* GameOverState.swift */; };
 		A92E72E6209D818B0015F647 /* PausedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92E72E5209D818B0015F647 /* PausedState.swift */; };
@@ -19,7 +17,6 @@
 		A992D8B620A03B90003A9998 /* GameMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A992D8B520A03B90003A9998 /* GameMenuView.swift */; };
 		D10000000000000000000003 /* GuideViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000004 /* GuideViewController.swift */; };
 		D10000000000000000000005 /* MenuStackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000006 /* MenuStackView.swift */; };
-		A9A3139D20B0226D00B36175 /* SettingsScene iPad.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9A3139C20B0226D00B36175 /* SettingsScene iPad.sks */; };
 		A9A313A120B0239100B36175 /* GameScene iPad.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9A313A020B0239100B36175 /* GameScene iPad.sks */; };
 		A9ACB91D2099A1F200966991 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9ACB91C2099A1F200966991 /* AppDelegate.swift */; };
 		A9ACB91F2099A1F200966991 /* GameScene.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9ACB91E2099A1F200966991 /* GameScene.sks */; };
@@ -42,8 +39,7 @@
 		A9D4CFDB209AFA06006461AF /* GameSceneProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFDA209AFA06006461AF /* GameSceneProtocol.swift */; };
 		A9D4CFDD209B3A50006461AF /* PipeNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFDC209B3A4F006461AF /* PipeNode.swift */; };
 		A9D4CFE0209B4040006461AF /* PipeFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFDF209B4040006461AF /* PipeFactory.swift */; };
-		A9EC755E20A6CB03007C42EC /* SettingsScene.sks in Resources */ = {isa = PBXBuildFile; fileRef = A9EC755D20A6CB03007C42EC /* SettingsScene.sks */; };
-		A9EC756420A6D3E9007C42EC /* SettingsScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EC756320A6D3E9007C42EC /* SettingsScene.swift */; };
+		A9EC756420A6D3E9007C42EC /* SettingsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EC756320A6D3E9007C42EC /* SettingsPanelView.swift */; };
 		A9EC756820A6E479007C42EC /* RoutingUtilityScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EC756720A6E479007C42EC /* RoutingUtilityScene.swift */; };
 		D10000000000000000000001 /* SceneTextOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000002 /* SceneTextOverlay.swift */; };
 		D8986E4B3047D63A00B4D8C4 /* GameSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E4A3047D63A00B4D8C4 /* GameSettings.swift */; };
@@ -54,6 +50,10 @@
 		D8986E573048EC2800B4D8C4 /* SKNode+Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E563048EC2800B4D8C4 /* SKNode+Theme.swift */; };
 		D8986E5930499C6600B4D8C4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D8986E5830499C6600B4D8C4 /* PrivacyInfo.xcprivacy */; };
 		D8986E5B304A2A3600B4D8C4 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8986E5A304A2A3600B4D8C4 /* SceneDelegate.swift */; };
+		D10000000000000000000007 /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10000000000000000000008 /* SettingsViewController.swift */; };
+		D10000000000000000000009 /* SettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000000A /* SettingsRows.swift */; };
+		D1000000000000000000000B /* SettingsAdjustmentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000000C /* SettingsAdjustmentPanel.swift */; };
+		D1000000000000000000000D /* AppLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000000E /* AppLinks.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,8 +69,6 @@
 /* Begin PBXFileReference section */
 		A90192FA21F1BDF40020C612 /* PhysicsContactable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicsContactable.swift; sourceTree = "<group>"; };
 		A903943320AD94F000376CC3 /* UserDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaults.swift; sourceTree = "<group>"; };
-		A903943E20ADB24000376CC3 /* ToggleButtonNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToggleButtonNode.swift; sourceTree = "<group>"; };
-		A9092FA4216B35C800D773BC /* TriggleButtonNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TriggleButtonNode.swift; sourceTree = "<group>"; };
 		A92E72E1209D815B0015F647 /* PlayingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayingState.swift; sourceTree = "<group>"; };
 		A92E72E3209D81820015F647 /* GameOverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameOverState.swift; sourceTree = "<group>"; };
 		A92E72E5209D818B0015F647 /* PausedState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PausedState.swift; sourceTree = "<group>"; };
@@ -79,7 +77,6 @@
 		A992D8B520A03B90003A9998 /* GameMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMenuView.swift; sourceTree = "<group>"; };
 		D10000000000000000000004 /* GuideViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuideViewController.swift; sourceTree = "<group>"; };
 		D10000000000000000000006 /* MenuStackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuStackView.swift; sourceTree = "<group>"; };
-		A9A3139C20B0226D00B36175 /* SettingsScene iPad.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = "SettingsScene iPad.sks"; sourceTree = "<group>"; };
 		A9A313A020B0239100B36175 /* GameScene iPad.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = "GameScene iPad.sks"; sourceTree = "<group>"; };
 		A9ACB9192099A1F200966991 /* Helichopter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Helichopter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9ACB91C2099A1F200966991 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -104,8 +101,7 @@
 		A9D4CFDA209AFA06006461AF /* GameSceneProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneProtocol.swift; sourceTree = "<group>"; };
 		A9D4CFDC209B3A4F006461AF /* PipeNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipeNode.swift; sourceTree = "<group>"; };
 		A9D4CFDF209B4040006461AF /* PipeFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipeFactory.swift; sourceTree = "<group>"; };
-		A9EC755D20A6CB03007C42EC /* SettingsScene.sks */ = {isa = PBXFileReference; lastKnownFileType = file.sks; path = SettingsScene.sks; sourceTree = "<group>"; };
-		A9EC756320A6D3E9007C42EC /* SettingsScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScene.swift; sourceTree = "<group>"; };
+		A9EC756320A6D3E9007C42EC /* SettingsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanelView.swift; sourceTree = "<group>"; };
 		A9EC756720A6E479007C42EC /* RoutingUtilityScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutingUtilityScene.swift; sourceTree = "<group>"; };
 		D10000000000000000000002 /* SceneTextOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneTextOverlay.swift; sourceTree = "<group>"; };
 		D8986E4A3047D63A00B4D8C4 /* GameSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSettings.swift; sourceTree = "<group>"; };
@@ -117,6 +113,10 @@
 		D8986E5830499C6600B4D8C4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D8986E5A304A2A3600B4D8C4 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		D8986F0B304A7A0100B4D8C4 /* HelichopterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HelichopterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D10000000000000000000008 /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		D1000000000000000000000A /* SettingsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRows.swift; sourceTree = "<group>"; };
+		D1000000000000000000000C /* SettingsAdjustmentPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAdjustmentPanel.swift; sourceTree = "<group>"; };
+		D1000000000000000000000E /* AppLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLinks.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -145,8 +145,6 @@
 			isa = PBXGroup;
 			children = (
 				A92E72ED209D87570015F647 /* ButtonNode.swift */,
-				A903943E20ADB24000376CC3 /* ToggleButtonNode.swift */,
-				A9092FA4216B35C800D773BC /* TriggleButtonNode.swift */,
 			);
 			path = "UI Components";
 			sourceTree = "<group>";
@@ -291,7 +289,11 @@
 			children = (
 				A9B9C728209EE31C0045548D /* HomeViewController.swift */,
 				A9ACB9222099A1F200966991 /* GameScene.swift */,
-				A9EC756320A6D3E9007C42EC /* SettingsScene.swift */,
+				A9EC756320A6D3E9007C42EC /* SettingsPanelView.swift */,
+				D10000000000000000000008 /* SettingsViewController.swift */,
+				D1000000000000000000000A /* SettingsRows.swift */,
+				D1000000000000000000000C /* SettingsAdjustmentPanel.swift */,
+				D1000000000000000000000E /* AppLinks.swift */,
 				A992D8B520A03B90003A9998 /* GameMenuView.swift */,
 				D10000000000000000000004 /* GuideViewController.swift */,
 				D10000000000000000000006 /* MenuStackView.swift */,
@@ -383,8 +385,6 @@
 			children = (
 				A9ACB91E2099A1F200966991 /* GameScene.sks */,
 				A9A313A020B0239100B36175 /* GameScene iPad.sks */,
-				A9EC755D20A6CB03007C42EC /* SettingsScene.sks */,
-				A9A3139C20B0226D00B36175 /* SettingsScene iPad.sks */,
 			);
 			path = "Main Scenes";
 			sourceTree = "<group>";
@@ -497,7 +497,6 @@
 				D8986E553048ADD800B4D8C4 /* MainTheme.caf in Resources */,
 				A9ACB96B2099B42300966991 /* Actions.sks in Resources */,
 				A9ACB9282099A1F200966991 /* Main.storyboard in Resources */,
-				A9EC755E20A6CB03007C42EC /* SettingsScene.sks in Resources */,
 				A9ACB91F2099A1F200966991 /* GameScene.sks in Resources */,
 				A9ACB92A2099A1F300966991 /* Assets.xcassets in Resources */,
 				A9ACB92D2099A1F300966991 /* LaunchScreen.storyboard in Resources */,
@@ -505,7 +504,6 @@
 				D8986E5930499C6600B4D8C4 /* PrivacyInfo.xcprivacy in Resources */,
 				D8986E523048ADCF00B4D8C4 /* Score.caf in Resources */,
 				A9A313A120B0239100B36175 /* GameScene iPad.sks in Resources */,
-				A9A3139D20B0226D00B36175 /* SettingsScene iPad.sks in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -525,7 +523,6 @@
 			files = (
 				A9EC756820A6E479007C42EC /* RoutingUtilityScene.swift in Sources */,
 				A92E72EE209D87570015F647 /* ButtonNode.swift in Sources */,
-				A9092FA5216B35C800D773BC /* TriggleButtonNode.swift in Sources */,
 				A992D8B620A03B90003A9998 /* GameMenuView.swift in Sources */,
 				D10000000000000000000003 /* GuideViewController.swift in Sources */,
 				D10000000000000000000005 /* MenuStackView.swift in Sources */,
@@ -552,11 +549,14 @@
 				D8986E5B304A2A3600B4D8C4 /* SceneDelegate.swift in Sources */,
 				A9ACB91D2099A1F200966991 /* AppDelegate.swift in Sources */,
 				A92E72E2209D815B0015F647 /* PlayingState.swift in Sources */,
-				A9EC756420A6D3E9007C42EC /* SettingsScene.swift in Sources */,
+				A9EC756420A6D3E9007C42EC /* SettingsPanelView.swift in Sources */,
+				D1000000000000000000000D /* AppLinks.swift in Sources */,
+				D1000000000000000000000B /* SettingsAdjustmentPanel.swift in Sources */,
+				D10000000000000000000009 /* SettingsRows.swift in Sources */,
+				D10000000000000000000007 /* SettingsViewController.swift in Sources */,
 				A903943420AD94F000376CC3 /* UserDefaults.swift in Sources */,
 				D8986E573048EC2800B4D8C4 /* SKNode+Theme.swift in Sources */,
 				A9D4CFE0209B4040006461AF /* PipeFactory.swift in Sources */,
-				A903943F20ADB24000376CC3 /* ToggleButtonNode.swift in Sources */,
 				A9B9C729209EE31C0045548D /* HomeViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
