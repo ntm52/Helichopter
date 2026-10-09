@@ -54,8 +54,8 @@ at every difficulty is not yet established.
 ## Text size
 
 Text follows iOS Settings → Accessibility → Display & Text Size → Larger Text,
-including accessibility sizes and changes while the app is open. Title, pause,
-and round-over menus scroll vertically; gameplay score and instructions use
+including accessibility sizes and changes while the app is open. Home, the guide,
+pause, and round-over menus scroll vertically; gameplay score and instructions use
 UIKit text independent of the SpriteKit scene scale. Settings labels wrap,
 presets stack vertically, and choice controls and palette cards scroll horizontally.
 The switch scanner scrolls the selected menu button into view. Changing text size

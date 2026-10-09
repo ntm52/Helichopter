@@ -276,3 +276,21 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Tests: Settings tests now load `SettingsViewController` (`GameLifecycleTests`, `ScreenTransitionTests`, `WindowSizeTests`, `DynamicTypeTests`, `PaletteContrastTests`, `PresentationTests`). New `settingsIsAUIKitScreenWithItsOwnScanner`: switch input reaches the panel scanner, a theme rebuild leaves one panel with scanning kept, and Back goes Home. **101 tests pass** (`-parallel-testing-enabled NO`).
 - Simulator check (iPhone 17): Home → Settings shows the panel alone, and Back returns Home. Screenshots again lagged taps by 1–2 s.
 - Next: Stage B step 5 (clean-up: `RoutingUtilityScene`, `ButtonAccessibilityElement`, `suppressArchivedPresentation()`, `SKNode+Theme`, unused `ButtonNode` code, the `GameScene iPad.sks` question, rename to `RootViewController`, docs).
+
+### 2026-10-08 — Plan 01 Stage B step 5: clean-up; HUD built in Swift; `RootViewController` (Claude Code)
+- Commit `d0f7da3`. The gameplay archives still had a hidden Pause `ButtonNode`, a `world`/`Score Node`/`Score Label` group, and the "CLICK ME TO FLY" hint label, which the HUD mirrored. These were the scene's only archived children. They were removed from `GameScene.sks` and `GameScene iPad.sks` by a one-off edit of the root's `_children` array, and both files pass `plutil -lint`. The archives now hold only scene size, physics, and colour.
+- `SceneTextOverlay` builds the HUD itself, in the same order as before: a top row of Score, Best, and Pause, then the hint, then the new-high-score banner. Pause calls the new `GameScene.pauseFromHUD()`, which ignores taps outside play or during a fade. After fading, the hint keeps its wording so the layout does not shift.
+- **Deleted:**
+  - `RoutingUtilityScene.swift`
+  - `ButtonNode.swift` (with `ButtonIdentifier` and the now-empty `UI Components` group)
+  - `ButtonAccessibilityElement` and the controller's `accessibilityElements` override, which returned nil on every screen after step 3
+  - `suppressArchivedPresentation()`, `applyUITheme`, and `findAllButtonsInScene`
+  - `GameSceneAdapter.isHUDHidden`, `scoreLabel`, and `resetScores`
+  - `GameScene.currentScoreText` and `flightHint`
+- `SKNode+Theme.swift` became `SKNode+GameplayBoundary.swift` and keeps only the outline helper. Parchment's starfield hiding is now one line in `GameScene.didMove`, which hides the scroll node.
+- **`GameScene iPad.sks` stays.** It is a different scene size (1125×1500 against 750×1434), so it is gameplay layout and was never a menu copy.
+- Renamed `GameViewController` to `RootViewController` everywhere: the file, class, storyboard `customClass`, project file, tests, and docs. The source-scan test now expects `presentScene` only in `RootViewController.swift`, still 2 calls.
+- Tests: moved off `ButtonNode`. `FocusScannerTests` uses `MenuItem`, `ScreenTransitionTests` uses `pauseFromHUD()`, and `PresentationTests`, `GameMenuTests`, and `GameLifecycleTests` were updated. Removed `hiddenButtonsAreNotScannable`; `scorePreferenceAppliesFromFirstFrame` now checks the UIKit labels. New tests are `gameplayArchivesHoldNoHUD` and `plainBackdropThemeHidesStarfield`. **102 tests pass** (`-parallel-testing-enabled NO`). A clean app build shows no warnings from app sources.
+- Docs: `CLAUDE.md` no longer has the "UIKit draws everything visible" trap; it now says the gameplay archives must not gain text or controls. `HELICHOPTER_PROJECT.md`, the README, Plan 01 (status, step 5 note, Start here, Done when), and the roadmap are updated. No `Theme` helper was added, because `GameSettings.selectedTheme` and `SettingsStyle` already cover every screen.
+- Simulator check (iPhone 17): Home → Play shows one HUD (Score 0, Best, Pause, hint) with nothing drawn behind it. Pause shows the Paused menu alone.
+- Next: **Owner** device screen recordings, listed under Plan 01 "Manual checks", then submit 2.1 (build 3). Step 6 (narrow iPad windows) is optional.

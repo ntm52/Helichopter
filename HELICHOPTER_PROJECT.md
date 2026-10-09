@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B steps 1–3 are done. 100 automated tests pass.
+**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B code steps 1–5 are done, and 2.1 now waits on the owner's device recordings. 102 automated tests pass.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -47,12 +47,12 @@ These apply to every change, including cosmetics and the store.
 
 ## Architecture
 
-The app has one `GameViewController` holding an `SKView`. Home, the first-run guide, and Settings are UIKit child view controllers shown over an empty `SKView`; gameplay is an `SKScene` loaded from `GameScene.sks`. **UIKit draws everything the player sees in menus and the HUD.** Pause and Round Over have no archive: they are built in Swift (`GameMenuView`). Nothing polls the UI: there is no refresh timer.
+The app has one `RootViewController` holding an `SKView`. Home, the first-run guide, and Settings are UIKit child view controllers shown over an empty `SKView`; gameplay is an `SKScene` loaded from `GameScene.sks` (`GameScene iPad.sks` on iPad, a wider scene). Those archives hold only scene settings; SpriteKit draws gameplay and nothing else. The HUD, Pause, and Round Over are UIKit, built in Swift. Nothing polls the UI: there is no refresh timer.
 
 | File (under `Helichopter/`) | Role |
 |---|---|
-| `View Controllers/GameViewController.swift` | Hosts the `SKView`, the `SceneTextOverlay`, and Home, the guide, or Settings as a child controller; plays the menu theme (`MenuMusic`) on Home and the guide. **Owns every screen change:** `present(_:transition:)` takes a `Screen` (`.home`, `.guide`, `.settings`, `.scene(_:)`; static form `present(_:in:)` for scenes) and is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input to the UIKit screen or the scene. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
-| `Scenes/SceneTextOverlay.swift` | The gameplay HUD (updated only through `GameSceneHUDDelegate`); hosts `GameMenuView` during Pause and Round Over; hidden and emptied on every other screen. Defines `suppressArchivedPresentation()` and the VoiceOver `FlightAccessibilityElement`. |
+| `View Controllers/RootViewController.swift` | Hosts the `SKView`, the `SceneTextOverlay`, and Home, the guide, or Settings as a child controller; plays the menu theme (`MenuMusic`) on Home and the guide. **Owns every screen change:** `present(_:transition:)` takes a `Screen` (`.home`, `.guide`, `.settings`, `.scene(_:)`; static form `present(_:in:)` for scenes) and is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input to the UIKit screen or the scene. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
+| `Scenes/SceneTextOverlay.swift` | The gameplay HUD, built in Swift: Score, Best, Pause, the flight hint, and the new-high-score banner, updated only through `GameSceneHUDDelegate`. Hosts `GameMenuView` during Pause and Round Over; hidden and emptied on every other screen. Defines the VoiceOver `FlightAccessibilityElement`. |
 | `Scenes/MenuStackView.swift` | Shared UIKit menu pieces: `MenuChoice`/`MenuItem` (scanner models), `MenuButton` (focus border by callback), `MenuStackView` (centred scrolling column), `BackdropView` (starry sky or theme colour), `ScreenViewController` (base for every UIKit screen: navigation, announcement, switch input, scanners to freeze during a fade), and `MenuViewController` (base for Home and the guide: owns a `FocusScanner`, ignores choices during a fade). |
 | `Scenes/HomeViewController.swift` | Home: mascot (60-frame `UIImageView` animation, still under Reduce Motion), title, and `HomeAction` Play, Settings, How to Play. |
 | `Scenes/GuideViewController.swift` | First-run guide: three pages, Read this step aloud, Next/Back/Skip/Done. Shown at launch until `onboarding_completed_v1` is set, and from How to Play. |
@@ -61,18 +61,16 @@ The app has one `GameViewController` holding an `SKView`. Home, the first-run gu
 | `Scenes/SettingsRows.swift` | `SettingsStyle` (theme-derived colours), the row builders (preset, slider, toggle, segmented, palette), and font/label/button helpers. |
 | `Scenes/SettingsAdjustmentPanel.swift` | The full-panel page of plain choices for sliders, segmented controls, Reset, Privacy, and Acknowledgements, so one switch press changes one thing. |
 | `Scenes/AppLinks.swift` | Privacy URL, support email, privacy summary, and acknowledgements text. |
-| `Scenes/RoutingUtilityScene.swift` | Base class of `GameScene` (removed in Stage B step 5). Owns a `FocusScanner` and routes archived buttons through `GameViewController.present`. |
-| `Scenes/GameScene.swift` | Gameplay. `GKStateMachine` (Playing, Paused, GameOver), switch routing, hold-to-pause, VoiceOver flight, flight hint text. Owns the Pause and Round Over menu items (`GameMenuItem`) that the switch scanner moves through, and acts on them in `perform(_:from:)`. |
+| `Scenes/GameScene.swift` | Gameplay. `GKStateMachine` (Playing, Paused, GameOver), switch routing, hold-to-pause, VoiceOver flight, flight hint text, and `pauseFromHUD()`. Hides the starfield for plain-backdrop themes. Owns the Pause and Round Over menu items (`GameMenuItem`) that the switch scanner moves through, and acts on them in `perform(_:from:)`. |
 | `Scenes/GameMenuView.swift` | Pause and Round Over in UIKit: `MenuAction`, `GameMenuItem` (scanner model owned by the scene), and `GameMenuView`, a `MenuStackView` whose buttons follow their items' focus with no polling. |
-| `Adapters/GameSceneAdapter.swift` | Gameplay hub: physics, scoring, best-score saving, sounds, collisions, HUD visibility. |
+| `Adapters/GameSceneAdapter.swift` | Gameplay hub: physics, scoring, best-score saving, sounds, collisions, and the HUD delegate calls. |
 | `Game States/*.swift` | `PlayingState` (pipe spawning, first-input start), `PausedState`, `GameOverState`. |
 | `Nodes/Playables/HelicopterNode.swift` | Player sprite: atlas animation, physics, all four control schemes, contrast marker, No-Fail pulse. |
 | `Nodes/Game Componens/PipeNode.swift` | 9-slice pipe body and cap, tinted by palette, with a contrast border. (The folder name's typo is real.) |
 | `Nodes/Game Componens/InfiniteSpriteScrollNode.swift` | Tiling parallax background. |
 | `Factories/PipeFactory.swift` | Spawns pipe pairs from `GameSettings`. Texture names `pipe-yellow`/`cap-yellow` are hard-coded here. |
-| `Nodes/UI Components/ButtonNode.swift` | Archived button model: identifier, labels, scanner focus, activation. |
-| `Control/FocusScanner.swift` | Timed and manual scanning shared by SpriteKit buttons and UIKit Settings (`FocusScannable`). |
-| `Extensions/SKNode+Theme.swift` | `applyUITheme(_:)`: recursive theming of archived nodes. |
+| `Control/FocusScanner.swift` | Timed and manual scanning for every UIKit menu and Settings (`FocusScannable`). |
+| `Extensions/SKNode+GameplayBoundary.swift` | `addGameplayBoundary(path:)`: the black/white outline on the helicopter and pipes. |
 | `Utils/GameSettings.swift` | Singleton for every setting, preset, palette, and theme. Bounded, validated, persisted with `gs_` keys. |
 | `Utils/UserDefaults.swift` | Legacy `Setting` and `Difficulty` enums, kept for migration and best score. |
 
@@ -81,7 +79,7 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 ### Colour systems (both in `GameSettings.swift`)
 
 - **`ColorPalette`** colours the helicopter and pipes. Pipes use `colorBlendFactor = 1.0`; the detailed helicopter art uses `0.35` so its shading survives. Six palettes: Default, High Contrast, Deuteranopia, Protanopia, Tritanopia, Low Luminance (`gs_selectedPaletteID`).
-- **`UITheme`** colours menus and scene backgrounds. Three themes: Night Sky, Parchment, Neon Night (`gs_selectedThemeID`). Light themes hide sprites whose names start with `background`, because tinting dark textures cannot make them light. `helicopterTintColor` overrides the palette colour (Parchment uses `#CC2626`).
+- **`UITheme`** colours menus and scene backgrounds. Three themes: Night Sky, Parchment, Neon Night (`gs_selectedThemeID`). Light themes (`backgroundSpriteTintColor` set) hide the scrolling starfield, because tinting a dark texture cannot make it light. `helicopterTintColor` overrides the palette colour (Parchment uses `#CC2626`).
 - Gameplay contrast does not rely on fill colours: the helicopter has a black/white marker and pipes have black/white borders. `PaletteContrastTests` render all 18 theme/palette combinations.
 
 ### Helicopter atlas
@@ -92,8 +90,7 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 
 ## Known issues and debt
 
-- **Double page during screen changes:** live in 2.0 (owner accepted it). On `master`, Plan 01 Stage A hides it with one snapshot cross-fade of both layers, but each screen is still drawn by two layers. Stage B removes the cause and ships as 2.1: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
-- **Hidden `.sks` menus are gone** (Home, Settings, Pause, and Round Over are UIKit). `GameScene.sks` and its iPad copy still carry hidden archived labels and buttons; step 5 removes what gameplay does not need.
+- **Double page during screen changes:** live in 2.0 (owner accepted it). Fixed on `master` by Plan 01 Stage B (every menu is UIKit, one cross-fade per change); ships as 2.1 once the owner's device recordings pass: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
 - Narrow iPad windows show wide top and bottom bars instead of a larger phone-shaped layout.
 - The full test suite occasionally hangs with parallel simulator clones. Use `-parallel-testing-enabled NO` if it does.
 - **Not yet verified on a physical device:** VoiceOver, Voice Control, Switch Control, hardware switches, adaptive controllers, the oldest supported device, iPad window resizing, and real transitions.
