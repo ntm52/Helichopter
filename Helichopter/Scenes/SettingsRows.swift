@@ -84,6 +84,9 @@ extension SettingsPanelView {
         stack.addArrangedSubview(spacer)
 
         let lbl = makeLabel(title.uppercased(), size: 12, weight: .bold, color: style.accent)
+        // VoiceOver's heading rotor jumps between sections; all-caps text can be spelled out.
+        lbl.accessibilityLabel = title
+        lbl.accessibilityTraits = .header
 
         let wrap = UIView()
         wrap.addSubview(lbl)
@@ -146,7 +149,7 @@ extension SettingsPanelView {
     }
 
     func sliderRow(_ title: String, detail: String, lo: String, hi: String,
-                   min: Float, max: Float, value: Float,
+                   min: Float, max: Float, value: Float, seconds: Bool = false,
                    onChange: @escaping (Float) -> Void) {
         let row = UIView()
         row.backgroundColor = style.rowBg
@@ -155,9 +158,15 @@ extension SettingsPanelView {
         let detailL = makeLabel(detail, size: 12, weight: .regular,  color: style.sub)
         detailL.numberOfLines = 0
 
-        let slider = UISlider()
+        let slider = SettingsSlider()
+        slider.accessibilityRow = row
+        slider.speaksSeconds = seconds
         slider.accessibilityLabel = title
-        slider.accessibilityHint = detail
+        slider.accessibilityHint = "\(detail). \(lo) to \(hi). Double-tap for larger buttons."
+        slider.onActivate = { [weak self, weak slider] in
+            guard let self = self, let slider = slider, !self.isAdjusting else { return }
+            self.showAdjustment(for: slider)
+        }
         slider.minimumValue          = min
         slider.maximumValue          = max
         slider.value                 = value
@@ -174,6 +183,8 @@ extension SettingsPanelView {
         hiL.textAlignment = .right
 
         let rangeRow = UIStackView(arrangedSubviews: [loL, hiL])
+        // The slider speaks its own name, purpose, and range once.
+        [titleL, detailL, rangeRow].forEach { $0.accessibilityElementsHidden = true }
         rangeRow.axis         = .horizontal
         rangeRow.distribution = .equalSpacing
 
@@ -206,9 +217,13 @@ extension SettingsPanelView {
         lStack.spacing = 2
         lStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let sw = UISwitch()
+        let sw = SettingsSwitch()
+        sw.accessibilityRow = row
         sw.accessibilityLabel = title
         sw.accessibilityHint = detail
+        // The switch speaks its own name and purpose once.
+        titleL.accessibilityElementsHidden = true
+        detailL.accessibilityElementsHidden = true
         sw.isOn        = isOn
         sw.onTintColor = style.accent
         sw.translatesAutoresizingMaskIntoConstraints = false
@@ -464,6 +479,78 @@ extension SettingsPanelView {
         stack.addArrangedSubview(row)
         stack.addArrangedSubview(hairline())
     }
+}
+
+extension UISlider {
+    /// The value as players hear and see it: "37%" of the range, or "1.5 seconds".
+    var spokenValue: String {
+        if (self as? SettingsSlider)?.speaksSeconds == true { return String(format: "%.1f seconds", value) }
+        let range = maximumValue - minimumValue
+        let fraction = range > 0 ? (value - minimumValue) / range : 0
+        return "\(Int((fraction * 100).rounded()))%"
+    }
+}
+
+/// A Settings slider that assistive technology activates into the adjustment page of
+/// plain Decrease and Increase buttons: VoiceOver double-tap, Switch Control select, and
+/// Voice Control "Tap <name>" if it activates through accessibility (unconfirmed until
+/// the device pass). A finger tap does nothing new; dragging and VoiceOver swipes up and
+/// down still move it directly.
+final class SettingsSlider: UISlider {
+    var onActivate: (() -> Void)?
+    /// The row whose title and description this control speaks for.
+    weak var accessibilityRow: UIView?
+    /// Time settings say "1.5 seconds", not a percentage of their range.
+    var speaksSeconds = false
+
+    override var accessibilityValue: String? {
+        get { spokenValue }
+        set { super.accessibilityValue = newValue }
+    }
+
+    override var accessibilityFrame: CGRect {
+        get { rowAccessibilityFrame(row: accessibilityRow) ?? super.accessibilityFrame }
+        set { super.accessibilityFrame = newValue }
+    }
+
+    override var accessibilityActivationPoint: CGPoint {
+        get { UIAccessibility.convertToScreenCoordinates(bounds, in: self).center }
+        set { super.accessibilityActivationPoint = newValue }
+    }
+
+    override func accessibilityActivate() -> Bool {
+        guard let onActivate = onActivate else { return false }
+        onActivate()
+        return true
+    }
+}
+
+/// A Settings switch whose accessibility frame covers its whole row, so VoiceOver
+/// finds it from the row's text; taps still land on the switch itself.
+final class SettingsSwitch: UISwitch {
+    weak var accessibilityRow: UIView?
+
+    override var accessibilityFrame: CGRect {
+        get { rowAccessibilityFrame(row: accessibilityRow) ?? super.accessibilityFrame }
+        set { super.accessibilityFrame = newValue }
+    }
+
+    override var accessibilityActivationPoint: CGPoint {
+        get { UIAccessibility.convertToScreenCoordinates(bounds, in: self).center }
+        set { super.accessibilityActivationPoint = newValue }
+    }
+}
+
+private extension UIView {
+    /// The row's frame on screen, so touching its title or description reaches the control.
+    func rowAccessibilityFrame(row: UIView?) -> CGRect? {
+        guard let row = row, row.window != nil else { return nil }
+        return UIAccessibility.convertToScreenCoordinates(row.bounds, in: row)
+    }
+}
+
+private extension CGRect {
+    var center: CGPoint { CGPoint(x: midX, y: midY) }
 }
 
 /// Nested stacks need the resolved width when calculating multiline label height.

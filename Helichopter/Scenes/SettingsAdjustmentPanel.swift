@@ -54,7 +54,7 @@ extension SettingsPanelView {
         if let slider = control as? UISlider {
             let value = makeLabel("", size: 20, weight: .medium, color: style.text)
             func updateValue() {
-                value.text = String(format: "Value: %.2g", slider.value)
+                value.text = "Value: \(slider.spokenValue)"
                 for case let button as UIButton in choices.arrangedSubviews {
                     if let name = button.currentTitle, name != "Done" {
                         button.accessibilityLabel = "\(name). \(value.text ?? "")"

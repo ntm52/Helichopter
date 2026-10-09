@@ -714,7 +714,7 @@ struct GameLifecycleTests {
             #expect(GameSettings.shared.noFailMode != previous)
             var backActivated = false
             overlay.onBack = { backActivated = true }
-            try focusSetting("◀  Back", in: scene)
+            try focusSetting("Back", in: scene)
             scene.switchPrimaryBegan()
             #expect(backActivated)
             scene.screenWillDisappear()
@@ -785,12 +785,12 @@ struct GameLifecycleTests {
             #expect(GameSettings.shared.selectedPaletteID == palette.id)
             try focusSetting("Menu Scan Mode", in: scene)
             scene.switchPrimaryBegan()
-            scene.switchPrimaryBegan() // Auto-Advance.
+            scene.switchPrimaryBegan() // Timed.
             #expect(GameSettings.shared.scanScheme == .autoScan)
             #expect(scene.panel?.focusedSetting == "Menu Scan Mode")
             scene.switchPrimaryBegan()
             scene.switchSecondaryBegan()
-            scene.switchPrimaryBegan() // Two-Switch.
+            scene.switchPrimaryBegan() // Step with Switch 2.
             #expect(GameSettings.shared.scanScheme == .twoSwitch)
         }
     }
@@ -824,7 +824,9 @@ struct GameLifecycleTests {
             let deadline = Date().addingTimeInterval(25)
             while Date() < deadline {
                 let scanner = overlay.switchScanner
-                if scanner.items[scanner.currentIndex].accessibilityScanLabel.hasPrefix(label) {
+                // Whole name only: "Back" must not match "Background Scroll, 100".
+                let spoken = scanner.items[scanner.currentIndex].accessibilityScanLabel
+                if spoken == label || spoken.hasPrefix(label + ",") || spoken.hasPrefix(label + ".") {
                     input.switchPrimaryBegan()
                     return
                 }
@@ -841,7 +843,7 @@ struct GameLifecycleTests {
         #expect(overlay.focusedSetting == "Background Scroll")
         var returned = false
         overlay.onBack = { returned = true }
-        try await activateWhenScanned("◀  Back")
+        try await activateWhenScanned("Back")
         #expect(returned)
         scene.screenWillDisappear()
         let stoppedIndex = overlay.switchScanner.currentIndex

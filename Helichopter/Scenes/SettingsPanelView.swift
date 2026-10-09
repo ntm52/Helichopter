@@ -20,7 +20,7 @@ private final class SettingsScanItem: FocusScannable {
         guard let control = control else { return "" }
         let label = control.accessibilityLabel ?? (control as? UIButton)?.currentTitle ?? ""
         if let toggle = control as? UISwitch { return "\(label), \(toggle.isOn ? "On" : "Off")" }
-        if let slider = control as? UISlider { return "\(label), \(String(format: "%.2g", slider.value)). Select to adjust." }
+        if let slider = control as? UISlider { return "\(label), \(slider.spokenValue). Select to adjust." }
         if let segment = control as? UISegmentedControl {
             let value = segment.titleForSegment(at: segment.selectedSegmentIndex) ?? ""
             return "\(label), \(value). Select to choose."
@@ -170,7 +170,10 @@ final class SettingsPanelView: UIView {
 
         let backBtn  = plainButton("◀  Back", color: style.accent, target: self,
                                    action: #selector(backTapped))
+        backBtn.accessibilityLabel = "Back"
+        backBtn.accessibilityHint = "Goes to the home screen"
         let titleLbl = makeLabel("Settings", size: 26, weight: .bold, color: style.text)
+        titleLbl.accessibilityTraits = .header
         titleLbl.textAlignment = .center
         let header = UIStackView(arrangedSubviews: [backBtn, titleLbl])
         header.axis = .vertical
@@ -288,11 +291,11 @@ final class SettingsPanelView: UIView {
 
         sectionHeader("Switch Access")
         toggleRow("Auto-Scan Menus",
-                  detail: "Menus cycle through buttons automatically — press your switch to select",
+                  detail: "Menus start scanning as soon as they open. When off, your first switch press starts scanning.",
                   isOn: gs.scanningEnabled) { v in gs.scanningEnabled = v }
         segmentedRow("Menu Scan Mode",
-                     detail: "Auto-Advance cycles on a timer; Two-Switch requires a second switch press to step",
-                     items: ["Auto-Advance", "Two-Switch"],
+                     detail: "Timed moves the highlight on a timer. Step with Switch 2 waits for your second switch to move it.",
+                     items: ["Timed", "Step with Switch 2"],
                      selectedIndex: gs.scanScheme.rawValue) { idx in
             if let scheme = ScanScheme(rawValue: idx) { gs.scanScheme = scheme }
         }
@@ -300,12 +303,12 @@ final class SettingsPanelView: UIView {
                   detail: "How long the scanner pauses on each button before moving on",
                   lo: "0.5 s", hi: "10 s",
                   min: 0.5, max: 10.0,
-                  value: Float(gs.scanDwellTime)) { v in
+                  value: Float(gs.scanDwellTime), seconds: true) { v in
             gs.scanDwellTime = TimeInterval(v)
         }
         segmentedRow("In-Game Control",
                      detail: "How you control the helicopter's altitude while playing",
-                     items: ["Tap to Flap", "Hold to Hover", "Auto Hover", "Two-Switch"],
+                     items: ["Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches"],
                      selectedIndex: gs.controlScheme.rawValue) { idx in
             if let scheme = ControlScheme(rawValue: idx) { gs.controlScheme = scheme }
         }
@@ -314,7 +317,7 @@ final class SettingsPanelView: UIView {
                   detail: "Hold the primary switch to pause, then release before choosing a menu item. For longer hover holds, increase this delay.",
                   lo: "2 s", hi: "10 s",
                   min: 2, max: 10,
-                  value: Float(gs.switchPauseHoldDuration)) { v in
+                  value: Float(gs.switchPauseHoldDuration), seconds: true) { v in
             gs.switchPauseHoldDuration = TimeInterval(v)
         }
 
@@ -356,6 +359,8 @@ final class SettingsPanelView: UIView {
         if gs.isSettingsLocked {
             // Keep the panel and Back reachable, while preventing accidental edits.
             for row in stack.arrangedSubviews {
+                // Disabled, not just untouchable: VoiceOver says "dimmed" and Voice Control skips them.
+                controls(in: row).forEach { $0.isEnabled = false }
                 row.isUserInteractionEnabled = false
                 row.alpha = 0.5
             }

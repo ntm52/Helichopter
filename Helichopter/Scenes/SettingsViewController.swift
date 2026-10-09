@@ -43,6 +43,11 @@ final class SettingsViewController: ScreenViewController {
         let wasAdjusting = old.isAdjusting
         old.stopScanning()
         old.isUserInteractionEnabled = false
+        // While it fades, the old panel must not ask for rebuilds of its own; with rapid
+        // text-size changes (Control Center's slider) panels would otherwise multiply.
+        old.onThemeChanged = nil
+        old.onBack = nil
+        old.accessibilityElementsHidden = true
         let new = makePanel(fontTraits: view.traitCollection)
         new.alpha = 0
         install(new)

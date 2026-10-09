@@ -155,6 +155,8 @@ final class SceneTextOverlay: UIView {
         element.game = game
         element.host = self
         element.accessibilityLabel = "Helicopter flight control"
+        // Voice Control: "Tap Fly" is quicker to say on every flap than the full label.
+        element.accessibilityUserInputLabels = ["Fly", "Flap", "Helicopter", "Helicopter flight control"]
         element.accessibilityTraits = .button
         element.accessibilityHint = game.accessibilityFlightHint
         var actions: [UIAccessibilityCustomAction] = []

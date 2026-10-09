@@ -284,6 +284,9 @@ class RootViewController: UIViewController {
             outgoing.removeFromParent()
         }
         menuScreen = incoming
+        // An empty SKView still renders every frame; stop it under UIKit screens to save
+        // power and let the app go idle (UI automation and assistive tech wait for that).
+        skView.isPaused = scene == nil
         skView.presentScene(scene)
         if let incoming = incoming {
             addChild(incoming)
