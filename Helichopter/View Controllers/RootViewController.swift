@@ -6,27 +6,55 @@ import AVFoundation
 
 // MARK: - Scene helpers
 
-enum Scenes: String {
-    case game = "GameScene"
-}
+/// The two gameplay layouts. A game uses whichever covers more of the window when it
+/// starts, so a narrow iPad window gets the larger phone layout instead of wide bars.
+enum GameLayout: String, CaseIterable {
+    case phone = "GameScene"
+    case pad = "GameScene iPad"
 
-extension Scenes {
-    func getName() -> String {
-        let isPad = UIDevice.current.userInterfaceIdiom == .pad
-        return isPad ? rawValue + " iPad" : rawValue
-    }
-}
-
-enum NodeScale: Float {
-    case gameBackgroundScale
-}
-
-extension NodeScale {
-    func getValue() -> Float {
-        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+    /// The archive's scene size (a test checks these match).
+    var sceneSize: CGSize {
         switch self {
-        case .gameBackgroundScale: return isPad ? 1.5 : 1.35
+        case .phone: return CGSize(width: 750, height: 1434)
+        case .pad: return CGSize(width: 1125, height: 1500)
         }
+    }
+
+    var backgroundScale: Float {
+        switch self {
+        case .phone: return 1.35
+        case .pad: return 1.5
+        }
+    }
+
+    /// The layout whose scene has this size; the phone layout for any other scene.
+    init(sceneSize: CGSize) {
+        self = GameLayout.allCases.first { $0.sceneSize == sceneSize } ?? .phone
+    }
+
+    /// The layout the device used before window shape counted, kept for ties and
+    /// for windows with no size yet.
+    static var deviceDefault: GameLayout {
+        UIDevice.current.userInterfaceIdiom == .pad ? .pad : .phone
+    }
+
+    /// Fraction of a window the scene covers, after `RootViewController.scaleMode`.
+    func coverage(of window: CGSize) -> CGFloat {
+        guard window.width > 0, window.height > 0 else { return 0 }
+        if RootViewController.scaleMode(sceneSize: sceneSize, in: window) == .aspectFill { return 1 }
+        let scale = min(window.width / sceneSize.width, window.height / sceneSize.height)
+        return (sceneSize.width * scale) * (sceneSize.height * scale) / (window.width * window.height)
+    }
+
+    /// The layout that fills more of the window; the device default when they tie.
+    static func best(for window: CGSize) -> GameLayout {
+        let preferred = deviceDefault
+        let other: GameLayout = preferred == .pad ? .phone : .pad
+        return other.coverage(of: window) > preferred.coverage(of: window) + 0.01 ? other : preferred
+    }
+
+    func makeScene() -> GameScene? {
+        GameScene(fileNamed: rawValue)
     }
 }
 
@@ -348,7 +376,10 @@ class RootViewController: UIViewController {
     /// helicopter, ceiling, and floor are never cut off. Critical for switch users,
     /// whose iPads are often mounted in landscape.
     static func scaleMode(for scene: SKScene, in size: CGSize) -> SKSceneScaleMode {
-        let sceneSize = scene.size
+        scaleMode(sceneSize: scene.size, in: size)
+    }
+
+    static func scaleMode(sceneSize: CGSize, in size: CGSize) -> SKSceneScaleMode {
         guard size.width > 0, size.height > 0, sceneSize.width > 0, sceneSize.height > 0 else { return .aspectFill }
         let viewAspect = size.width / size.height
         // Wider than the scene: filling would crop the ceiling and floor.

@@ -68,7 +68,7 @@ final class HomeViewController: MenuViewController {
     func perform(_ action: HomeAction) {
         switch action {
         case .play:
-            guard let scene = GameScene(fileNamed: Scenes.game.getName()) else { return }
+            guard let scene = GameLayout.best(for: view.bounds.size).makeScene() else { return }
             navigate(.scene(scene))
         case .settings:
             navigate(.settings)

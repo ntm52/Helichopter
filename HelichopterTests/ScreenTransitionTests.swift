@@ -148,6 +148,8 @@ struct ScreenTransitionTests {
             before = posts()
             try homeItem(.play, in: controller).scannerActivate()
             let game = try #require(skView.scene as? GameScene)
+            // Play picks the layout for this window's shape.
+            #expect(game.size == GameLayout.best(for: skView.bounds.size).sceneSize)
             #expect(controller.menuScreen == nil && controller.children.isEmpty)
             expectCurrent()
             #expect(!overlay.isHidden)
@@ -284,7 +286,7 @@ struct ScreenTransitionTests {
     /// The plan's fallback image must contain the SpriteKit layer, not just UIKit.
     @Test func compositeSnapshotIncludesSpriteKit() async throws {
         try await withController { controller, skView, _ in
-            controller.present(.scene(try #require(GameScene(fileNamed: Scenes.game.getName()))), transition: .instant)
+            controller.present(.scene(try #require(GameLayout.deviceDefault.makeScene())), transition: .instant)
             controller.sceneTextOverlay.isHidden = true
             let image = try #require(RootViewController.compositeSnapshot(of: skView)?.cgImage)
             #expect(image.width > 0)

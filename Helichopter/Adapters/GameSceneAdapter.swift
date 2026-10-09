@@ -188,7 +188,7 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     }
 
     private func prepareInfiniteBackgroundScroller(for scene: SKScene) {
-        let scaleFactor = NodeScale.gameBackgroundScale.getValue()
+        let scaleFactor = GameLayout(sceneSize: scene.size).backgroundScale
 
         // Use backgroundScrollSpeed — independent of gameplay difficulty — so the
         // parallax can be slowed or stopped without making the game easier.

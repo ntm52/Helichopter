@@ -30,6 +30,46 @@ struct WindowSizeTests {
         #expect(RootViewController.scaleMode(for: pad, in: CGSize(width: 1180, height: 820)) == .aspectFit)
     }
 
+    @Test func layoutSizesMatchTheirArchives() throws {
+        for layout in GameLayout.allCases {
+            let scene = try #require(layout.makeScene())
+            #expect(scene.size == layout.sceneSize, "\(layout)")
+            #expect(GameLayout(sceneSize: scene.size) == layout)
+            let scroller = try #require(scene.sceneAdapter?.infiniteBackgroundNode)
+            let tile = try #require(scroller.tiles.first)
+            // The background scale follows the layout, not the device.
+            #expect(abs(tile.xScale - CGFloat(layout.backgroundScale)) < 0.001, "\(layout)")
+        }
+    }
+
+    /// Narrow iPad windows (Split View, Slide Over, Stage Manager) get the phone layout,
+    /// which shows a larger game with smaller bars. Phones and full-screen iPads keep
+    /// the layout they always had.
+    @Test func narrowWindowsGetTheLargerPhoneLayout() throws {
+        #expect(GameLayout.best(for: CGSize(width: 402, height: 874)) == .phone)
+        #expect(GameLayout.best(for: CGSize(width: 375, height: 667)) == .phone)
+        #expect(GameLayout.best(for: CGSize(width: 820, height: 1180)) == .pad)
+        #expect(GameLayout.best(for: CGSize(width: 1180, height: 820)) == .pad)
+        #expect(GameLayout.best(for: CGSize(width: 1000, height: 420)) == .pad)
+        for narrow in [CGSize(width: 400, height: 1000), CGSize(width: 375, height: 1024),
+                       CGSize(width: 320, height: 1180), CGSize(width: 507, height: 1180)] {
+            #expect(GameLayout.best(for: narrow) == .phone, "\(narrow)")
+            func pointsPerUnit(_ layout: GameLayout) -> CGFloat {
+                min(narrow.width / layout.sceneSize.width, narrow.height / layout.sceneSize.height)
+            }
+            // The game is drawn larger, not just placed differently.
+            #expect(pointsPerUnit(.phone) > pointsPerUnit(.pad) * 1.3, "\(narrow)")
+        }
+        for size in Self.sizes {
+            let chosen = GameLayout.best(for: size)
+            for layout in GameLayout.allCases {
+                #expect(chosen.coverage(of: size) + 0.011 >= layout.coverage(of: size), "\(size)")
+            }
+        }
+        // No size yet (before layout): keep the device's usual layout.
+        #expect(GameLayout.best(for: .zero) == GameLayout.deviceDefault)
+    }
+
     @Test func helicopterCeilingAndFloorStayVisibleAtEveryWindowSize() throws {
         for archive in ["GameScene", "GameScene iPad"] {
             for size in Self.sizes {
