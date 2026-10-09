@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B code steps 1–5 are done, and 2.1 now waits on the owner's device recordings. 102 automated tests pass.
+**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B code steps 1–5 are done, and 2.1 now waits on the owner's device recordings. 104 automated tests pass.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -47,11 +47,11 @@ These apply to every change, including cosmetics and the store.
 
 ## Architecture
 
-The app has one `RootViewController` holding an `SKView`. Home, the first-run guide, and Settings are UIKit child view controllers shown over an empty `SKView`; gameplay is an `SKScene` loaded from `GameScene.sks` (`GameScene iPad.sks` on iPad, a wider scene). Those archives hold only scene settings; SpriteKit draws gameplay and nothing else. The HUD, Pause, and Round Over are UIKit, built in Swift. Nothing polls the UI: there is no refresh timer.
+The app has one `RootViewController` holding an `SKView`. Home, the first-run guide, and Settings are UIKit child view controllers shown over an empty `SKView`; gameplay is an `SKScene` loaded from `GameScene.sks` or the wider `GameScene iPad.sks`, whichever `GameLayout.best(for:)` finds covers more of the window when Play is pressed. Those archives hold only scene settings; SpriteKit draws gameplay and nothing else. The HUD, Pause, and Round Over are UIKit, built in Swift. Nothing polls the UI: there is no refresh timer.
 
 | File (under `Helichopter/`) | Role |
 |---|---|
-| `View Controllers/RootViewController.swift` | Hosts the `SKView`, the `SceneTextOverlay`, and Home, the guide, or Settings as a child controller; plays the menu theme (`MenuMusic`) on Home and the guide. **Owns every screen change:** `present(_:transition:)` takes a `Screen` (`.home`, `.guide`, `.settings`, `.scene(_:)`; static form `present(_:in:)` for scenes) and is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input to the UIKit screen or the scene. Picks the scale mode for any window shape (`scaleMode(for:in:)`). |
+| `View Controllers/RootViewController.swift` | Hosts the `SKView`, the `SceneTextOverlay`, and Home, the guide, or Settings as a child controller; plays the menu theme (`MenuMusic`) on Home and the guide. **Owns every screen change:** `present(_:transition:)` takes a `Screen` (`.home`, `.guide`, `.settings`, `.scene(_:)`; static form `present(_:in:)` for scenes) and is the only code that calls `presentScene`. It covers the swap with a snapshot of both layers, holds input, scanners, and `screenChanged` posts (`ScreenChangeAnnouncer`), and cross-fades (0.3 s; 0.2 s with Reduce Motion). Routes keyboard and game-controller switch input to the UIKit screen or the scene. Picks the scale mode for any window shape (`scaleMode(for:in:)`). Defines `GameLayout`, the phone and iPad gameplay layouts, chosen by window shape. |
 | `Scenes/SceneTextOverlay.swift` | The gameplay HUD, built in Swift: Score, Best, Pause, the flight hint, and the new-high-score banner, updated only through `GameSceneHUDDelegate`. Hosts `GameMenuView` during Pause and Round Over; hidden and emptied on every other screen. Defines the VoiceOver `FlightAccessibilityElement`. |
 | `Scenes/MenuStackView.swift` | Shared UIKit menu pieces: `MenuChoice`/`MenuItem` (scanner models), `MenuButton` (focus border by callback), `MenuStackView` (centred scrolling column), `BackdropView` (starry sky or theme colour), `ScreenViewController` (base for every UIKit screen: navigation, announcement, switch input, scanners to freeze during a fade), and `MenuViewController` (base for Home and the guide: owns a `FocusScanner`, ignores choices during a fade). |
 | `Scenes/HomeViewController.swift` | Home: mascot (60-frame `UIImageView` animation, still under Reduce Motion), title, and `HomeAction` Play, Settings, How to Play. |
@@ -91,7 +91,7 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 ## Known issues and debt
 
 - **Double page during screen changes:** live in 2.0 (owner accepted it). Fixed on `master` by Plan 01 Stage B (every menu is UIKit, one cross-fade per change); ships as 2.1 once the owner's device recordings pass: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
-- Narrow iPad windows show wide top and bottom bars instead of a larger phone-shaped layout.
+- Narrow iPad windows use the phone layout (larger game, smaller bars) since Plan 01 step 6, but only when Play is pressed: resizing mid-run changes the scale mode only. Not yet checked in a real Split View or Stage Manager window.
 - The full test suite occasionally hangs with parallel simulator clones. Use `-parallel-testing-enabled NO` if it does.
 - **Not yet verified on a physical device:** VoiceOver, Voice Control, Switch Control, hardware switches, adaptive controllers, the oldest supported device, iPad window resizing, and real transitions.
 
