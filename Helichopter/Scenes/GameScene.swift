@@ -59,20 +59,12 @@ class GameScene: SKScene {
     override func sceneDidLoad() {
         super.sceneDidLoad()
         lastUpdateTime = 0
-        // Name the archived hint so its wording can change without breaking lookups.
-        enumerateChildNodes(withName: "//*") { node, stop in
-            guard let label = node as? SKLabelNode, label.text == "CLICK ME TO FLY" else { return }
-            label.name = GameScene.flightHintName
-            stop.pointee = true
-        }
         sceneAdapter = GameSceneAdapter(with: self)
         sceneAdapter?.stateMachine = stateMachine
         sceneAdapter?.onGameOverEntered = { [weak self] in
             self?.setupOverlayScanner()
         }
         sceneAdapter?.stateMachine?.enter(PlayingState.self)
-        // UIKit draws the HUD; the archived Pause button and labels must never render.
-        suppressArchivedPresentation()
     }
 
     override func didMove(to view: SKView) {
@@ -81,8 +73,9 @@ class GameScene: SKScene {
         let theme = GameSettings.shared.selectedTheme
         backgroundColor = theme.sceneBackgroundColor
         view.backgroundColor = theme.sceneBackgroundColor
-        applyUITheme(theme)
-        suppressArchivedPresentation()
+        // Themes with a plain backdrop hide the starfield so the scene colour shows.
+        // Tinting would not work: SpriteKit multiplies the tint by the dark texture.
+        sceneAdapter?.infiniteBackgroundNode?.isHidden = theme.backgroundSpriteTintColor != nil
     }
 
     override func willMove(from view: SKView) {
@@ -94,17 +87,10 @@ class GameScene: SKScene {
 
     // MARK: - Flight hint
 
-    static let flightHintName = "Flight Hint"
-
-    var flightHint: SKLabelNode? {
-        childNode(withName: "//\(GameScene.flightHintName)") as? SKLabelNode
-    }
-
     /// The hint the HUD shows, or nil once the player has started flying this run.
     private(set) var flightHintText: String?
 
     func showFlightHint(_ text: String) {
-        flightHint?.text = text
         flightHintText = text
         hudDelegate?.flightHintDidChange(text)
     }
@@ -143,7 +129,7 @@ class GameScene: SKScene {
     /// Every menu route (tap, scanner, VoiceOver) ends here. A choice from a menu that
     /// has already closed, or one made during a screen change, is ignored.
     func perform(_ action: MenuAction, from menuPhase: GamePhase) {
-        guard phase == menuPhase, GameViewController.acceptsInput(in: view) else { return }
+        guard phase == menuPhase, RootViewController.acceptsInput(in: view) else { return }
         selection.selectionChanged()
 
         switch action {
@@ -157,7 +143,7 @@ class GameScene: SKScene {
             overlayScanner?.stop()
             overlayScanner = nil
             cancelSwitchPauseHold()
-            GameViewController.present(.home, in: view)
+            RootViewController.present(.home, in: view)
         }
     }
 
@@ -184,13 +170,6 @@ class GameScene: SKScene {
         if stateMachine.enter(PausedState.self) {
             setupOverlayScanner()
         }
-    }
-
-    /// Score string exposed to the UIKit accessibility tree via GameViewController.
-    /// Returns nil when not in PlayingState so the element is absent from VoiceOver's list.
-    var currentScoreText: String? {
-        guard stateMachine.currentState is PlayingState, GameSettings.shared.showScore else { return nil }
-        return "Score: \(sceneAdapter?.score ?? 0)"
     }
 
     /// VoiceOver activations have no release event, so sustained flight uses toggles.
@@ -328,22 +307,16 @@ class GameScene: SKScene {
     }
 }
 
-// MARK: - ButtonNodeResponderType
+// MARK: - HUD Pause button
 
-extension GameScene: ButtonNodeResponderType {
+extension GameScene {
 
-    func buttonTriggered(button: ButtonNode) {
-        guard let identifier = button.buttonIdentifier else { return }
+    /// The HUD's Pause button. Ignored outside play and during a screen change.
+    func pauseFromHUD() {
+        guard stateMachine.currentState is PlayingState, RootViewController.acceptsInput(in: view) else { return }
         selection.selectionChanged()
-
-        switch identifier {
-        case .pause:
-            sceneAdapter?.stateMachine?.enter(PausedState.self)
-            setupOverlayScanner()
-
-        default:
-            debugPrint(#function, "unhandled identifier:", identifier)
-        }
+        stateMachine.enter(PausedState.self)
+        setupOverlayScanner()
     }
 }
 

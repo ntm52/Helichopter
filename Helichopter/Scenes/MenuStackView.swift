@@ -179,17 +179,17 @@ final class BackdropView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
-/// A UIKit screen shown by `GameViewController.present(_:)` in place of a scene:
+/// A UIKit screen shown by `RootViewController.present(_:)` in place of a scene:
 /// Home, the guide, and Settings. The root controller installs it, freezes its
 /// scanners during the fade, and forwards switch input to it.
 class ScreenViewController: UIViewController, ScreenTransitionScanning, SwitchInputReceivable {
     /// Where choices that change screens go. In the app, the root controller.
     lazy var navigate: (Screen) -> Void = { [weak self] screen in
-        (self?.parent as? GameViewController)?.present(screen)
+        (self?.parent as? RootViewController)?.present(screen)
     }
 
     /// True while this screen is fading in or out; choices are ignored then.
-    var isChangingScreen: Bool { (parent as? GameViewController)?.isChangingScreen == true }
+    var isChangingScreen: Bool { (parent as? RootViewController)?.isChangingScreen == true }
 
     /// The element VoiceOver moves to when this screen appears.
     var announcement: Any? { nil }

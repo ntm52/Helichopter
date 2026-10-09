@@ -24,7 +24,6 @@ class PausedState: GKState {
         (adapter.playerCharacter as? HelicopterNode)?.prepareForNewRun()
         adapter.playerCharacter?.shouldAcceptTouches = false
         levelScene.isPaused = true
-        adapter.isHUDHidden = true
         adapter.reportPhase(.paused)
     }
     
@@ -33,7 +32,6 @@ class PausedState: GKState {
         
         adapter.playerCharacter?.shouldAcceptTouches = true
         levelScene.isPaused = false
-        adapter.isHUDHidden = false
     }
     
     // MARK: Convenience

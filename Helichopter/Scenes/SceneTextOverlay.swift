@@ -74,9 +74,6 @@ final class SceneTextOverlay: UIView {
         backgroundColor = isPaused
             ? (GameSettings.shared.hideGameWhilePaused ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
             : (menu ? theme.sceneBackgroundColor : .clear)
-        // The archive supplies actions and text only; never draw a second HUD.
-        // Scenes also suppress at load, so this only covers late additions.
-        game.suppressArchivedPresentation()
         game.hudDelegate = self
         if menu {
             buildGameMenu(for: game)
@@ -103,18 +100,8 @@ final class SceneTextOverlay: UIView {
             stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor)
         ]
         NSLayoutConstraint.activate(layoutConstraints)
-        var textNodes: [SKLabelNode] = []
-        game.enumerateChildNodes(withName: "//*") { node, _ in
-            guard let label = node as? SKLabelNode else { return }
-            var parent = label.parent
-            while let item = parent, item !== game {
-                if item is ButtonNode { return }
-                parent = item.parent
-            }
-            textNodes.append(label)
-        }
-        textNodes.sort { $0.convert(.zero, to: game).y > $1.convert(.zero, to: game).y }
-        // Controls precede the hint so its fade cannot move or cover Pause.
+        // Score, best, and Pause share the top row; the hint and banner sit below it,
+        // so the hint's fade cannot move or cover Pause.
         let hud = UIStackView()
         hud.axis = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
         hudStack = hud
@@ -132,45 +119,38 @@ final class SceneTextOverlay: UIView {
             label.isUserInteractionEnabled = false
             return label
         }
-        for node in textNodes {
-            // Keep archived hint alpha/actions and score updates as the source of truth.
-            node.fontColor = .clear
-            let label = hudLabel()
-            if node.name == GameScene.flightHintName { flightHintLabel = label }
-            if node.name == "Score Label" {
-                scoreLabel = label
-                hud.addArrangedSubview(label)
-                let best = hudLabel()
-                hud.addArrangedSubview(best)
-                bestScoreLabel = best
-            } else {
-                stack.addArrangedSubview(label)
-            }
-        }
+        let score = hudLabel()
+        hud.addArrangedSubview(score)
+        scoreLabel = score
+        let best = hudLabel()
+        hud.addArrangedSubview(best)
+        bestScoreLabel = best
+        let hint = hudLabel()
+        stack.addArrangedSubview(hint)
+        flightHintLabel = hint
         // Static text; no animation, sound, or input capture, so flight is never interrupted.
         let banner = hudLabel(style: .title2)
         banner.text = "New high score!"
         banner.isHidden = true
         stack.addArrangedSubview(banner)
         newHighScoreLabel = banner
-        for node in game.findAllButtonsInScene() {
-            let button = SceneTextButton(node: node)
-            button.titleLabel?.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            button.titleLabel?.adjustsFontForContentSizeCategory = true
-            button.titleLabel?.numberOfLines = 0
-            button.titleLabel?.textAlignment = .center
-            button.setTitle(node.accessibilityScanLabel, for: .normal)
-            button.accessibilityHint = node.accessibilityScanHint
-            button.setTitleColor(theme.buttonTextColor, for: .normal)
-            button.backgroundColor = theme.buttonTintColor
-            button.contentEdgeInsets = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
-            button.layer.cornerRadius = 12
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
-            // hitTest lets touches outside this control reach the flight surface.
-            scroll.isUserInteractionEnabled = true
-            hud.addArrangedSubview(button)
-            button.setContentCompressionResistancePriority(.required, for: .horizontal)
-        }
+        let pause = DynamicTextButton()
+        pause.titleLabel?.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
+        pause.titleLabel?.adjustsFontForContentSizeCategory = true
+        pause.titleLabel?.numberOfLines = 0
+        pause.titleLabel?.textAlignment = .center
+        pause.setTitle("Pause", for: .normal)
+        pause.accessibilityHint = "Pauses the game"
+        pause.setTitleColor(theme.buttonTextColor, for: .normal)
+        pause.backgroundColor = theme.buttonTintColor
+        pause.contentEdgeInsets = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
+        pause.layer.cornerRadius = 12
+        pause.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        pause.addTarget(self, action: #selector(pauseTapped), for: .touchUpInside)
+        // hitTest lets touches outside this control reach the flight surface.
+        scroll.isUserInteractionEnabled = true
+        hud.addArrangedSubview(pause)
+        pause.setContentCompressionResistancePriority(.required, for: .horizontal)
         let element = FlightAccessibilityElement(accessibilityContainer: self)
         element.game = game
         element.host = self
@@ -188,6 +168,13 @@ final class SceneTextOverlay: UIView {
         showCurrentHUD(of: game)
         accessibilityViewIsModal = false
         ScreenChangeAnnouncer.post(element)
+    }
+
+    @objc private func pauseTapped() {
+        guard let view = superview as? SKView, let game = view.scene as? GameScene else { return }
+        game.pauseFromHUD()
+        // Rebuild now, so a second tap cannot reach a control whose screen has changed.
+        refresh(in: view)
     }
 
     /// Pause and Round Over are built in Swift and fill the overlay.
@@ -213,7 +200,9 @@ final class SceneTextOverlay: UIView {
         scoreDidChange(adapter.score)
         bestScoreDidChange(adapter.bestScore)
         newHighScoreDidChange(adapter.isShowingNewHighScore)
-        flightHintLabel?.text = game.flightHintText ?? game.flightHint?.text
+        // Once faded, the hint keeps its wording so the HUD's layout does not shift.
+        flightHintLabel?.text = game.flightHintText
+            ?? GameScene.flightHintText(for: GameSettings.shared.controlScheme, voiceOver: UIAccessibility.isVoiceOverRunning)
         flightHintLabel?.alpha = game.flightHintText == nil ? 0 : 1
     }
 }
@@ -248,42 +237,6 @@ extension SceneTextOverlay: GameSceneHUDDelegate {
     func stateDidChange(_ phase: GamePhase) {
         guard let view = superview as? SKView, let scene = hostScene, view.scene === scene else { return }
         refresh(in: view)
-    }
-}
-
-private final class SceneTextButton: DynamicTextButton {
-    private weak var node: ButtonNode?
-    init(node: ButtonNode) {
-        self.node = node
-        super.init(frame: .zero)
-        addTarget(self, action: #selector(activate), for: .touchUpInside)
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    @objc private func activate() {
-        node?.scannerActivate()
-        // Rebuild now, so a second tap cannot reach a control whose screen has changed.
-        if let overlay = superview(of: SceneTextOverlay.self), let view = overlay.superview as? SKView {
-            overlay.refresh(in: view)
-        }
-    }
-}
-
-private extension UIView {
-    func superview<T: UIView>(of type: T.Type) -> T? {
-        superview.flatMap { $0 as? T ?? $0.superview(of: type) }
-    }
-}
-
-extension SKNode {
-    /// UIKit draws visible menus and HUD text; archived buttons and labels remain
-    /// invisible action/text models. Scenes call this when loaded and after theming,
-    /// so no frame ever shows both the archived and UIKit versions.
-    func suppressArchivedPresentation() {
-        for child in children {
-            if let button = child as? ButtonNode { button.isPresentedInUIKit = true }
-            if let label = child as? SKLabelNode { label.fontColor = .clear }
-            child.suppressArchivedPresentation()
-        }
     }
 }
 

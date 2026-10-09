@@ -25,9 +25,9 @@ struct WindowSizeTests {
     @Test func phoneAndFullScreenIPadKeepFillingTheScreen() throws {
         let phone = try #require(GameScene(fileNamed: "GameScene"))
         let pad = try #require(GameScene(fileNamed: "GameScene iPad"))
-        #expect(GameViewController.scaleMode(for: phone, in: CGSize(width: 402, height: 874)) == .aspectFill)
-        #expect(GameViewController.scaleMode(for: pad, in: CGSize(width: 820, height: 1180)) == .aspectFill)
-        #expect(GameViewController.scaleMode(for: pad, in: CGSize(width: 1180, height: 820)) == .aspectFit)
+        #expect(RootViewController.scaleMode(for: phone, in: CGSize(width: 402, height: 874)) == .aspectFill)
+        #expect(RootViewController.scaleMode(for: pad, in: CGSize(width: 820, height: 1180)) == .aspectFill)
+        #expect(RootViewController.scaleMode(for: pad, in: CGSize(width: 1180, height: 820)) == .aspectFit)
     }
 
     @Test func helicopterCeilingAndFloorStayVisibleAtEveryWindowSize() throws {
@@ -35,7 +35,7 @@ struct WindowSizeTests {
             for size in Self.sizes {
                 let view = SKView(frame: CGRect(origin: .zero, size: size))
                 let game = try #require(GameScene(fileNamed: archive))
-                game.scaleMode = GameViewController.scaleMode(for: game, in: size)
+                game.scaleMode = RootViewController.scaleMode(for: game, in: size)
                 view.presentScene(game)
                 defer { view.presentScene(nil) }
                 let bounds = view.bounds.insetBy(dx: -0.5, dy: -0.5)

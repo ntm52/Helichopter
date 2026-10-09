@@ -401,29 +401,50 @@ struct GameLifecycleTests {
         }
     }
 
-    @Test func hiddenButtonsAreNotScannable() {
-        let scene = SKScene(size: CGSize(width: 400, height: 800))
-        let container = SKNode()
-        let button = ButtonNode(texture: nil, color: .white, size: CGSize(width: 100, height: 50))
-        button.name = "Pause"
-        button.buttonIdentifier = .pause
-        button.isUserInteractionEnabled = true
-        scene.addChild(container)
-        container.addChild(button)
-        #expect(scene.findAllButtonsInScene().count == 1)
-        container.isHidden = true
-        #expect(scene.findAllButtonsInScene().isEmpty)
-        container.isHidden = false
-        button.isUserInteractionEnabled = false
-        #expect(scene.findAllButtonsInScene().isEmpty)
-    }
-
     @Test func scorePreferenceAppliesFromFirstFrame() throws {
         try withSettings {
             GameSettings.shared.showScore = false
+            let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
             let scene = try #require(GameScene(fileNamed: "GameScene"))
-            #expect(scene.currentScoreText == nil)
-            #expect(scene.childNode(withName: "world")?.childNode(withName: "Score Node")?.isHidden == true)
+            view.presentScene(scene)
+            defer { view.presentScene(nil) }
+            let overlay = SceneTextOverlay(frame: view.bounds)
+            view.addSubview(overlay)
+            overlay.refresh(in: view)
+            func labels(_ v: UIView) -> [UILabel] { (v as? UILabel).map { [$0] } ?? v.subviews.flatMap(labels) }
+            let scores = labels(overlay).filter { $0.text?.hasPrefix("Score") == true || $0.text?.hasPrefix("Best") == true }
+            #expect(scores.count == 2)
+            #expect(scores.allSatisfy { $0.isHidden })
+        }
+    }
+
+    /// The gameplay archives hold only scene settings: UIKit draws every HUD element,
+    /// so nothing archived can show through or be scanned.
+    @Test func gameplayArchivesHoldNoHUD() throws {
+        for archive in ["GameScene", "GameScene iPad"] {
+            let scene = try #require(GameScene(fileNamed: archive))
+            var found: [String] = []
+            scene.enumerateChildNodes(withName: "//*") { node, _ in
+                if node is SKLabelNode || ["Pause", "world", "Score Node"].contains(node.name ?? "") {
+                    found.append(node.name ?? "\(type(of: node))")
+                }
+            }
+            #expect(found.isEmpty, "\(archive): \(found)")
+        }
+    }
+
+    /// The cream theme hides the starfield so the plain scene colour shows; others keep it.
+    @Test func plainBackdropThemeHidesStarfield() throws {
+        try withSettings {
+            for theme in GameSettings.allThemes {
+                GameSettings.shared.selectedThemeID = theme.id
+                let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+                let scene = try #require(GameScene(fileNamed: "GameScene"))
+                view.presentScene(scene)
+                let starfield = try #require(scene.sceneAdapter?.infiniteBackgroundNode)
+                #expect(starfield.isHidden == (theme.backgroundSpriteTintColor != nil))
+                view.presentScene(nil)
+            }
         }
     }
 
@@ -446,7 +467,7 @@ struct GameLifecycleTests {
             GameSettings.shared.controlScheme = .twoSwitchUD
             let scene = try #require(GameScene(fileNamed: "GameScene"))
             let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
-            let controller = GameViewController()
+            let controller = RootViewController()
             controller.view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
             (controller.view as? SKView)?.presentScene(scene)
             scene.switchPrimaryBegan()
@@ -471,7 +492,7 @@ struct GameLifecycleTests {
     @Test func controllerDisconnectPausesHeldFlight() throws {
         try withSettings {
             GameSettings.shared.controlScheme = .holdHover
-            let controller = GameViewController()
+            let controller = RootViewController()
             controller.loadViewIfNeeded()
             let skView = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
             controller.view = skView

@@ -68,7 +68,6 @@ class PlayingState: GKState {
         // Refreshed each run so it matches the current scheme and VoiceOver state.
         (scene as? GameScene)?.showFlightHint(GameScene.flightHintText(for: GameSettings.shared.controlScheme,
                                                                         voiceOver: UIAccessibility.isVoiceOverRunning))
-        adapter.isHUDHidden = false
 
         // Pipes and the hint both wait for the player's first input.
         // The helicopter floats at the center with gravity off until the player acts.
@@ -94,7 +93,6 @@ class PlayingState: GKState {
         if nextState is GameOverState {
             adapter.scene?.removeAction(forKey: infinitePipeProducerKey)
             adapter.removePipes()
-            adapter.resetScores()
             adapter.playerCharacter?.isAffectedByGravity = false
             adapter.playerCharacter?.physicsBody?.velocity.dy = 0
         }

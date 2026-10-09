@@ -79,8 +79,8 @@ struct GameMenuTests {
                 #expect(menu.buttons.map { $0.accessibilityHint } == ["Resumes the game", "Goes to the main menu"])
                 #expect(menu.titleLabel.accessibilityTraits.contains(.header))
                 #expect(overlay.accessibilityViewIsModal)
-                // Pause adds nothing to SpriteKit; the HUD's Pause button is hidden.
-                #expect(game.findAllButtonsInScene().isEmpty)
+                // The HUD, with its Pause button, gives way to the menu.
+                #expect(!titles(overlay).contains("Pause"))
                 #expect(overlay.backgroundColor?.cgColor.alpha == 0.25)
             }
         }

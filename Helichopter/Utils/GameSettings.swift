@@ -88,14 +88,14 @@ struct UITheme {
     let id: String
     let name: String
     let sceneBackgroundColor: UIColor
-    /// Applied to button sprites via color + colorBlendFactor = 1.0.
+    /// Button background colour.
     let buttonTintColor: UIColor
     /// Text on top of buttonTintColor — verified ≥ 4.5:1 contrast.
     let buttonTextColor: UIColor
     /// Large/title labels sitting on sceneBackgroundColor — verified ≥ 4.5:1 contrast.
     let titleTextColor: UIColor
-    /// When non-nil, the SKSpriteNode named "Background" in each scene is tinted solid
-    /// with this color (colorBlendFactor = 1.0), overriding the sky image texture.
+    /// When non-nil, the theme has a plain backdrop: gameplay hides the starfield so
+    /// `sceneBackgroundColor` shows, and menus draw no sky image.
     /// Use for light themes where the default dark sky would make text unreadable.
     let backgroundSpriteTintColor: UIColor?
     /// When non-nil, overrides the ColorPalette's helicopterColor for this theme.

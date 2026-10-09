@@ -2,11 +2,10 @@ import Testing
 import SpriteKit
 @testable import Helichopter
 
-// ButtonNode.init(texture:color:size:) creates a bare node with no scene.
-// isFocused runs SKActions that queue but don't execute without a scene — safe in tests.
+// A menu item with no action stands in for any scannable control.
 // AVSpeechSynthesizer.speak is called but produces no audible output on simulators.
-private func makeButton() -> ButtonNode {
-    ButtonNode(texture: nil, color: .clear, size: .zero)
+private func makeButton() -> MenuItem {
+    MenuItem("Item", hint: "", action: {})
 }
 
 @MainActor @Suite("FocusScanner", .serialized) struct FocusScannerTests {

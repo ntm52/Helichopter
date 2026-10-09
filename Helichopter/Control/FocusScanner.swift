@@ -18,11 +18,9 @@ protocol FocusScannable: AnyObject {
     func scannerActivate()
 }
 
-extension ButtonNode: FocusScannable { }
-
 // MARK: - FocusScanner
 
-/// Drives focus and spoken labels for accessible SpriteKit and UIKit menu navigation.
+/// Drives focus and spoken labels for accessible UIKit menu navigation.
 ///
 /// Auto-scan: a dwell timer advances through buttons automatically; primary switch activates.
 /// Two-switch: primary switch activates; secondary switch advances manually (no timer).

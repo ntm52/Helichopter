@@ -25,9 +25,6 @@ struct PresentationTests {
         var visible: [String] = []
         func walk(_ node: SKNode) {
             for child in node.children {
-                if let button = child as? ButtonNode, !(button.isPresentedInUIKit && button.alpha == 0) {
-                    visible.append("button \(button.name ?? "")")
-                }
                 if let label = child as? SKLabelNode, (label.fontColor?.cgColor.alpha ?? 0) > 0 {
                     visible.append("label \(label.text ?? "")")
                 }
@@ -39,8 +36,8 @@ struct PresentationTests {
         return visible.isEmpty
     }
 
-    /// Before UIKit's first refresh (e.g. during a scene transition), archived menus,
-    /// labels, and the Pause sprite must already be hidden so two versions never overlap.
+    /// SpriteKit draws no text or controls at any point (load, transition, Pause, Round
+    /// Over), so it can never show a second HUD or menu behind UIKit's.
     @Test func archivedScenesNeverRenderBeforeUIKitRefresh() throws {
         for archive in ["GameScene", "GameScene iPad"] {
             let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
@@ -118,9 +115,7 @@ struct PresentationTests {
             gs.controlScheme = scheme
             for archive in ["GameScene", "GameScene iPad"] {
                 let game = try #require(GameScene(fileNamed: archive))
-                let hint = try #require(game.flightHint)
                 let expected = GameScene.flightHintText(for: scheme, voiceOver: UIAccessibility.isVoiceOverRunning)
-                #expect(hint.text == expected)
                 #expect(!expected.localizedCaseInsensitiveContains("click"))
                 texts.insert(GameScene.flightHintText(for: scheme, voiceOver: false))
                 #expect(game.flightHintText == expected)
@@ -131,7 +126,7 @@ struct PresentationTests {
                 #expect(game.flightHintText == nil)
                 #expect(game.stateMachine.enter(GameOverState.self))
                 #expect(game.stateMachine.enter(PlayingState.self))
-                #expect(game.flightHintText == expected && hint.text == expected)
+                #expect(game.flightHintText == expected)
             }
         }
         #expect(texts.count == 4)
@@ -167,7 +162,7 @@ struct PresentationTests {
         overlay.layoutIfNeeded()
         overlay.layoutIfNeeded()
         let pause = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Pause" })
-        let hintText = try #require(scene.flightHint?.text)
+        let hintText = try #require(scene.flightHintText)
         let hint = try #require(descendants(overlay, UILabel.self).first { $0.text == hintText })
         let pauseFrame = pause.convert(pause.bounds, to: overlay)
         let hintFrame = hint.convert(hint.bounds, to: overlay)
@@ -206,7 +201,7 @@ struct PresentationTests {
             view.addSubview(overlay)
             overlay.refresh(in: view)
             overlay.layoutIfNeeded()
-            #expect(scene.findAllButtonsInScene().allSatisfy { $0.isPresentedInUIKit && $0.alpha == 0 && !$0.isUserInteractionEnabled })
+            #expect(archivedContentIsInvisible(scene))
             try capture(view, overlay: overlay, name: "Unified-" + archive)
             if let game = scene as? GameScene {
                 let player = try #require(game.sceneAdapter?.playerCharacter as? HelicopterNode)
@@ -230,9 +225,10 @@ struct PresentationTests {
                 #expect(game.stateMachine.currentState is PausedState)
                 overlay.refresh(in: view)
                 try capture(view, overlay: overlay, name: "Unified-Pause-" + archive)
-                #expect(!descendants(overlay, UILabel.self).contains { $0.text == game.flightHint?.text })
+                let hintText = GameScene.flightHintText(for: gs.controlScheme, voiceOver: UIAccessibility.isVoiceOverRunning)
+                #expect(!descendants(overlay, UILabel.self).contains { $0.text == hintText })
                 #expect(overlay.backgroundColor?.cgColor.alpha == 0.25)
-                #expect(!scene.findAllButtonsInScene().contains { $0.buttonIdentifier == .pause })
+                #expect(!descendants(overlay, UIButton.self).contains { $0.currentTitle == "Pause" })
                 let resume = try #require(descendants(overlay, UIButton.self).first { $0.currentTitle == "Resume" })
                 resume.sendActions(for: .touchUpInside)
                 overlay.refresh(in: view)

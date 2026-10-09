@@ -1,22 +1,6 @@
 import SpriteKit
 import GameplayKit
 
-extension SKScene {
-
-    func findAllButtonsInScene() -> [ButtonNode] {
-        return ButtonIdentifier.allButtonIdentifiers.compactMap { buttonIdentifier in
-            guard let button = childNode(withName: "//\(buttonIdentifier.rawValue)") as? ButtonNode,
-                  (button.isUserInteractionEnabled || button.isPresentedInUIKit) else { return nil }
-            var ancestor: SKNode? = button
-            while let node = ancestor {
-                if node.isHidden || (node.alpha == 0 && !(node === button && button.isPresentedInUIKit)) { return nil }
-                ancestor = node.parent
-            }
-            return button
-        }
-    }
-}
-
 class GameSceneAdapter: NSObject, GameSceneProtocol {
 
     // MARK: - Properties
@@ -36,14 +20,11 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     var score: Int = 0 {
         didSet {
             guard score != oldValue else { return }
-            scoreLabel?.text = "Score \(score)"
             hudDelegate?.scoreDidChange(score)
             let saved = UserDefaults.standard.integer(for: .bestScore)
             if max(score, saved) != max(oldValue, saved) { hudDelegate?.bestScoreDidChange(bestScore) }
         }
     }
-    private(set) var scoreLabel: SKLabelNode?
-
     /// The score the last round ended on, shown by the Round Over menu.
     var roundScore = 0
 
@@ -105,20 +86,6 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     var updatables = [Updatable]()
     var touchables = [Touchable]()
 
-    private var _isHUDHidden: Bool = false
-    var isHUDHidden: Bool {
-        get { _isHUDHidden }
-        set {
-            _isHUDHidden = newValue
-            if let world = self.scene?.childNode(withName: "world") {
-                // Score is hidden when HUD is hidden OR when the player has disabled score display.
-                world.childNode(withName: "Score Node")?.isHidden = newValue || !GameSettings.shared.showScore
-            }
-            // "Pause" is a direct child of the scene, not under "world".
-            self.scene?.childNode(withName: "Pause")?.isHidden = newValue
-        }
-    }
-
     /// Called on the main thread when GameOverState is entered via collision.
     /// GameScene uses this to set up the menu focus scanner.
     var onGameOverEntered: (() -> Void)?
@@ -139,10 +106,6 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
             return nil
         }
 
-        if let scoreNode = scene.childNode(withName: "world")?.childNode(withName: "Score Node") {
-            scoreLabel = scoreNode.childNode(withName: "Score Label") as? SKLabelNode
-        }
-
         super.init()
 
         prepareWorld(for: scene)
@@ -157,10 +120,6 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     }
 
     // MARK: - Helpers
-
-    func resetScores() {
-        scoreLabel?.text = "Score 0"
-    }
 
     /// Called when a fresh run (not a resume) starts.
     func beginRun() {

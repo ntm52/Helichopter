@@ -62,7 +62,7 @@ enum ScreenTransition: Equatable {
     }
 }
 
-/// Everything `GameViewController.present` can show. Home, the guide, and Settings
+/// Everything `RootViewController.present` can show. Home, the guide, and Settings
 /// are UIKit screens; gameplay is a SpriteKit scene.
 enum Screen {
     case home
@@ -128,31 +128,9 @@ enum ScreenChangeAnnouncer {
     }
 }
 
-// MARK: - ButtonAccessibilityElement
+// MARK: - RootViewController
 
-/// UIKit accessibility proxy that wraps a ButtonNode for iOS Switch Control item scanning.
-private final class ButtonAccessibilityElement: UIAccessibilityElement {
-    weak var buttonNode: ButtonNode?
-    weak var skView: SKView?
-
-    override var accessibilityFrame: CGRect {
-        get {
-            guard let button = buttonNode, let view = skView else { return .zero }
-            return button.accessibilityScreenFrame(in: view)
-        }
-        set { }
-    }
-
-    override func accessibilityActivate() -> Bool {
-        guard let button = buttonNode, GameViewController.acceptsInput(in: skView) else { return false }
-        button.scannerActivate()
-        return true
-    }
-}
-
-// MARK: - GameViewController
-
-class GameViewController: UIViewController {
+class RootViewController: UIViewController {
 
     private var inputSuspended = false
     let sceneTextOverlay = SceneTextOverlay()
@@ -220,8 +198,8 @@ class GameViewController: UIViewController {
     // MARK: - Screen changes
 
     /// The controller that owns `view`, when the view is its root SKView.
-    static func controller(for view: SKView?) -> GameViewController? {
-        guard let controller = view?.next as? GameViewController, controller.viewIfLoaded === view else { return nil }
+    static func controller(for view: SKView?) -> RootViewController? {
+        guard let controller = view?.next as? RootViewController, controller.viewIfLoaded === view else { return nil }
         return controller
     }
 
@@ -355,7 +333,7 @@ class GameViewController: UIViewController {
         // Also called when an iPadOS window is resized, not only on rotation.
         coordinator.animate(alongsideTransition: { [weak self] _ in
             guard let skView = self?.view as? SKView, let scene = skView.scene else { return }
-            scene.scaleMode = GameViewController.scaleMode(for: scene, in: size)
+            scene.scaleMode = RootViewController.scaleMode(for: scene, in: size)
             skView.backgroundColor = scene.backgroundColor
         })
     }
@@ -377,45 +355,6 @@ class GameViewController: UIViewController {
         guard viewAspect <= sceneSize.width / sceneSize.height else { return .aspectFit }
         let cropPerSide = (sceneSize.width - sceneSize.height * viewAspect) / 2
         return cropPerSide <= maximumSideCrop ? .aspectFill : .aspectFit
-    }
-
-    // MARK: - Accessibility (VoiceOver + iOS Switch Control)
-
-    /// Returns UIKit accessibility elements for every button in the scene, plus a score
-    /// element when gameplay is active. VoiceOver and iOS Switch Control item scanning
-    /// both use this list.
-    override var accessibilityElements: [Any]? {
-        get {
-            guard let skView = view as? SKView, let scene = skView.scene else { return nil }
-            if !sceneTextOverlay.isHidden { return nil }
-            var elements: [Any] = []
-
-            // Score element — present when GameScene is playing
-            if let gameScene = scene as? GameScene, let scoreText = gameScene.currentScoreText {
-                let scoreElem = UIAccessibilityElement(accessibilityContainer: skView)
-                scoreElem.accessibilityLabel = scoreText
-                scoreElem.accessibilityTraits = .staticText
-                scoreElem.accessibilityFrame = UIAccessibility.convertToScreenCoordinates(
-                    CGRect(x: 0, y: 0, width: skView.bounds.width, height: 80), in: skView)
-                elements.append(scoreElem)
-            }
-
-            // Button elements
-            let buttons = scene.findAllButtonsInScene()
-            let buttonElems: [ButtonAccessibilityElement] = buttons.map { btn in
-                let elem = ButtonAccessibilityElement(accessibilityContainer: skView)
-                elem.buttonNode = btn
-                elem.skView = skView
-                elem.accessibilityLabel = btn.accessibilityScanLabel
-                elem.accessibilityHint  = btn.accessibilityScanHint
-                elem.accessibilityTraits = .button
-                return elem
-            }
-            elements.append(contentsOf: buttonElems)
-
-            return elements.isEmpty ? nil : elements
-        }
-        set { }
     }
 
     // MARK: - Keyboard input (hardware keyboard / Bluetooth switch interfaces)

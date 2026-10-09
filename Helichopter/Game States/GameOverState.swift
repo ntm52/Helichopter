@@ -26,7 +26,6 @@ class GameOverState: GKState {
         levelScene.playerCharacter?.shouldAcceptTouches = false
         updateScores()
 
-        levelScene.isHUDHidden = true
         levelScene.playerCharacter?.shouldUpdate = false
         levelScene.scene?.removeAllActions()
         levelScene.score = 0
@@ -48,7 +47,6 @@ class GameOverState: GKState {
         super.willExit(to: nextState)
 
         if nextState is PlayingState {
-            levelScene.isHUDHidden = false
             levelScene.playerCharacter?.shouldAcceptTouches = true
         }
     }

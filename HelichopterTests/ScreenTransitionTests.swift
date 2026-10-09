@@ -12,7 +12,7 @@ struct ScreenTransitionTests {
     /// Runs `work` with the real storyboard controller in its own window, guide finished,
     /// and every `screenChanged` post counted instead of sent.
     private func withController(scanning: Bool = false, guideDone: Bool = true,
-                                _ work: (GameViewController, SKView, () -> Int) async throws -> Void) async throws {
+                                _ work: (RootViewController, SKView, () -> Int) async throws -> Void) async throws {
         let defaults = UserDefaults.standard
         let guideKey = GuideViewController.completedKey
         let savedGuide = defaults.object(forKey: guideKey)
@@ -34,8 +34,8 @@ struct ScreenTransitionTests {
         GameSettings.shared.selectedThemeID = "nightSky"
         ScreenChangeAnnouncer.poster = { _ in posts += 1 }
 
-        let storyboard = UIStoryboard(name: "Main", bundle: Bundle(for: GameViewController.self))
-        let controller = try #require(storyboard.instantiateInitialViewController() as? GameViewController)
+        let storyboard = UIStoryboard(name: "Main", bundle: Bundle(for: RootViewController.self))
+        let controller = try #require(storyboard.instantiateInitialViewController() as? RootViewController)
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         window.rootViewController = controller
         window.isHidden = false
@@ -46,27 +46,23 @@ struct ScreenTransitionTests {
         try await work(controller, skView, { posts })
     }
 
-    private func waitForTransition(_ controller: GameViewController) async throws {
+    private func waitForTransition(_ controller: RootViewController) async throws {
         for _ in 0..<40 where controller.isChangingScreen {
             try await Task.sleep(for: .milliseconds(50))
         }
         #expect(!controller.isChangingScreen)
     }
 
-    private func button(_ id: ButtonIdentifier, in scene: SKScene?) throws -> ButtonNode {
-        try #require(scene?.findAllButtonsInScene().first { $0.buttonIdentifier == id })
-    }
-
     private func menuItem(_ action: MenuAction, in game: GameScene) throws -> GameMenuItem {
         try #require(game.menuItems.first { $0.action == action })
     }
 
-    private func homeItem(_ action: HomeAction, in controller: GameViewController) throws -> MenuItem {
+    private func homeItem(_ action: HomeAction, in controller: RootViewController) throws -> MenuItem {
         let home = try #require(controller.menuScreen as? HomeViewController)
         return try #require(home.items.first { $0.title == action.title })
     }
 
-    private func guideItem(_ title: String, in controller: GameViewController) throws -> MenuItem {
+    private func guideItem(_ title: String, in controller: RootViewController) throws -> MenuItem {
         let guide = try #require(controller.menuScreen as? GuideViewController)
         return try #require(guide.scanner.items.compactMap { $0 as? MenuItem }.first { $0.title == title })
     }
@@ -92,7 +88,7 @@ struct ScreenTransitionTests {
         }
         #expect(swiftFiles > 20)
         // One direct swap for bare views, one animated swap.
-        #expect(callers == ["GameViewController.swift": 2])
+        #expect(callers == ["RootViewController.swift": 2])
     }
 
     /// Straight after each navigation exactly one screen is live: Home, the guide, and
@@ -161,7 +157,7 @@ struct ScreenTransitionTests {
             #expect(posts() - before == 1)
 
             // Pause → Home, with no refresh between: the HUD follows the scene's events.
-            try button(.pause, in: game).scannerActivate()
+            game.pauseFromHUD()
             #expect(game.stateMachine.currentState is PausedState)
             #expect(overlay.gameMenu != nil)
             before = posts()
@@ -258,7 +254,7 @@ struct ScreenTransitionTests {
             #expect(controller.isChangingScreen)
             #expect(!skView.isUserInteractionEnabled)
 
-            try button(.pause, in: game).scannerActivate()
+            game.pauseFromHUD()
             #expect(game.stateMachine.currentState is PlayingState)
 
             controller.present(.home)
@@ -266,7 +262,7 @@ struct ScreenTransitionTests {
 
             try await waitForTransition(controller)
             #expect(skView.isUserInteractionEnabled)
-            try button(.pause, in: game).scannerActivate()
+            game.pauseFromHUD()
             #expect(game.stateMachine.currentState is PausedState)
 
             // A scanner on the incoming screen is frozen until the fade ends.
@@ -290,7 +286,7 @@ struct ScreenTransitionTests {
         try await withController { controller, skView, _ in
             controller.present(.scene(try #require(GameScene(fileNamed: Scenes.game.getName()))), transition: .instant)
             controller.sceneTextOverlay.isHidden = true
-            let image = try #require(GameViewController.compositeSnapshot(of: skView)?.cgImage)
+            let image = try #require(RootViewController.compositeSnapshot(of: skView)?.cgImage)
             #expect(image.width > 0)
             // The starfield has bright stars over a dark sky: some pixel must be near white.
             let data = try #require(image.dataProvider?.data as Data?)
