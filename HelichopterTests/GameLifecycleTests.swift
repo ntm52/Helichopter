@@ -525,6 +525,24 @@ struct GameLifecycleTests {
         }
     }
 
+    @Test func noFailPipesNeverPushTheHelicopterSideways() throws {
+        try withSettings {
+            let gs = GameSettings.shared
+            let pipe = PhysicsCategories.pipe.rawValue
+            for noFail in [true, false] {
+                gs.noFailMode = noFail
+                let scene = try #require(GameScene(fileNamed: "GameScene"))
+                let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+                let body = try #require(heli.physicsBody)
+                #expect((body.collisionBitMask & pipe != 0) == !noFail)
+                // A pipe corner's push would leave sideways speed; the next frame clears it.
+                body.velocity = CGVector(dx: 120, dy: -40)
+                heli.update(1)
+                #expect(body.velocity.dx == 0)
+            }
+        }
+    }
+
     @Test func hoverDampingMatchesAcrossFrameRates() throws {
         try withSettings {
             for scheme in [ControlScheme.autoHover, .twoSwitchUD] {

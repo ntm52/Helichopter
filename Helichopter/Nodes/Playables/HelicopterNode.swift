@@ -10,8 +10,10 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
     var shouldUpdate: Bool = true {
         didSet {
             if shouldUpdate {
-                // Clear any stale invulnerability state before the next round starts
+                // Clear any stale invulnerability state before the next round starts,
+                // and pick up a No-Fail change made since the last round.
                 if isInvulnerable { endInvulnerability() }
+                physicsBody?.collisionBitMask = collisionBitMask
                 animate(with: animationTimeInterval)
             } else {
                 self.removeAllActions()
@@ -31,7 +33,13 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         didSet { physicsBody?.collisionBitMask = shouldEnablePhysics ? collisionBitMask : 0 }
     }
 
-    var collisionBitMask: UInt32 = PhysicsCategories.pipe.rawValue | PhysicsCategories.boundary.rawValue
+    /// In No-Fail mode pipes only report contact and never push back: a solid pipe corner
+    /// would shove the helicopter forward or backward before the pass-through window began.
+    var collisionBitMask: UInt32 {
+        GameSettings.shared.noFailMode
+            ? PhysicsCategories.boundary.rawValue
+            : PhysicsCategories.pipe.rawValue | PhysicsCategories.boundary.rawValue
+    }
 
     /// Set by PlayingState at the start of each run. Called and self-cleared on the player's
     /// first input so that pipe spawning (and the hint fade) is deferred until the player acts.
@@ -158,8 +166,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         physicsBody?.contactTestBitMask = PhysicsCategories.pipe.rawValue
                                         | PhysicsCategories.gap.rawValue
                                         | PhysicsCategories.boundary.rawValue
-        physicsBody?.collisionBitMask   = PhysicsCategories.pipe.rawValue
-                                        | PhysicsCategories.boundary.rawValue
+        physicsBody?.collisionBitMask   = collisionBitMask
         physicsBody?.allowsRotation = false
         physicsBody?.restitution    = 0.0
         cachedMass = physicsBody?.mass ?? 1.0
@@ -185,6 +192,9 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         guard let body = physicsBody else { return }
 
         applyControlSchemeUpdate(body: body)
+
+        // The helicopter only ever moves vertically; pipes scroll past it.
+        body.velocity.dx = 0
 
         let velocityY = body.velocity.dy
         let scheme    = GameSettings.shared.controlScheme
