@@ -13,6 +13,13 @@ final class SettingsPanelView: ScrollingPanelView {
     var returnControlLabel: String?
     var paletteViews: [(UIView, String)] = []
 
+    /// Opens the Hangar, where the menu theme is now chosen.
+    var onOpenHangar: (() -> Void)?
+
+    static var hangarPointerTitle: String {
+        "Menu Theme: \(GameSettings.shared.selectedTheme.name). Change it in the Hangar"
+    }
+
     override var isAdjusting: Bool { adjustmentPanel != nil }
 
     override var focusedSetting: String? { returnControlLabel ?? super.focusedSetting }
@@ -117,17 +124,17 @@ final class SettingsPanelView: ScrollingPanelView {
             gs.switchPauseHoldDuration = TimeInterval(v)
         }
 
-        sectionHeader("Visual Theme")
-        let themes = GameSettings.allThemes
-        let themeIdx = themes.firstIndex { $0.id == gs.selectedThemeID } ?? 0
-        segmentedRow("Menu Theme",
-                     detail: "Personal colour preference for menus and the title screen",
-                     items: themes.map { $0.name },
-                     selectedIndex: themeIdx) { [weak self] idx in
-            guard idx < themes.count else { return }
-            gs.selectedThemeID = themes[idx].id
-            self?.onThemeChanged?()
-        }
+        // The theme is chosen in the Hangar; this points players who look for it here.
+        sectionHeader("Menu Theme")
+        let hangar = plainButton(Self.hangarPointerTitle, color: style.accent, target: self,
+                                 action: #selector(openHangar))
+        hangar.accessibilityLabel = Self.hangarPointerTitle
+        hangar.accessibilityHint = "Opens the Hangar"
+        // Voice Control users can say the short name.
+        hangar.accessibilityUserInputLabels = ["Menu Theme", Self.hangarPointerTitle]
+        hangar.titleLabel?.numberOfLines = 0
+        hangar.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        stack.addArrangedSubview(hangar)
 
         sectionHeader("Colour Accessibility")
         paletteRow()
@@ -173,6 +180,8 @@ final class SettingsPanelView: ScrollingPanelView {
             stack.addArrangedSubview(button)
         }
     }
+
+    @objc private func openHangar() { onOpenHangar?() }
 
     /// Reset, Privacy Policy, and Acknowledgements open the adjustment page.
     @objc private func showAdjustment(from sender: UIButton) {

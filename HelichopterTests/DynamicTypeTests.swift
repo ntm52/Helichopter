@@ -53,9 +53,9 @@ struct DynamicTypeTests {
                 let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
                 #expect(label.bounds.height + 2 >= needed.height, "Clipped: \(label.text ?? "")")
             }
-            panel.startScanning(focusing: "Menu Theme")
+            panel.startScanning(focusing: "Menu Scan Mode")
             panel.primaryActivate()
-            #expect(panel.switchScanner.items.count == GameSettings.allThemes.count + 1)
+            #expect(panel.switchScanner.items.count == 3) // Timed, Step with Switch 2, Done.
             try capture(panel, name: "Dynamic-settings-choices-\(Int(size.width))")
             panel.stopScanning()
         }

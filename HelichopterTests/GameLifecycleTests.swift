@@ -720,7 +720,7 @@ struct GameLifecycleTests {
             let overlay = try #require(scene.panel)
             let expected = ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size",
                             "Background Scroll", "No-Fail Mode", "Calm Mode", "Show Score", "Auto-Scan Menus",
-                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "Hold Switch to Pause", "Menu Theme",
+                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "Hold Switch to Pause",
                             "Sound Effects", "Music", "Lock Settings"] + GameSettings.allPalettes.map { $0.name }
             for label in expected { try focusSetting(label, in: scene) }
             #expect(overlay.scrollPosition.y > 0)
@@ -761,22 +761,15 @@ struct GameLifecycleTests {
         }
     }
 
-    @Test func settingsSwitchPreservesFocusAcrossThemePresetAndLockRebuilds() throws {
+    @Test func settingsSwitchPreservesFocusAcrossPresetAndLockRebuilds() throws {
         try withSettings {
             let scene = settingsScreen()
             defer { scene.screenWillDisappear() }
-            try focusSetting("Menu Theme", in: scene)
+            try focusSetting("Gentle", in: scene)
             let oldOverlay = try #require(scene.panel)
             scene.switchPrimaryBegan()
-            scene.switchSecondaryBegan() // Parchment.
-            scene.switchPrimaryBegan()
-            let themed = try #require(scene.panel)
-            #expect(themed !== oldOverlay)
+            #expect(scene.panel !== oldOverlay)
             #expect(!oldOverlay.switchScanner.isActive)
-            #expect(themed.focusedSetting == "Menu Theme")
-            #expect(GameSettings.shared.selectedThemeID == GameSettings.allThemes[1].id)
-            try focusSetting("Gentle", in: scene)
-            scene.switchPrimaryBegan()
             #expect(scene.panel?.focusedSetting == "Gentle")
             #expect(GameSettings.shared.gapMin == GameSettings.gentlePreset.gapMin)
             try focusSetting("Lock Settings", in: scene)
@@ -877,7 +870,7 @@ struct GameLifecycleTests {
                 scene.view.frame.size = size
                 let overlay = try #require(scene.panel)
                 overlay.frame = scene.view.bounds
-                try focusSetting("Menu Theme", in: scene)
+                try focusSetting("In-Game Control", in: scene)
                 overlay.layoutIfNeeded()
                 let renderer = UIGraphicsImageRenderer(bounds: overlay.bounds)
                 Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
@@ -886,8 +879,8 @@ struct GameLifecycleTests {
                 overlay.layoutIfNeeded()
                 Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
                                   named: "Settings-choices-\(Int(size.width)).png")
-                #expect(overlay.switchScanner.items.count == GameSettings.allThemes.count + 1)
-                for _ in GameSettings.allThemes { scene.switchSecondaryBegan() }
+                #expect(overlay.switchScanner.items.count == 5) // Four schemes and Done.
+                for _ in 0..<4 { scene.switchSecondaryBegan() }
                 scene.switchPrimaryBegan() // Done.
                 try focusSetting("Background Scroll", in: scene)
                 scene.switchPrimaryBegan()

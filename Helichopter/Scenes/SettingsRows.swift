@@ -232,7 +232,7 @@ extension SettingsPanelView {
         descRow.backgroundColor = style.rowBg
         let descL = makeLabel(
             "Adjusts helicopter and pipe colours to suit different colour vision needs. " +
-            "Independent of the menu theme above.",
+            "Independent of the menu theme in the Hangar.",
             size: 12, weight: .regular, color: style.sub)
         descL.numberOfLines = 0
         descL.translatesAutoresizingMaskIntoConstraints = false
