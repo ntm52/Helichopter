@@ -120,7 +120,6 @@ private func makeButton() -> MenuItem {
         defer { scanner.stop() }
 
         #expect(scanner.currentIndex == 0)
-        try await Task.sleep(nanoseconds: 1_100_000_000)
-        #expect(scanner.currentIndex > 0)
+        #expect(try await waitUntil { scanner.currentIndex > 0 })
     }
 }

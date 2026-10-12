@@ -39,17 +39,17 @@ struct GameLifecycleTests {
     }
 
     private func activateGameItem(_ action: MenuAction, in scene: GameScene) async throws {
-        for _ in 0..<150 {
-            if let scanner = scene.overlayScanner, scanner.isActive,
-               let item = scanner.items[scanner.currentIndex] as? GameMenuItem,
-               item.action == action {
-                scene.switchPrimaryBegan()
-                scene.switchPrimaryEnded()
-                return
-            }
-            try await Task.sleep(nanoseconds: 20_000_000)
+        let reached = try await waitUntil {
+            guard let scanner = scene.overlayScanner, scanner.isActive,
+                  let item = scanner.items[scanner.currentIndex] as? GameMenuItem else { return false }
+            return item.action == action
         }
-        Issue.record("Switch menu item not reachable: \(action)")
+        guard reached else {
+            Issue.record("Switch menu item not reachable: \(action)")
+            return
+        }
+        scene.switchPrimaryBegan()
+        scene.switchPrimaryEnded()
     }
 
     @Test func heldPrimaryPausesEveryFlightSchemeAndResumesWithOneSwitch() async throws {
@@ -67,11 +67,11 @@ struct GameLifecycleTests {
                 let gravityBeforePause = heli.isAffectedByGravity
                 scene.sceneAdapter?.score = 5
                 // Keyboard repeat must neither re-flap nor restart the hold deadline.
-                try await Task.sleep(nanoseconds: 1_100_000_000)
+                let holdTimer = try #require(scene.switchPauseTimer)
+                let deadline = holdTimer.fireDate
                 scene.switchPrimaryBegan()
-                // Checked at 2.6 s: a 2 s hold has fired, while a restarted one (3.1 s) would not.
-                try await Task.sleep(nanoseconds: 1_500_000_000)
-                #expect(scene.stateMachine.currentState is PausedState)
+                #expect(scene.switchPauseTimer === holdTimer && holdTimer.fireDate == deadline)
+                #expect(try await waitUntil { scene.stateMachine.currentState is PausedState })
                 #expect(scene.isPaused)
                 #expect(scene.overlayScanner?.isActive == true)
                 #expect(!heli.isHoveringHeld && !heli.isTwoSwitchUpHeld && !heli.isTwoSwitchDownHeld)
@@ -148,8 +148,7 @@ struct GameLifecycleTests {
             #expect(scene.sceneAdapter?.score == 0)
             #expect(scene.action(forKey: "Pipe Action") == nil)
             scene.switchPrimaryBegan()
-            try await Task.sleep(nanoseconds: 2_200_000_000)
-            #expect(scene.stateMachine.currentState is PausedState)
+            #expect(try await waitUntil { scene.stateMachine.currentState is PausedState })
             scene.switchPrimaryEnded()
             let scanner = try #require(scene.overlayScanner)
             try await activateGameItem(.home, in: scene)
@@ -168,8 +167,7 @@ struct GameLifecycleTests {
             let scene = try #require(GameScene(fileNamed: "GameScene"))
             scene.switchSecondaryBegan()
             scene.switchPrimaryBegan()
-            try await Task.sleep(nanoseconds: 2_200_000_000)
-            #expect(scene.stateMachine.currentState is PausedState)
+            #expect(try await waitUntil { scene.stateMachine.currentState is PausedState })
             let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
             #expect(!heli.isTwoSwitchUpHeld && !heli.isTwoSwitchDownHeld)
             scene.switchPrimaryEnded()

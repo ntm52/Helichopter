@@ -87,8 +87,9 @@ struct HUDEventTests {
             adapter.scorePoint()
             adapter.scorePoint()
             #expect(spy.events.last == "celebrate true")
-            try await Task.sleep(for: .seconds(GameSceneAdapter.newHighScoreDisplayDuration + 0.3))
-            #expect(spy.events.last == "celebrate false")
+            #expect(try await waitUntil(timeout: GameSceneAdapter.newHighScoreDisplayDuration + 10) {
+                spy.events.last == "celebrate false"
+            })
             #expect(!adapter.isShowingNewHighScore)
         }
     }

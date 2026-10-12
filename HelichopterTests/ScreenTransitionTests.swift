@@ -47,10 +47,7 @@ struct ScreenTransitionTests {
     }
 
     private func waitForTransition(_ controller: RootViewController) async throws {
-        for _ in 0..<40 where controller.isChangingScreen {
-            try await Task.sleep(for: .milliseconds(50))
-        }
-        #expect(!controller.isChangingScreen)
+        #expect(try await waitUntil { !controller.isChangingScreen })
     }
 
     private func menuItem(_ action: MenuAction, in game: GameScene) throws -> GameMenuItem {
@@ -238,8 +235,7 @@ struct ScreenTransitionTests {
             settings.panel.onThemeChanged?()
             #expect(settings.panel !== old && settings.panel.switchScanner.isActive)
             #expect(old?.switchScanner.isActive == false)
-            try await Task.sleep(for: .milliseconds(400))
-            #expect(settingsPanels(in: skView).count == 1)
+            #expect(try await waitUntil { settingsPanels(in: skView).count == 1 })
             settings.switchPrimaryBegan() // Back
             #expect(controller.menuScreen is HomeViewController)
             #expect(!settings.panel.switchScanner.isActive)

@@ -43,7 +43,7 @@ class GameScene: SKScene {
 
     // Drives focus-ring scanning in pause / game-over overlays.
     private(set) var overlayScanner: FocusScanner?
-    private var switchPauseTimer: Timer?
+    private(set) var switchPauseTimer: Timer?
     private var primarySwitchHeld = false
 
     deinit { switchPauseTimer?.invalidate() }
