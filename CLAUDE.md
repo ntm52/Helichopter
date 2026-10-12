@@ -18,10 +18,12 @@ xcodebuild test -project Helichopter.xcodeproj -scheme Helichopter -destination 
 
 - Pick an installed simulator with `xcrun simctl list devices available`.
 - Swift Testing filters need the parentheses: `-only-testing:'HelichopterTests/Suite/testName()'`.
-- If the full suite hangs, add `-parallel-testing-enabled NO`.
+- Unit tests run one at a time (the scheme marks `HelichopterTests` not parallelizable) because they share `GameSettings.shared`, `UserDefaults.standard`, and `ScreenChangeAnnouncer.poster`. Keep it that way. To wait for a timer in a test, use `waitUntil` (`HelichopterTests/Waiting.swift`), not a fixed sleep.
 - `HelichopterTests/` is a file-system-synchronized group, so new test files are picked up without editing the project.
 - Tests use Swift Testing (`@Test`, `#expect`). Many touch `GameSettings.shared` and `UserDefaults.standard`; save and restore values as the existing tests do.
 - Run `Tools/release_check.sh` before any submission (it also accepts a `.xcarchive`).
+- App Store screenshots: `TEST_RUNNER_STORE_SCREENSHOTS=1` with `-only-testing:HelichopterUITests/StoreScreenshotTests` on iPhone 17, iPhone 18 Pro Max, and iPad Pro 13-inch; export the attachments with `xcrun xcresulttool export attachments`. It is skipped otherwise.
+- UI-test launch arguments that set numeric or boolean settings must be plist literals (`"<integer>2</integer>"`, `"<true/>"`); `GameSettings` ignores plain text such as `"2"`.
 - `HelichopterUITests` (about 1 minute) runs Apple's accessibility audit on every screen. For a quick loop, use `-only-testing:HelichopterTests`; run the UI test after any UI change. A new screen or control should be added to its walk.
 
 ## Architecture rules that bite

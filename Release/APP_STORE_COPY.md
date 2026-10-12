@@ -75,7 +75,7 @@ These features are implemented. Full sound-only play and physical assistive-devi
 
 ## Screenshot capture brief
 
-Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. Final 2.0 screenshots are in `Release/Screenshots/`.
+Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. The 2.1 screenshots (captured 2026-10-12, replacing 2.0's, which are in git history) are in `Release/Screenshots/`. Recapture with `StoreScreenshotTests` (see `CLAUDE.md`). In App Store Connect, replace all three sets (6.3", 6.9", iPad 13") on the 2.1 version.
 
 ## Account fields still needed
 

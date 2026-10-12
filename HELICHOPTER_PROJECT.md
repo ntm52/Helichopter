@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-10-08):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B code steps 1–5 are done, and 2.1 now waits on the owner's device recordings. 110 unit tests and 1 UI test pass; the UI test runs Apple's accessibility audit on every screen.
+**Status (2026-10-12):** Version 2.0 (build 2, git tag `2.0`) is live on the App Store. Development is now post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.1 (build 3; version already set): Plan 01 Stage B. Stage A's transition helper is merged but will not ship on its own; Stage B code steps 1–5 are done, and 2.1 now waits on the owner's device recordings. Everything else for 2.1 is ready: What's New in `Release/APP_STORE_COPY.md`, new screenshots in `Release/Screenshots/`, a passing `Tools/release_check.sh`, and the support-page update on branch `docs-support-2.1`. 112 unit tests and 1 UI test pass; the UI test runs Apple's accessibility audit on every screen.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -94,7 +94,6 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 
 - **Double page during screen changes:** live in 2.0 (owner accepted it). Fixed on `master` by Plan 01 Stage B (every menu is UIKit, one cross-fade per change); ships as 2.1 once the owner's device recordings pass: [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md).
 - Narrow iPad windows use the phone layout (larger game, smaller bars) since Plan 01 step 6, but only when Play is pressed: resizing mid-run changes the scale mode only. Not yet checked in a real Split View or Stage Manager window.
-- The full test suite occasionally hangs with parallel simulator clones. Use `-parallel-testing-enabled NO` if it does.
 - **Not yet verified on a physical device:** VoiceOver, Voice Control, Switch Control, hardware switches, adaptive controllers, the oldest supported device, iPad window resizing, and real transitions.
 
 ---

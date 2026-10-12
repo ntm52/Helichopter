@@ -8,7 +8,7 @@ Written 2026-10-08, after version 2.0 went live. Work top to bottom unless the o
 
 - [x] Commit the build-number change in `project.pbxproj` (`CURRENT_PROJECT_VERSION` 1 → 2, the uploaded build) and tag the release `2.0` in git. Done 2026-10-08 (commit `1edfa21`, tag `2.0`).
 - [x] **Owner:** Publish the Accessibility Nutrition Label drafts in App Store Connect now that 2.0 is live (Larger Text, Dark Interface, Sufficient Contrast, Reduced Motion, Differentiate Without Color Alone). Published 2026-10-08.
-- [ ] **When 2.1 is released:** update `docs/support.html` (live site; push publishes it) to the 2.1 names: Timed / Step with Switch 2 scanning, Up/Down Switches flight. It still describes 2.0 on purpose.
+- [ ] **When 2.1 is released:** update `docs/support.html` (live site; push publishes it) to the 2.1 names: Timed / Step with Switch 2 scanning, Up/Down Switches flight. It still describes 2.0 on purpose. **Prepared 2026-10-12** on the unpushed branch `docs-support-2.1` (commit `bb8524a`): merge it into `master` and push after Apple approves 2.1.
 - [ ] **Owner:** Check Xcode → Window → Organizer → Crashes, Hangs, and Feedback weekly for the first month (until about 2026-11-08). Ongoing; does not block step 1. This needs no SDK and does not change the privacy answers.
 
 ## 1. Remove the "double page" effect — [Plan 01](01_SINGLE_LAYER_UI.md)
@@ -51,9 +51,9 @@ Ordered by value to players, highest first.
 
 ## 5. Engineering clean-up
 
-- [ ] Fix the full test suite hanging with parallel simulator clones, then remove the `-parallel-testing-enabled NO` advice from `CLAUDE.md`.
-- [ ] Review timing-sensitive tests (hold-to-pause, scanner dwell) so they cannot fail under load.
+- [x] Fix the full test suite hanging with parallel simulator clones, then remove the `-parallel-testing-enabled NO` advice from `CLAUDE.md`. Done 2026-10-12: suites ran concurrently in one process and changed shared state; the scheme now runs unit tests one at a time.
+- [x] Review timing-sensitive tests (hold-to-pause, scanner dwell) so they cannot fail under load. Done 2026-10-12: they wait on conditions with `waitUntil`.
 - [x] Remove `fatalError` from `ToggleButtonNode`/`TriggleButtonNode` responders, unless Plan 01 Stage B deletes them first. (Both classes deleted in Stage B step 4, 2026-10-08.)
-- [ ] Rename the `Nodes/Game Componens/` folder to `Game Components` (update the Xcode project group at the same time).
-- [ ] Remove the inherited particle sprites in `Assets/Particles/` if unused (see `Release/ASSET_RIGHTS.md`).
+- [x] Rename the `Nodes/Game Componens/` folder to `Game Components` (update the Xcode project group at the same time). Done 2026-10-12.
+- [ ] Remove the inherited particle sprites in `Assets/Particles/` if unused (see `Release/ASSET_RIGHTS.md`). Checked 2026-10-12: unused (no code or archive names `spark` or `bokeh`), and the folder is not in the Xcode project, so it never ships. Deleting it needs the owner's go-ahead.
 - [ ] **Owner (optional):** download the lossless music original from Freesound to replace the preview-quality encode.
