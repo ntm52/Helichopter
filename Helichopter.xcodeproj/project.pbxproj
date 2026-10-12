@@ -153,13 +153,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A903943D20ADAB0A00376CC3 /* Game Componens */ = {
+		A903943D20ADAB0A00376CC3 /* Game Components */ = {
 			isa = PBXGroup;
 			children = (
 				A94A97F621A287890087C018 /* InfiniteSpriteScrollNode.swift */,
 				A9D4CFDC209B3A4F006461AF /* PipeNode.swift */,
 			);
-			path = "Game Componens";
+			path = "Game Components";
 			sourceTree = "<group>";
 		};
 		A92E72DC209D80FA0015F647 /* Game States */ = {
@@ -250,7 +250,7 @@
 			isa = PBXGroup;
 			children = (
 				A9B9F83720B44AC300FC0BDA /* Playables */,
-				A903943D20ADAB0A00376CC3 /* Game Componens */,
+				A903943D20ADAB0A00376CC3 /* Game Components */,
 			);
 			path = Nodes;
 			sourceTree = "<group>";

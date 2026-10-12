@@ -66,8 +66,8 @@ The app has one `RootViewController` holding an `SKView`. Home, the first-run gu
 | `Adapters/GameSceneAdapter.swift` | Gameplay hub: physics, scoring, best-score saving, sounds, collisions, and the HUD delegate calls. |
 | `Game States/*.swift` | `PlayingState` (pipe spawning, first-input start), `PausedState`, `GameOverState`. |
 | `Nodes/Playables/HelicopterNode.swift` | Player sprite: atlas animation, physics, all four control schemes, contrast marker, No-Fail pulse. |
-| `Nodes/Game Componens/PipeNode.swift` | 9-slice pipe body and cap, tinted by palette, with a contrast border. (The folder name's typo is real.) |
-| `Nodes/Game Componens/InfiniteSpriteScrollNode.swift` | Tiling parallax background. |
+| `Nodes/Game Components/PipeNode.swift` | 9-slice pipe body and cap, tinted by palette, with a contrast border. |
+| `Nodes/Game Components/InfiniteSpriteScrollNode.swift` | Tiling parallax background. |
 | `Factories/PipeFactory.swift` | Spawns pipe pairs from `GameSettings`. Texture names `pipe-yellow`/`cap-yellow` are hard-coded here. |
 | `Control/FocusScanner.swift` | Timed and manual scanning for every UIKit menu and Settings (`FocusScannable`). |
 | `Extensions/SKNode+GameplayBoundary.swift` | `addGameplayBoundary(path:)`: the black/white outline on the helicopter and pipes. |
