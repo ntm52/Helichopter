@@ -1,6 +1,6 @@
 # App Store submission copy
 
-Version 2.0 listing as entered in App Store Connect (October 2026). Edit this file first, then copy changes into App Store Connect.
+Version 2.0 listing as entered in App Store Connect (October 2026), plus the 2.1 What's New. Edit this file first, then copy changes into App Store Connect.
 
 > **Before in-app purchases ship:** the description and review notes below say there are no purchases. Update them, the age-rating answers, and the DSA trader status as described in [Plans/02_COSMETICS_AND_STORE.md](../Plans/02_COSMETICS_AND_STORE.md).
 
@@ -37,9 +37,21 @@ Menus and Settings offer scalable text and switch scanning. VoiceOver provides f
 
 Helichopter works offline without an account, ads, or in-app purchases. Settings and scores are saved on your device.
 
-**What's New (2.1, starting draft; finish when Stage B is done):**
+**What's New (2.1, ready to paste; owner to confirm after device checks):**
 
-Rebuilt menus. Home, Settings, Pause, and Round Over are now built directly as app screens, and moving between them fades one whole screen into the next, so two menus never appear at the same time. Taps and switch presses wait until the new screen is ready, and VoiceOver announces each screen once. With Reduce Motion on, the fade is shorter.
+Rebuilt menus: Home, Settings, Pause, and Round Over now fade as one whole screen, so two menus never appear at the same time. Taps and switch presses wait until the new screen is ready. With Reduce Motion on, the fade is shorter.
+
+Accessibility improvements:
+- VoiceOver reads each Settings switch and slider once, with its description as a hint, and announces each screen once. Settings sections are headings, so the rotor can jump between them.
+- Sliders open a Decrease and Increase page when activated, so they can be adjusted without dragging.
+- Time settings are spoken in seconds, and other sliders as a percentage.
+- Clearer names: Menu Scan Mode is now Timed or Step with Switch 2, and the two-switch flight scheme is now Up/Down Switches.
+- Locked Settings controls now show as dimmed.
+
+Other changes:
+- In a narrow iPad window, such as Split View or Slide Over, the game is drawn larger.
+- In No-Fail Mode, landing on a pipe corner no longer pushes the helicopter forwards or backwards.
+- The app uses less power on menu screens.
 
 **What's New (2.0, as submitted):**
 
