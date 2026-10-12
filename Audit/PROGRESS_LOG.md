@@ -332,7 +332,7 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Test: `noFailPipesNeverPushTheHelicopterSideways`.
 
 ### 2026-10-12 — 2.1 release preparation and test clean-up (Claude Code)
-- Branch `release-2.1-prep` (not pushed). Everything for 2.1 that does not need the owner's devices or account is done; 2.1 still waits on the owner's device checks (Plan 01 "Manual checks", VoiceOver and Voice Control in roadmap step 2), then archive, upload, and submit.
+- Done on branch `release-2.1-prep`, then merged into `master` (not pushed). Everything for 2.1 that does not need the owner's devices or account is done; 2.1 still waits on the owner's device checks (Plan 01 "Manual checks", VoiceOver and Voice Control in roadmap step 2), then archive, upload, and submit.
 - **What's New for 2.1** is final in `Release/APP_STORE_COPY.md`: rebuilt menus, the VoiceOver, Voice Control, and slider changes, the renamed settings, larger game in narrow iPad windows, the No-Fail pipe-corner fix, and lower power use on menus.
 - **Screenshots:** the 2.0 Settings shots showed text 2.1 changed ("◀ Back", "Auto-Advance / Two-Switch", the old Auto-Scan description), so all three sets in `Release/Screenshots/` (6.3", 6.9", iPad 13") were recaptured in the same framing. New `StoreScreenshotTests` UI test captures them; it is skipped unless `TEST_RUNNER_STORE_SCREENSHOTS=1` (see `CLAUDE.md`). The owner must replace the sets in App Store Connect.
 - **Support page:** `docs/support.html` updated to the 2.1 names on the separate unpushed branch `docs-support-2.1` (`bb8524a`). Merge and push only after Apple approves 2.1, since pushing publishes it.
