@@ -1,238 +1,34 @@
 import UIKit
 
-private final class SettingsScanItem: FocusScannable {
-    weak var control: UIControl?
-    private let focus: (UIControl, Bool) -> Void
-    private let activate: (UIControl) -> Void
-
-    init(control: UIControl, focus: @escaping (UIControl, Bool) -> Void,
-         activate: @escaping (UIControl) -> Void) {
-        self.control = control
-        self.focus = focus
-        self.activate = activate
-    }
-
-    var isFocused = false {
-        didSet { if let control = control { focus(control, isFocused) } }
-    }
-
-    var accessibilityScanLabel: String {
-        guard let control = control else { return "" }
-        let label = control.accessibilityLabel ?? (control as? UIButton)?.currentTitle ?? ""
-        if let toggle = control as? UISwitch { return "\(label), \(toggle.isOn ? "On" : "Off")" }
-        if let slider = control as? UISlider { return "\(label), \(slider.spokenValue). Select to adjust." }
-        if let segment = control as? UISegmentedControl {
-            let value = segment.titleForSegment(at: segment.selectedSegmentIndex) ?? ""
-            return "\(label), \(value). Select to choose."
-        }
-        return label
-    }
-
-    func scannerActivate() {
-        if let control = control { activate(control) }
-    }
-}
-
 // MARK: - SettingsPanelView
 // The scrolling list of settings shown by SettingsViewController. Rows are built in
 // SettingsRows.swift; the switch-friendly adjustment page in SettingsAdjustmentPanel.swift.
 
-final class SettingsPanelView: UIView {
+final class SettingsPanelView: ScrollingPanelView {
 
-    let fontTraits: UITraitCollection?
-    let style: SettingsStyle
+    override class var title: String { "Settings" }
 
-    var onBack: (() -> Void)?
-    /// Asks the host to rebuild the panel: theme, preset, lock, reset, or text size changed.
-    var onThemeChanged: (() -> Void)?
-
-    let switchScanner = FocusScanner()
-    private let focusRing = UIView()
-    private(set) weak var focusedControl: UIControl?
     var adjustmentPanel: UIView?
     var adjustmentTargets: [NSObject] = []
     var returnControlLabel: String?
-    private var navigationItems: [FocusScannable] = []
-
-    // Retain targets so addTarget's weak reference doesn't dangle.
-    var controlTargets: [NSObject] = []
     var paletteViews: [(UIView, String)] = []
 
-    private let scrollView = UIScrollView()
-    let stack = UIStackView()
+    override var isAdjusting: Bool { adjustmentPanel != nil }
 
-    // MARK: - Initialization
+    override var focusedSetting: String? { returnControlLabel ?? super.focusedSetting }
 
-    init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil) {
-        self.fontTraits = fontTraits
-        style = SettingsStyle(theme: theme)
-        super.init(frame: frame)
-        buildUI()
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    // MARK: - Switch scanning
-
-    var focusedSetting: String? {
-        returnControlLabel ?? focusedControl?.accessibilityLabel ?? (focusedControl as? UIButton)?.currentTitle
-    }
-
-    func startScanning(focusing label: String? = nil) {
-        switchScanner.stop()
-        navigationItems = controls(in: self).map { scanItem(for: $0) }
-        switchScanner.items = navigationItems
-        let index = navigationItems.firstIndex {
-            let control = ($0 as? SettingsScanItem)?.control
-            return label != nil && (control?.accessibilityLabel ?? (control as? UIButton)?.currentTitle) == label
-        } ?? 0
-        switchScanner.start(at: index)
-    }
-
-    func stopScanning() { switchScanner.stop() }
-
-    func primaryActivate() {
-        if !switchScanner.isActive { startScanning() }
-        else { switchScanner.primaryActivate() }
-    }
-
-    func secondaryAdvance() {
-        if !switchScanner.isActive { startScanning() }
-        else { switchScanner.secondaryAdvance() }
-    }
-
-    func controls(in view: UIView) -> [UIControl] {
-        guard !view.isHidden, view.isUserInteractionEnabled else { return [] }
-        if let control = view as? UIControl { return control.isEnabled ? [control] : [] }
-        return view.subviews.flatMap { controls(in: $0) }
-    }
-
-    func scanItem(for control: UIControl) -> FocusScannable {
-        SettingsScanItem(control: control, focus: { [weak self] control, focused in
-            guard let self = self else { return }
-            self.focusRing.isHidden = !focused
-            if focused {
-                self.focusedControl = control
-                self.layoutIfNeeded()
-                // Scroll both the palette strip and the outer panel when necessary.
-                var ancestor = control.superview
-                while let view = ancestor {
-                    if let scroll = view as? UIScrollView {
-                        scroll.scrollRectToVisible(control.convert(control.bounds.insetBy(dx: -6, dy: -6), to: scroll), animated: false)
-                    }
-                    ancestor = view.superview
-                }
-                self.updateFocusRing()
-            }
-        }, activate: { [weak self] control in
-            guard let self = self else { return }
-            if control is UISlider || control is UISegmentedControl {
-                self.showAdjustment(for: control)
-            } else if let toggle = control as? UISwitch {
-                toggle.setOn(!toggle.isOn, animated: false)
-                toggle.sendActions(for: .valueChanged)
-            } else {
-                control.sendActions(for: .touchUpInside)
-            }
-        })
-    }
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        if (fontTraits ?? previousTraitCollection)?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
-            onThemeChanged?()
+    /// Sliders and segmented controls open the adjustment page instead of changing directly.
+    override func activate(_ control: UIControl) {
+        if control is UISlider || control is UISegmentedControl {
+            showAdjustment(for: control)
+        } else {
+            super.activate(control)
         }
     }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        updateFocusRing()
-    }
-
-    private func updateFocusRing() {
-        guard let control = focusedControl, switchScanner.isActive else { return }
-        focusRing.frame = control.convert(control.bounds, to: self).insetBy(dx: -4, dy: -4)
-        bringSubviewToFront(focusRing)
-    }
-
-    var scrollPosition: CGPoint { scrollView.contentOffset }
-
-    func restoreScrollPosition(_ offset: CGPoint) {
-        layoutIfNeeded()
-        let maxY = max(0, scrollView.contentSize.height - scrollView.bounds.height)
-        scrollView.contentOffset = CGPoint(x: 0, y: min(max(0, offset.y), maxY))
-    }
-
-    // MARK: - Layout
-
-    private func buildUI() {
-        backgroundColor = style.bg
-
-        let backBtn  = plainButton("◀  Back", color: style.accent, target: self,
-                                   action: #selector(backTapped))
-        backBtn.accessibilityLabel = "Back"
-        backBtn.accessibilityHint = "Goes to the home screen"
-        let titleLbl = makeLabel("Settings", size: 26, weight: .bold, color: style.text)
-        titleLbl.accessibilityTraits = .header
-        titleLbl.textAlignment = .center
-        let header = UIStackView(arrangedSubviews: [backBtn, titleLbl])
-        header.axis = .vertical
-        header.spacing = 4
-        header.isLayoutMarginsRelativeArrangement = true
-        header.layoutMargins = UIEdgeInsets(top: 4, left: 16, bottom: 8, right: 16)
-        header.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(header)
-
-        let headerDiv = hairline()
-        header.addSubview(headerDiv)
-
-        scrollView.alwaysBounceVertical        = true
-        scrollView.showsVerticalScrollIndicator = true
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(scrollView)
-
-        stack.axis    = .vertical
-        stack.spacing = 0
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            header.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            header.leadingAnchor.constraint(equalTo: leadingAnchor),
-            header.trailingAnchor.constraint(equalTo: trailingAnchor),
-            header.heightAnchor.constraint(greaterThanOrEqualToConstant: 52),
-
-            headerDiv.bottomAnchor.constraint(equalTo: header.bottomAnchor),
-            headerDiv.leadingAnchor.constraint(equalTo: header.leadingAnchor),
-            headerDiv.trailingAnchor.constraint(equalTo: header.trailingAnchor),
-
-            scrollView.topAnchor.constraint(equalTo: header.bottomAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor),
-
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 8),
-            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -32),
-            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-        ])
-
-        buildSections()
-        focusRing.isUserInteractionEnabled = false
-        focusRing.accessibilityElementsHidden = true
-        focusRing.layer.borderWidth = 3
-        focusRing.layer.borderColor = style.accent.cgColor
-        focusRing.layer.cornerRadius = 8
-        focusRing.isHidden = true
-        addSubview(focusRing)
-    }
-
-    @objc private func backTapped() { onBack?() }
-
     // MARK: - Sections
 
-    private func buildSections() {
+    override func buildSections() {
         let gs = GameSettings.shared
 
         sectionHeader("Difficulty Preset")
@@ -358,12 +154,7 @@ final class SettingsPanelView: UIView {
 
         if gs.isSettingsLocked {
             // Keep the panel and Back reachable, while preventing accidental edits.
-            for row in stack.arrangedSubviews {
-                // Disabled, not just untouchable: VoiceOver says "dimmed" and Voice Control skips them.
-                controls(in: row).forEach { $0.isEnabled = false }
-                row.isUserInteractionEnabled = false
-                row.alpha = 0.5
-            }
+            lock(stack.arrangedSubviews)
         }
         sectionHeader("Caregiver")
         toggleRow("Lock Settings",

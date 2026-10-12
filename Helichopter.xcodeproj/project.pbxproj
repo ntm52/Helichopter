@@ -52,6 +52,7 @@
 		D10000000000000000000009 /* SettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000000A /* SettingsRows.swift */; };
 		D1000000000000000000000B /* SettingsAdjustmentPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000000C /* SettingsAdjustmentPanel.swift */; };
 		D1000000000000000000000D /* AppLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000000000000000000000E /* AppLinks.swift */; };
+		833A57568ACBAF7B0E3A20E8 /* ScrollingPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41EF4851833A57568ACBAF7B /* ScrollingPanelView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -121,6 +122,7 @@
 		D1000000000000000000000C /* SettingsAdjustmentPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAdjustmentPanel.swift; sourceTree = "<group>"; };
 		D1000000000000000000000E /* AppLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLinks.swift; sourceTree = "<group>"; };
 		D8986F21304A7A0100B4D8C4 /* HelichopterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HelichopterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		41EF4851833A57568ACBAF7B /* ScrollingPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollingPanelView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -295,6 +297,7 @@
 				A9B9C728209EE31C0045548D /* HomeViewController.swift */,
 				A9ACB9222099A1F200966991 /* GameScene.swift */,
 				A9EC756320A6D3E9007C42EC /* SettingsPanelView.swift */,
+				41EF4851833A57568ACBAF7B /* ScrollingPanelView.swift */,
 				D10000000000000000000008 /* SettingsViewController.swift */,
 				D1000000000000000000000A /* SettingsRows.swift */,
 				D1000000000000000000000C /* SettingsAdjustmentPanel.swift */,
@@ -587,6 +590,7 @@
 				A9ACB91D2099A1F200966991 /* AppDelegate.swift in Sources */,
 				A92E72E2209D815B0015F647 /* PlayingState.swift in Sources */,
 				A9EC756420A6D3E9007C42EC /* SettingsPanelView.swift in Sources */,
+				833A57568ACBAF7B0E3A20E8 /* ScrollingPanelView.swift in Sources */,
 				D1000000000000000000000D /* AppLinks.swift in Sources */,
 				D1000000000000000000000B /* SettingsAdjustmentPanel.swift in Sources */,
 				D10000000000000000000009 /* SettingsRows.swift in Sources */,

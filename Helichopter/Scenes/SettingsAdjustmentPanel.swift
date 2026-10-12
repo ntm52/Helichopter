@@ -7,8 +7,6 @@ import UIKit
 
 extension SettingsPanelView {
 
-    var isAdjusting: Bool { adjustmentPanel != nil }
-
     func showAdjustment(for control: UIControl) {
         returnControlLabel = control.accessibilityLabel
         switchScanner.stop()

@@ -2,13 +2,7 @@ import UIKit
 
 // MARK: - Control target helpers
 // These wrappers let closures work as addTarget selectors while keeping a strong
-// reference alive via SettingsPanelView.controlTargets.
-
-final class ButtonTarget: NSObject {
-    private let f: () -> Void
-    init(_ f: @escaping () -> Void) { self.f = f }
-    @objc func tapped() { f() }
-}
+// reference alive via ScrollingPanelView.controlTargets. ButtonTarget is in ScrollingPanelView.swift.
 
 final class SliderTarget: NSObject {
     private let f: (Float) -> Void
@@ -28,77 +22,9 @@ final class SegTarget: NSObject {
     @objc func changed(_ sender: UISegmentedControl) { f(sender.selectedSegmentIndex) }
 }
 
-// MARK: - Theme-derived colour tokens
-
-/// The Settings colours, derived from the active UITheme so the panel follows the
-/// player's chosen theme.
-struct SettingsStyle {
-    let bg: UIColor               // panel background
-    let accent: UIColor           // section headers, back button, slider/switch track
-    let text: UIColor             // primary label text
-    let sub: UIColor              // secondary / detail text
-    let rowBg: UIColor            // individual row backgrounds
-    let div: UIColor              // hairline separators
-    let segBg: UIColor            // segmented control tray background
-    let selectedSegText: UIColor  // text on the highlighted segment chip
-    let swatchBg: UIColor         // palette swatch card background
-
-    init(theme: UITheme) {
-        let light = Self.isLightColor(theme.sceneBackgroundColor)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        theme.sceneBackgroundColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-
-        bg     = theme.sceneBackgroundColor.withAlphaComponent(0.97)
-        accent = theme.titleTextColor
-        text   = light ? theme.titleTextColor : .white
-        sub    = light ? theme.titleTextColor.withAlphaComponent(0.75) : UIColor(white: 0.65, alpha: 1.0)
-        // For dark themes: nudge the row bg slightly brighter while preserving hue.
-        // For light themes: shade it slightly darker so rows read off the panel bg.
-        rowBg  = light
-            ? UIColor(red: r * 0.93, green: g * 0.93, blue: b * 0.93, alpha: 1.0)
-            : UIColor(red: min(1, r + 0.08), green: min(1, g + 0.08), blue: min(1, b + 0.08), alpha: 1.0)
-        div    = light ? UIColor(white: 0.75, alpha: 1.0) : UIColor(white: 0.22, alpha: 1.0)
-        segBg  = light ? UIColor(white: 0.82, alpha: 1.0) : UIColor(white: 0.20, alpha: 1.0)
-        // Selected segment text must contrast against `accent` (the tint color on the chip).
-        // Light themes use a dark accent (navy) → white text reads well on it.
-        // Dark themes use a light accent (sky-blue/cyan) → black text reads well on it.
-        selectedSegText = light ? .white : .black
-        swatchBg = light ? UIColor(white: 0.88, alpha: 1.0) : UIColor(white: 0.10, alpha: 1.0)
-    }
-
-    // Returns true when the relative luminance of `color` exceeds 0.5 (i.e. it reads as a light color).
-    private static func isLightColor(_ color: UIColor) -> Bool {
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        color.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5
-    }
-}
-
 // MARK: - Row builders
 
 extension SettingsPanelView {
-
-    func sectionHeader(_ title: String) {
-        let spacer = UIView()
-        spacer.heightAnchor.constraint(equalToConstant: 18).isActive = true
-        stack.addArrangedSubview(spacer)
-
-        let lbl = makeLabel(title.uppercased(), size: 12, weight: .bold, color: style.accent)
-        // VoiceOver's heading rotor jumps between sections; all-caps text can be spelled out.
-        lbl.accessibilityLabel = title
-        lbl.accessibilityTraits = .header
-
-        let wrap = UIView()
-        wrap.addSubview(lbl)
-        NSLayoutConstraint.activate([
-            lbl.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 2),
-            lbl.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -2),
-            lbl.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 20),
-            lbl.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -20),
-        ])
-        stack.addArrangedSubview(wrap)
-        stack.addArrangedSubview(hairline())
-    }
 
     func presetButtons() {
         let row = UIView()
@@ -426,45 +352,6 @@ extension SettingsPanelView {
 
     // MARK: Factory helpers
 
-    func scaledFont(_ size: CGFloat, weight: UIFont.Weight) -> UIFont {
-        UIFontMetrics(forTextStyle: size < 15 ? .caption1 : (size >= 22 ? .title2 : .body)).scaledFont(
-            for: .systemFont(ofSize: size, weight: weight), compatibleWith: fontTraits ?? traitCollection)
-    }
-
-    func makeLabel(_ labelText: String, size: CGFloat,
-                   weight: UIFont.Weight, color: UIColor) -> UILabel {
-        let l = WrappingSettingsLabel()
-        l.setContentCompressionResistancePriority(.required, for: .vertical)
-        l.text      = labelText
-        l.textColor = color
-        l.adjustsFontForContentSizeCategory = true
-        l.font = scaledFont(size, weight: weight)
-        l.numberOfLines = 0
-        l.translatesAutoresizingMaskIntoConstraints = false
-        return l
-    }
-
-    func plainButton(_ title: String, color: UIColor,
-                     target: Any, action: Selector) -> UIButton {
-        let btn = DynamicTextButton(type: .system)
-        btn.setTitle(title, for: .normal)
-        btn.titleLabel?.font = scaledFont(17, weight: .semibold)
-        btn.titleLabel?.adjustsFontForContentSizeCategory = true
-        btn.titleLabel?.numberOfLines = 0
-        btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8)
-        btn.setTitleColor(color, for: .normal)
-        btn.addTarget(target, action: action, for: .touchUpInside)
-        return btn
-    }
-
-    func hairline() -> UIView {
-        let v = UIView()
-        v.backgroundColor = style.div
-        v.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
-        v.translatesAutoresizingMaskIntoConstraints = false
-        return v
-    }
-
     private func colorDot(_ color: UIColor, size: CGFloat) -> UIView {
         let v = UIView()
         v.backgroundColor    = color
@@ -473,11 +360,6 @@ extension SettingsPanelView {
         v.widthAnchor.constraint(equalToConstant: size).isActive = true
         v.heightAnchor.constraint(equalToConstant: size).isActive = true
         return v
-    }
-
-    private func appendRow(_ row: UIView) {
-        stack.addArrangedSubview(row)
-        stack.addArrangedSubview(hairline())
     }
 }
 
@@ -551,16 +433,4 @@ private extension UIView {
 
 private extension CGRect {
     var center: CGPoint { CGPoint(x: midX, y: midY) }
-}
-
-/// Nested stacks need the resolved width when calculating multiline label height.
-private final class WrappingSettingsLabel: UILabel {
-    override var bounds: CGRect {
-        didSet {
-            if bounds.width > 0 && preferredMaxLayoutWidth != bounds.width {
-                preferredMaxLayoutWidth = bounds.width
-                invalidateIntrinsicContentSize()
-            }
-        }
-    }
 }
