@@ -1,6 +1,6 @@
 # Plan 02 — Cosmetic skins, Hangar screen, and in-app purchases
 
-**Status:** Not started. Written 2026-10-08.
+**Status:** Not started. Written 2026-10-08; Phase 1 revised 2026-10-12 (themes move to the Hangar; three steps; steps 1–2 ship in 2.1).
 **Goal:** Players can change how the helicopter and pipes look. Some skins are free; others are one-time purchases. Purchases are **cosmetic only**.
 **Depends on:** [Plan 01](01_SINGLE_LAYER_UI.md) Stage B (or at least Stage A). The Hangar must be a UIKit screen built on the new pattern, not another `.sks`-backed scene.
 
@@ -19,11 +19,55 @@
 
 ## 2. Phases
 
-### Phase 1 — Skin system and Hangar, free skins only (no StoreKit)
+### Phase 1 — Hangar with themes and free skins (no StoreKit) → steps 1–2 in 2.1, step 3 in 2.2
 
-Build and ship the whole cosmetic system with 1–2 free skins per type. This proves the art pipeline, contrast, and the screen before money is involved, and gives every player something new.
+Revised 2026-10-12: the Hangar also takes over the **menu theme** from Settings. Phase 1 is split into three steps; each leaves `master` releasable.
 
-**Data model** (new file, for example `Utils/Cosmetics.swift`)
+**Owner decision (2026-10-12): steps 1 and 2 ship in 2.1**, which has not been submitted yet (version 2.1, build 3, is already set). Step 3 (new pipes and helicopters) ships later, in 2.2. Consequences:
+
+- The Hangar must pass everything the rest of 2.1 passes: the `HelichopterUITests` accessibility audit, the switch scanner in Timed and Step modes, VoiceOver, Voice Control, Dynamic Type up to the largest accessibility size, Reduce Motion, every theme and palette, and the caregiver lock. The owner's 2.1 device checks (roadmap step 2) now include the Hangar.
+- 2.1 release preparation must be redone after step 2: What's New in `Release/APP_STORE_COPY.md` (mention the Hangar and that the menu theme moved there), all three screenshot sets (Home has four buttons; the theme shot moves to the Hangar), the unpushed `docs-support-2.1` branch (where to change the menu theme), and `Tools/release_check.sh`.
+- With only Classic in Helicopters and Pipes, those sections are thin. Keep the one non-control "more are on the way" sentence per section and nothing that looks like a locked item. If App Review objects under Guideline 2.1, drop the sentences (the sections still show the real Classic item).
+
+**What moves and what stays**
+
+- **Moves to the Hangar:** Menu Theme (Night Sky, Parchment, Neon Night). It is a personal look, and every theme already meets WCAG AA, so it fits with the helicopter and pipe skins.
+- **Stays in Settings:** Colour Accessibility palettes (High Contrast, the colour-vision palettes, Low Luminance), Helicopter Outline, and every other comfort option. These are accessibility features, not looks, and caregivers expect to find them in Settings. Ground rule 2 still applies: themes stay free forever.
+- **Settings keeps a pointer:** where the Visual Theme section was, one button, **"Menu Theme: Night Sky. Change it in the Hangar"**, opens the Hangar. Players and caregivers who learned the old place are not stranded.
+- **Caregiver lock covers the Hangar.** When Settings is locked, Hangar items are disabled (dimmed, as in Settings) with the line "Locked by a caregiver in Settings." A light theme can be a vision need, so a locked device must not let it change by accident.
+- **Reset Settings** resets the theme (as today) and, from step 2, the chosen helicopter and pipe skins to Classic (owner decision, 2026-10-12). It never removes or restores purchases: in Phase 2, ownership comes from StoreKit entitlements, not from `GameSettings`, so Reset cannot touch it. Update the Reset confirmation text to say the look is reset too.
+
+**No "coming soon" tiles.** App Review Guideline 2.1 rejects placeholder content, and for switch and VoiceOver users a locked tile is a scan stop that does nothing. Instead, each section shows what really exists (at first only **Classic**, equipped) plus one plain sentence that is not a control: "More helicopters are on the way." That still sets the expectation without a fake button. Remove the sentence once a section has a second item.
+
+#### Step 1 — Hangar screen, themes moved (one session, no new art)
+
+- Add `Screen.hangar` and `HangarViewController` (a `ScreenViewController`, presented only through `RootViewController.present(_:)`; list its scanner in `scannersDuringTransition`).
+- Home order: **Play, Hangar, Settings, How to Play** (`HomeAction.hangar`, hint "Changes how the game looks").
+- **Reuse the Settings panel machinery, don't copy it.** Pull the generic half of `SettingsPanelView` (Back header, scrolling stack, focus ring, control scanner, `controls(in:)`, rebuild that keeps scroll and focus) into a shared base, for example `ScrollingPanelView`, with `SettingsPanelView` and `HangarPanelView` as subclasses. `SettingsStyle` becomes the shared style. This keeps switch, VoiceOver, Voice Control, and Dynamic Type behaviour identical and gives the Hangar the tested rebuild-on-theme-change path for free. Do this extraction as its own commit first, with the full test suite green, before adding the Hangar.
+- **Theme cards:** one button per theme, like the palette swatches: a small preview (background, a button chip, title text in the theme's colours) and the name. Label "Night Sky", trait `.selected` on the chosen one; VoiceOver hint "Menu theme". Choosing one saves `selectedThemeID` and rebuilds the panel, keeping focus on the card.
+- Sections, in order: **Menu Theme**, **Helicopters** (Classic, Equipped; a non-control sentence), **Pipes** (the same). The Classic cards in step 1 are static (not buttons, so not scanned); they become buttons in step 2.
+- Settings: remove the Visual Theme section and add the pointer button. Update the Colour Accessibility description ("Independent of the menu theme above" → "Independent of the menu theme in the Hangar").
+- Tests to update: `GameLifecycleTests` uses "Menu Theme" in the Settings label list, `settingsSwitchPreservesFocusAcrossThemePresetAndLockRebuilds`, and the segmented-scanner test near line 880; move the theme parts to new Hangar tests. Add: Home item order; theme card selection persists and rebuilds with focus kept; the lock disables Hangar items; the scanner reaches every Hangar control in Timed and Step modes; Back returns Home. Add the Hangar to the `HelichopterUITests` audit walk.
+- Store screenshots: Home now has four buttons, and screenshot 4 shows themes in Settings. Re-capture all three sets for 2.1 after step 2 (move the theme shot to the Hangar).
+
+#### Step 2 — Skin plumbing with only Classic (one session, no new art)
+
+- `Utils/Cosmetics.swift` with the data model below. `CosmeticsCatalog.all` holds `heli.classic` and `pipe.classic`.
+- `GameSettings.selectedHelicopterSkinID` / `selectedPipeSkinID` (`gs_` keys, unknown or unowned IDs fall back to Classic).
+- Replace the hard-coded art names (four places today): `"Helicopter Player"` in `HomeViewController.swift` (twice) and `UserDefaults.swift`, and `pipe-yellow` / `cap-yellow` in `PipeFactory.swift` (twice).
+- Classic cards become real buttons ("Classic Helicopter. Equipped."), so step 3 only adds catalog entries and art.
+- A Hangar preview at the top (the equipped helicopter between two equipped pipes in the current theme and palette, static under Reduce Motion) is optional here; add it once there is more than one item to compare.
+
+#### Step 3 — First real new items, then release 2.2 (after 2.1)
+
+- **A patterned pipe set, free** (stripes or dots). It is the roadmap's "Differentiate without colour" item, can be drawn by `Tools/` scripts with no outside art rights, and gives the Pipes section a real second choice. Consider also turning it on automatically when iOS Differentiate Without Color is on.
+- **One extra free helicopter** made with `Tools/helicopter-kit/make_frames.py` (extend it to take an input image and output name).
+- Contrast tests: run every skin through all 18 theme/palette combinations (extend `renderedGameplayBoundariesAcrossEveryThemeAndPalette`).
+- Remove the "on the way" sentence from any section that now has two items. Record new art in `Release/ASSET_RIGHTS.md`. Bump to 2.2 (build 1) at the start of this step. Device check with a switch and VoiceOver, then ship 2.2.
+
+Phase 2 (purchases) then adds paid items to the same catalog with no screen redesign.
+
+**Data model** (step 2)
 
 ```swift
 enum CosmeticKind { case helicopter, pipe }
@@ -38,15 +82,6 @@ struct Cosmetic: Identifiable {
 }
 ```
 
-- A static `CosmeticsCatalog.all` list. The current art becomes `heli.classic` and `pipe.classic`, the defaults.
-- `GameSettings` gains `selectedHelicopterSkinID` and `selectedPipeSkinID` (`gs_` keys, validated like other settings). If a saved ID is unknown or not owned, fall back to the default. **Reset Settings keeps the chosen skin** (it is not a setting that harms play), or resets it; owner to decide.
-
-**Rendering changes**
-
-- Replace the hard-coded `"Helicopter Player"` (in `TitleScene`/Home, `SceneTextOverlay`, `UserDefaults.swift`) with the selected skin's atlas name.
-- Replace the hard-coded `pipe-yellow`/`cap-yellow` in `PipeFactory` with the selected pipe skin's textures.
-- Each helicopter skin is a new 60-frame atlas (`Helicopter <Name>.spriteatlas`) produced by `Tools/helicopter-kit/make_frames.py`. Extend the script to take an input image and output name.
-
 **Art rules for every skin** (enforced by tests where possible)
 
 - Same canvas size and similar silhouette size as the current helicopter, so the contrast marker and hitbox stay correct.
@@ -55,22 +90,12 @@ struct Cosmetic: Identifiable {
 - No flashing or strobing. Animated details stop under Reduce Motion.
 - Every new image is recorded in `Release/ASSET_RIGHTS.md` before it ships.
 
-**Hangar screen** (`HangarViewController`, opened from a new Home button)
+**Hangar accessibility** (all steps)
 
-- Top: a live preview of the selected helicopter between two of the selected pipes, using the current theme and palette. Static under Reduce Motion.
-- Two sections: **Helicopters** and **Pipes**. Each item is a card with a preview, name, and one action: **Equipped**, **Equip**, or (Phase 2) **Buy – price**.
-- Bottom: **Back** (and in Phase 2 **Restore Purchases**).
-- Grid at normal text sizes; a single-column list at accessibility text sizes.
-- Scanner order: Back, then preview (skipped), then each item in order. Scanning works in timed and two-switch modes, and focus is restored after an item is equipped.
-- VoiceOver: "Rescue Helicopter. Red and white, with a winch. Equipped." Equipping posts an announcement.
+- Grid of cards at normal text sizes; a single-column list at accessibility text sizes.
+- Scanner order: Back, then each item in order (preview and sentences skipped). Focus is restored after an item is chosen.
+- VoiceOver: "Rescue Helicopter. Red and white, with a winch. Equipped." Choosing posts an announcement. Section titles are headings for the rotor.
 - First-run guide: unchanged. Optionally mention the Hangar on the last page.
-
-**Tests**
-
-- Every catalog entry has its assets: 60 frames at 1×/2×/3× for helicopters; body and cap textures for pipes.
-- Extend `PaletteContrastTests` to run every skin through all 18 theme/palette combinations.
-- Selection falls back to the default for unknown or unowned IDs.
-- The scanner reaches every Hangar control; Dynamic Type layout at the largest size; VoiceOver labels exist for each card.
 
 ### Phase 2 — In-app purchases (StoreKit 2)
 
@@ -134,7 +159,7 @@ Do these before submitting the first version with purchases.
 2. Launch skins: how many helicopters and pipe styles, and which are free. Recommended: 1 free + 3 paid helicopters, 1 free + 2 paid pipe styles.
 3. Prices and whether to offer a bundle.
 4. Colour skins with automatic greyscale versions (recommended), or greyscale-only skins that take colour from the palette.
-5. Whether Reset Settings also resets the chosen skins.
+5. ~~Whether Reset Settings also resets the chosen skins.~~ Decided 2026-10-12: yes, theme and skins return to the defaults; purchases are never affected.
 6. Which public contact details to use for EU trader status.
 
 ## 5. Done when

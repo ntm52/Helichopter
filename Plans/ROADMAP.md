@@ -16,7 +16,7 @@ Written 2026-10-08, after version 2.0 went live. Work top to bottom unless the o
 Version numbering: bug fixes with no new features ship as `2.0.x`; anything that changes screens or adds features ships as `2.x`. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` at the start of the release's work so test builds are never confused with the live 2.0 (2).
 
 - [x] **Stage A (quick fix):** route every screen change through one helper that animates SpriteKit and UIKit together as a single snapshot. Done 2026-10-08 (`0bb33a1`). **Not released as 2.0.1** (owner decision: no partial hotfix); it ships inside 2.1.
-- [ ] **Stage B (proper fix, several sessions) → release 2.1, build 3 (version already set):** start at "Start here" in Plan 01 Stage B. Release only after steps 1–5 are all done. Steps 1 (event-driven HUD), 2 (Pause and Round Over in UIKit), 3 (Home and guide in UIKit; 50 ms timer deleted), 4 (Settings in UIKit; `SettingsScene.swift` split), and 5 (clean-up; HUD built in Swift; `RootViewController`) done 2026-10-08. **Next: Owner** device screen recordings (Plan 01 "Manual checks"), then submit 2.1. Step 6 (narrow iPad windows get the larger phone layout) also done 2026-10-08. Make Home, Guide, Settings, Pause, and Round Over plain UIKit screens; SpriteKit only for gameplay and the backdrop. Deletes the hidden `.sks` menus, the 50 ms timer, the legacy toggle classes, and the iPad archive copies. Splits the 1,160-line `SettingsScene.swift`.
+- [ ] **Stage B (proper fix, several sessions) → release 2.1, build 3 (version already set):** start at "Start here" in Plan 01 Stage B. Release only after steps 1–5 are all done. Steps 1 (event-driven HUD), 2 (Pause and Round Over in UIKit), 3 (Home and guide in UIKit; 50 ms timer deleted), 4 (Settings in UIKit; `SettingsScene.swift` split), and 5 (clean-up; HUD built in Swift; `RootViewController`) done 2026-10-08. **Next:** Plan 02 Phase 1 steps 1–2 (the Hangar, added to 2.1 on 2026-10-12), then **Owner** device screen recordings (Plan 01 "Manual checks") and the step 2 device checks, including the Hangar, then submit 2.1. Step 6 (narrow iPad windows get the larger phone layout) also done 2026-10-08. Make Home, Guide, Settings, Pause, and Round Over plain UIKit screens; SpriteKit only for gameplay and the backdrop. Deletes the hidden `.sks` menus, the 50 ms timer, the legacy toggle classes, and the iPad archive copies. Splits the 1,160-line `SettingsScene.swift`.
 
 ## 2. Device accessibility testing (can run alongside step 1)
 
@@ -29,11 +29,14 @@ These were never done on hardware and they gate two more Accessibility Nutrition
 - [x] Run Xcode's Accessibility Inspector audit on every screen and fix what it reports. Done 2026-10-09 as an automated UI test (`HelichopterUITests`), which now passes on every screen; see the progress log for what it found.
 - [ ] **Owner:** TestFlight or in-person sessions with real players (occupational or speech therapists, a school, or an assistive-technology lab).
 
-Do a second pass of this list after Plan 01 Stage B, since every menu will have been rebuilt.
+Do a second pass of this list after Plan 01 Stage B, since every menu will have been rebuilt. The Hangar (Plan 02 Phase 1 steps 1–2) is part of 2.1, so every check above covers it too: theme cards, Back, the caregiver lock, and the largest text size.
 
 ## 3. Cosmetic skins, Hangar screen, and in-app purchases — [Plan 02](02_COSMETICS_AND_STORE.md)
 
-- [ ] **Phase 1:** skin system, Hangar screen, free skins only. No purchases yet.
+- [ ] **Phase 1.** No purchases yet. **Steps 1–2 ship in 2.1** (owner decision 2026-10-12; 2.1 not yet submitted); step 3 ships in 2.2.
+  - [ ] Step 1 (2.1): Hangar screen on Home; Menu Theme moves there from Settings (Settings keeps a pointer button). Shared panel base extracted from `SettingsPanelView` first.
+  - [ ] Step 2 (2.1): skin catalog and selected-skin settings with only Classic; hard-coded art names removed; Reset Settings resets theme and skins. Then redo 2.1 release prep: What's New, all screenshot sets, the `docs-support-2.1` branch, `Tools/release_check.sh`.
+  - [ ] Step 3 (2.2): a free patterned pipe set and one free extra helicopter; contrast tests; ship 2.2.
 - [ ] **Phase 2:** StoreKit 2 one-time purchases, Restore, Ask to Buy, refunds. Includes App Store Connect business setup, EU trader status, and privacy text updates.
 - [ ] **Phase 3 (optional):** more skin sets; patterned pipes that also serve players who cannot rely on colour.
 
