@@ -205,7 +205,8 @@ struct ScreenTransitionTests {
             home.switchSecondaryBegan()
             #expect(home.items[1].isFocused && home.menu.buttons[1].layer.borderWidth == 4)
             #expect(home.menu.buttons[0].layer.borderWidth == 0)
-            home.switchSecondaryBegan()
+            let howToPlay = try #require(HomeAction.allCases.firstIndex(of: .howToPlay))
+            for _ in 1..<howToPlay { home.switchSecondaryBegan() }
             home.switchPrimaryBegan() // How to Play
             #expect(controller.menuScreen is GuideViewController)
             #expect(!home.scanner.isActive)

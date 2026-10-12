@@ -3,11 +3,12 @@ import SpriteKit
 
 /// What a Home screen choice does, in scanning order.
 enum HomeAction: CaseIterable {
-    case play, settings, howToPlay
+    case play, hangar, settings, howToPlay
 
     var title: String {
         switch self {
         case .play: return "Play"
+        case .hangar: return "Hangar"
         case .settings: return "Settings"
         case .howToPlay: return "How to Play"
         }
@@ -16,13 +17,14 @@ enum HomeAction: CaseIterable {
     var hint: String {
         switch self {
         case .play: return "Starts a new game"
+        case .hangar: return "Changes how the game looks"
         case .settings: return "Opens settings"
         case .howToPlay: return "Replays the guide to flying, pausing, and switches"
         }
     }
 }
 
-/// The Home screen: the mascot, the title, and Play, Settings, and How to Play.
+/// The Home screen: the mascot, the title, and Play, Hangar, Settings, and How to Play.
 final class HomeViewController: MenuViewController {
     let titleLabel = UILabel()
     private(set) var mascot: UIImageView!
@@ -70,6 +72,8 @@ final class HomeViewController: MenuViewController {
         case .play:
             guard let scene = GameLayout.best(for: view.bounds.size).makeScene() else { return }
             navigate(.scene(scene))
+        case .hangar:
+            navigate(.hangar)
         case .settings:
             navigate(.settings)
         case .howToPlay:

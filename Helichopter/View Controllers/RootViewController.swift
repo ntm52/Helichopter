@@ -90,11 +90,12 @@ enum ScreenTransition: Equatable {
     }
 }
 
-/// Everything `RootViewController.present` can show. Home, the guide, and Settings
-/// are UIKit screens; gameplay is a SpriteKit scene.
+/// Everything `RootViewController.present` can show. Home, the guide, the Hangar, and
+/// Settings are UIKit screens; gameplay is a SpriteKit scene.
 enum Screen {
     case home
     case guide
+    case hangar
     case settings
     case scene(SKScene)
 
@@ -165,7 +166,7 @@ class RootViewController: UIViewController {
     /// True while one screen fades into the next; all input and scanning is held.
     private(set) var isChangingScreen = false
     private var transitionSnapshot: UIView?
-    /// Home, the guide, or Settings, while one is showing in place of a scene.
+    /// Home, the guide, the Hangar, or Settings, while one is showing in place of a scene.
     private(set) var menuScreen: ScreenViewController?
     let menuMusic = MenuMusic()
 
@@ -251,7 +252,7 @@ class RootViewController: UIViewController {
     /// Replaces the whole screen as one unit: a snapshot of SpriteKit and UIKit together
     /// covers the swap, then fades away. Input, scanning, and VoiceOver announcements
     /// are held until the new screen is fully visible. A UIKit screen (Home, the guide,
-    /// Settings) is a child controller over an empty SpriteKit view.
+    /// the Hangar, Settings) is a child controller over an empty SpriteKit view.
     func present(_ screen: Screen, transition: ScreenTransition = .preferred()) {
         guard let skView = viewIfLoaded as? SKView, !isChangingScreen else { return }
         let scene = screen.scene
@@ -260,6 +261,7 @@ class RootViewController: UIViewController {
         switch screen {
         case .home: incoming = HomeViewController()
         case .guide: incoming = GuideViewController()
+        case .hangar: incoming = HangarViewController()
         case .settings: incoming = SettingsViewController()
         case .scene: incoming = nil
         }

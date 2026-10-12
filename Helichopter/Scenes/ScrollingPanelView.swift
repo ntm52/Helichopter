@@ -133,6 +133,9 @@ class ScrollingPanelView: UIView {
     /// True while a page covers the list; a rebuild reopens it.
     var isAdjusting: Bool { false }
 
+    /// Where VoiceOver goes once a rebuilt panel has faded in.
+    var announcementAfterRebuild: Any? { self }
+
     // MARK: - Switch scanning
 
     /// The label of the control the scanner is on, so a rebuilt panel can return to it.
@@ -456,7 +459,7 @@ class PanelScreenViewController<Panel: ScrollingPanelView>: ScreenViewController
             old.alpha = 0
         } completion: { _ in
             old.removeFromSuperview()
-            ScreenChangeAnnouncer.post(new)
+            ScreenChangeAnnouncer.post(new.announcementAfterRebuild)
         }
     }
 

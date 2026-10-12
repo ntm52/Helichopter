@@ -245,8 +245,8 @@ struct PresentationTests {
         }
     }
 
-    /// Home is one UIKit screen: one mascot, one title, Play, Settings, and How to Play
-    /// in scanning order, each labelled. Reduce Motion keeps the mascot still.
+    /// Home is one UIKit screen: one mascot, one title, Play, Hangar, Settings, and How to
+    /// Play in scanning order, each labelled. Reduce Motion keeps the mascot still.
     @Test func homeIsOneLabelledScreen() throws {
         let saved = HomeViewController.prefersReducedMotion
         defer { HomeViewController.prefersReducedMotion = saved }
@@ -260,9 +260,9 @@ struct PresentationTests {
             #expect(home.mascot.animationImages?.count == (reduceMotion ? nil : 60))
             #expect(home.mascot.image != nil)
             #expect(home.titleLabel.text == "Helichopter" && home.titleLabel.accessibilityTraits.contains(.header))
-            #expect(home.menu.buttons.map(\.currentTitle) == ["Play", "Settings", "How to Play"])
+            #expect(home.menu.buttons.map(\.currentTitle) == ["Play", "Hangar", "Settings", "How to Play"])
             #expect(home.menu.buttons.allSatisfy { !($0.accessibilityHint ?? "").isEmpty })
-            #expect(home.scanner.items.map(\.accessibilityScanLabel) == ["Play", "Settings", "How to Play"])
+            #expect(home.scanner.items.map(\.accessibilityScanLabel) == ["Play", "Hangar", "Settings", "How to Play"])
             #expect(home.view.accessibilityViewIsModal)
             #expect(home.announcement as? UILabel === home.titleLabel)
         }
