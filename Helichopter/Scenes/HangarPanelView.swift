@@ -86,6 +86,8 @@ final class HangarPanelView: ScrollingPanelView {
         btn.backgroundColor    = style.swatchBg
         btn.accessibilityLabel = theme.name
         btn.accessibilityHint  = "Menu theme"
+        // The button state too, so UI automation and Switch Control see the choice.
+        btn.isSelected = selected
         if selected { btn.accessibilityTraits.insert(.selected) }
 
         // A small picture of the theme: its background, title text, and a button chip.

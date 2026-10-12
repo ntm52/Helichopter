@@ -11,9 +11,8 @@ final class AccessibilityAuditTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         // Launch arguments override saved settings for this run only.
-        app.launchArguments += ["-onboarding_completed_v1", "NO", "-gs_noFailMode", "NO",
+        app.launchArguments += ["-gs_noFailMode", "NO",
                                 "-gs_scanningEnabled", "NO", "-gs_isSettingsLocked", "NO"]
-        app.launch()
     }
 
     /// Audits what is on screen now; any issue fails the test.
@@ -57,15 +56,26 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     func testEveryScreenPassesTheAudit() throws {
+        app.launchArguments += ["-onboarding_completed_v1", "NO", "-gs_selectedThemeID", "nightSky"]
+        app.launch()
         try audit("Guide, step 1")
         app.buttons["Next"].tap()
         try audit("Guide, step 2")
         app.buttons["Skip guide"].tap()
         try audit("Home")
 
+        app.buttons["Hangar"].tap()
+        XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5))
+        try audit("Hangar")
+        let classic = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Classic Helicopter. Equipped."))
+        XCTAssertEqual(classic.count, 1, "The Classic card is read as one element")
+        app.buttons["Back"].tap()
+
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5), "Back must be read as Back, without its arrow")
         try audit("Settings, top")
+        let pointer = app.buttons.matching(NSPredicate(format: "label == %@", "Menu Theme: Night Sky. Change it in the Hangar"))
+        var sawPointer = pointer.count == 1
         // A finger tap leaves a slider alone; only assistive technology opens its larger
         // buttons (covered by AssistiveTechTreeTests, since UI tests can only touch).
         let gap = app.sliders["Gap Size"]
@@ -76,7 +86,9 @@ final class AccessibilityAuditTests: XCTestCase {
         for part in ["middle", "lower", "bottom"] {
             drag(from: 0.85, to: 0.25)
             try auditScrolled("Settings, \(part)")
+            sawPointer = sawPointer || pointer.count == 1
         }
+        XCTAssertTrue(sawPointer, "Settings points to the Hangar for the menu theme")
         app.buttons["Acknowledgements"].tap()
         try audit("Acknowledgements")
         app.buttons["Done"].tap()
@@ -92,5 +104,23 @@ final class AccessibilityAuditTests: XCTestCase {
         app.buttons["Helicopter flight control"].tap()
         XCTAssertTrue(app.staticTexts["Round Over"].waitForExistence(timeout: 15))
         try audit("Round Over")
+    }
+
+    /// The Hangar rebuilds in each theme's colours when a card is chosen. The theme is
+    /// not set by a launch argument here: that would hide the choice the cards save.
+    func testHangarPassesTheAuditInEveryTheme() throws {
+        app.launchArguments += ["-onboarding_completed_v1", "YES"]
+        app.launch()
+        app.buttons["Hangar"].tap()
+        XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5))
+        for theme in ["Night Sky", "Parchment", "Neon Night", "Night Sky"] {
+            app.buttons[theme].tap()
+            let chosen = expectation(for: NSPredicate(format: "isSelected == true"), evaluatedWith: app.buttons[theme])
+            XCTAssertEqual(XCTWaiter.wait(for: [chosen], timeout: 5), .completed, "\(theme) card must be marked selected")
+            Thread.sleep(forTimeInterval: 0.5) // The rebuilt panel fades in.
+            try audit("Hangar, \(theme)")
+        }
+        app.buttons["Back"].tap()
+        XCTAssertTrue(app.buttons["Hangar"].waitForExistence(timeout: 5))
     }
 }
