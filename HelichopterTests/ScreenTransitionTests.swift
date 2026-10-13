@@ -36,7 +36,7 @@ struct ScreenTransitionTests {
 
         let storyboard = UIStoryboard(name: "Main", bundle: Bundle(for: RootViewController.self))
         let controller = try #require(storyboard.instantiateInitialViewController() as? RootViewController)
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let window = makeTestWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         window.rootViewController = controller
         window.isHidden = false
         defer { window.isHidden = true; (controller.view as? SKView)?.presentScene(nil) }

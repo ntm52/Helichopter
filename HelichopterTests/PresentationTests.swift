@@ -148,7 +148,7 @@ struct PresentationTests {
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
         let host = UIViewController()
         host.view = view
-        let window = UIWindow(frame: view.bounds)
+        let window = makeTestWindow(frame: view.bounds)
         window.rootViewController = host
         window.makeKeyAndVisible()
         defer { window.isHidden = true; view.presentScene(nil) }

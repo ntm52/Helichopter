@@ -270,7 +270,7 @@ struct HangarTests {
     // MARK: Leaving
 
     @Test func backReturnsHome() async throws {
-        try await withSettings {
+        await withSettings {
             let screen = hangarScreen()
             var shown: Screen?
             screen.navigate = { shown = $0 }
@@ -335,7 +335,7 @@ struct HangarTests {
                 let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
                 let panel = HangarPanelView(frame: CGRect(origin: .zero, size: size),
                                             theme: GameSettings.shared.selectedTheme, fontTraits: traits)
-                let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+                let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
                 let host = UIViewController()
                 host.view = panel
                 window.rootViewController = host
@@ -368,7 +368,7 @@ struct HangarTests {
     }
 
     @Test func standardTextShowsCardsSideBySide() async throws {
-        try await withSettings {
+        await withSettings {
             let traits = UITraitCollection(preferredContentSizeCategory: .large)
             let panel = HangarPanelView(frame: CGRect(x: 0, y: 0, width: 390, height: 844),
                                         theme: GameSettings.shared.selectedTheme, fontTraits: traits)

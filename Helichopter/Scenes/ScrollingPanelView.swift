@@ -123,6 +123,11 @@ class ScrollingPanelView: UIView {
         style = SettingsStyle(theme: theme)
         super.init(frame: frame)
         buildUI()
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (panel: ScrollingPanelView, previous: UITraitCollection) in
+            if (panel.fontTraits ?? previous).preferredContentSizeCategory != panel.traitCollection.preferredContentSizeCategory {
+                panel.onThemeChanged?()
+            }
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -201,13 +206,6 @@ class ScrollingPanelView: UIView {
             toggle.sendActions(for: .valueChanged)
         } else {
             control.sendActions(for: .touchUpInside)
-        }
-    }
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        if (fontTraits ?? previousTraitCollection)?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory {
-            onThemeChanged?()
         }
     }
 
@@ -359,7 +357,7 @@ extension ScrollingPanelView {
         btn.titleLabel?.font = scaledFont(17, weight: .semibold)
         btn.titleLabel?.adjustsFontForContentSizeCategory = true
         btn.titleLabel?.numberOfLines = 0
-        btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8)
+        btn.padding = UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8)
         btn.setTitleColor(color, for: .normal)
         btn.addTarget(target, action: action, for: .touchUpInside)
         return btn

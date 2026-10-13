@@ -23,7 +23,7 @@ struct DynamicTypeTests {
             let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
             let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size),
                                             theme: GameSettings.shared.selectedTheme, fontTraits: traits)
-            let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+            let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
             let host = UIViewController()
             host.view = panel
             window.rootViewController = host
@@ -78,7 +78,7 @@ struct DynamicTypeTests {
         defer { guideDefaults.removePersistentDomain(forName: suite) }
         for (name, screen) in [("Home", HomeViewController() as MenuViewController), ("Guide", GuideViewController(defaults: guideDefaults))] {
             screen.navigate = { _ in }
-            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+            let window = makeTestWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
             window.rootViewController = screen
             window.makeKeyAndVisible()
             defer { window.isHidden = true }

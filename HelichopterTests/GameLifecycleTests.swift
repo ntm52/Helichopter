@@ -295,7 +295,7 @@ struct GameLifecycleTests {
         let saved = HomeViewController.prefersReducedMotion
         HomeViewController.prefersReducedMotion = { false }
         defer { HomeViewController.prefersReducedMotion = saved }
-        try withSettings {
+        withSettings {
             for size in [CGSize(width: 390, height: 844), CGSize(width: 1024, height: 1366)] {
                 let home = HomeViewController()
                 home.view.frame = CGRect(origin: .zero, size: size)
@@ -417,7 +417,7 @@ struct GameLifecycleTests {
             let overlay = SceneTextOverlay(frame: view.bounds)
             view.addSubview(overlay)
             overlay.refresh(in: view)
-            func labels(_ v: UIView) -> [UILabel] { (v as? UILabel).map { [$0] } ?? v.subviews.flatMap(labels) }
+            @MainActor func labels(_ v: UIView) -> [UILabel] { (v as? UILabel).map { [$0] } ?? v.subviews.flatMap(labels) }
             let scores = labels(overlay).filter { $0.text?.hasPrefix("Score") == true || $0.text?.hasPrefix("Best") == true }
             #expect(scores.count == 2)
             #expect(scores.allSatisfy { $0.isHidden })
@@ -627,8 +627,8 @@ struct GameLifecycleTests {
             view.addSubview(overlay)
             overlay.refresh(in: view)
             // No refresh: the banner must follow the scene's events alone.
-            func bannerVisible() -> Bool {
-                func find(_ v: UIView) -> UILabel? {
+            @MainActor func bannerVisible() -> Bool {
+                @MainActor func find(_ v: UIView) -> UILabel? {
                     (v as? UILabel).flatMap { $0.text == "New high score!" ? $0 : nil } ?? v.subviews.lazy.compactMap(find).first
                 }
                 return find(overlay).map { !$0.isHidden } ?? false

@@ -80,7 +80,7 @@ struct OnboardingTests {
             let guide = GuideViewController(defaults: defaults)
             guide.navigate = { _ in }
             guide.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-            let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+            let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
             window.rootViewController = guide
             window.makeKeyAndVisible()
             defer { window.isHidden = true }

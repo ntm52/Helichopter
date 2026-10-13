@@ -24,10 +24,14 @@ final class SceneTextOverlay: UIView {
     // Stack constraints survive removing the scroll view, so track them per rebuild.
     private var layoutConstraints: [NSLayoutConstraint] = []
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        hudStack?.axis = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (overlay: SceneTextOverlay, _: UITraitCollection) in
+            overlay.hudStack?.axis = overlay.traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
+        }
     }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
@@ -143,7 +147,7 @@ final class SceneTextOverlay: UIView {
         pause.accessibilityHint = "Pauses the game"
         pause.setTitleColor(theme.buttonTextColor, for: .normal)
         pause.backgroundColor = theme.buttonTintColor
-        pause.contentEdgeInsets = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
+        pause.padding = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
         pause.layer.cornerRadius = 12
         pause.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         pause.addTarget(self, action: #selector(pauseTapped), for: .touchUpInside)
@@ -244,16 +248,39 @@ extension SceneTextOverlay: GameSceneHUDDelegate {
 
 /// UIButton's default intrinsic height does not account for wrapped titles.
 class DynamicTextButton: UIButton {
+    /// Space around the title. Replaces the deprecated `contentEdgeInsets` without
+    /// moving to `UIButton.Configuration`, which would change fonts and colours.
+    var padding: UIEdgeInsets = .zero {
+        didSet {
+            invalidateIntrinsicContentSize()
+            setNeedsLayout()
+        }
+    }
+
     override var intrinsicContentSize: CGSize {
         let base = super.intrinsicContentSize
-        guard let label = titleLabel, bounds.width > 0 else { return base }
-        let width = max(1, bounds.width - contentEdgeInsets.left - contentEdgeInsets.right)
+        let paddedWidth = base.width + padding.left + padding.right
+        guard let label = titleLabel, bounds.width > 0 else {
+            return CGSize(width: paddedWidth, height: base.height + padding.top + padding.bottom)
+        }
+        let width = max(1, bounds.width - padding.left - padding.right)
         let height = label.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-        return CGSize(width: base.width, height: max(44, height + contentEdgeInsets.top + contentEdgeInsets.bottom))
+        return CGSize(width: paddedWidth, height: max(44, height + padding.top + padding.bottom))
     }
     private var previousWidth: CGFloat = 0
     override func layoutSubviews() {
         super.layoutSubviews()
+        // Place the title as UIButton placed it inside contentEdgeInsets: whole-point size,
+        // centred, origin on the nearest device pixel.
+        if let label = titleLabel, padding != .zero {
+            let area = bounds.inset(by: padding)
+            let fit = label.sizeThatFits(CGSize(width: area.width, height: .greatestFiniteMagnitude))
+            let size = CGSize(width: min(fit.width, area.width).rounded(.up), height: fit.height.rounded(.up))
+            let scale = max(1, traitCollection.displayScale)
+            func pixel(_ value: CGFloat) -> CGFloat { (value * scale).rounded() / scale }
+            label.frame = CGRect(x: pixel(area.midX - size.width / 2), y: pixel(area.midY - size.height / 2),
+                                 width: size.width, height: size.height)
+        }
         if previousWidth != bounds.width {
             previousWidth = bounds.width
             invalidateIntrinsicContentSize()

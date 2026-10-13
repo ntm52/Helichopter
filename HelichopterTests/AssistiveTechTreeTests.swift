@@ -34,7 +34,7 @@ struct AssistiveTechTreeTests {
         GameSettings.shared.isSettingsLocked = locked
         let size = CGSize(width: 390, height: 844)
         let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size), theme: GameSettings.shared.selectedTheme)
-        let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
         let host = UIViewController()
         host.view = panel
         window.rootViewController = host
@@ -145,7 +145,7 @@ struct AssistiveTechTreeTests {
     /// rebuild must replace the panel, not leave fading panels that rebuild again.
     @Test func rapidTextSizeChangesLeaveOneLivePanel() throws {
         let settings = SettingsViewController()
-        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let window = makeTestWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         window.rootViewController = settings
         window.makeKeyAndVisible()
         defer { window.isHidden = true }

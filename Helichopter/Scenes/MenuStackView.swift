@@ -134,7 +134,7 @@ final class MenuButton: DynamicTextButton {
         titleLabel?.textAlignment = .center
         setTitleColor(theme.buttonTextColor, for: .normal)
         backgroundColor = theme.buttonTintColor
-        contentEdgeInsets = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
+        padding = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
         layer.cornerRadius = 12
         layer.borderColor = theme.titleTextColor.cgColor
         heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true

@@ -52,7 +52,7 @@ extension SettingsPanelView {
             btn.titleLabel?.font = scaledFont(15, weight: .semibold)
             btn.titleLabel?.adjustsFontForContentSizeCategory = true
             btn.titleLabel?.numberOfLines = 0
-            btn.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+            btn.padding = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
             // Theme text, not white: white on the pale Parchment tint measured under 2:1.
             btn.setTitleColor(style.text, for: .normal)
             btn.backgroundColor    = color.withAlphaComponent(0.30)
