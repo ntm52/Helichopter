@@ -35,7 +35,7 @@ Do a second pass of this list after Plan 01 Stage B, since every menu will have 
 
 - [ ] **Phase 1.** No purchases yet. **Steps 1–2 ship in 2.1** (owner decision 2026-10-12; 2.1 not yet submitted); step 3 ships in 2.2.
   - [x] Step 1 (2.1): Hangar screen on Home; Menu Theme moves there from Settings (Settings keeps a pointer button). Shared panel base extracted from `SettingsPanelView` first. Done 2026-10-12 (branch `hangar-step1`, merged into `master`, not pushed).
-  - [ ] Step 2 (2.1): skin catalog and selected-skin settings with only Classic; hard-coded art names removed; Reset Settings resets theme and skins. Then redo 2.1 release prep: What's New, all screenshot sets, the `docs-support-2.1` branch, `Tools/release_check.sh`.
+  - [x] Step 2 (2.1): skin catalog and selected-skin settings with only Classic; hard-coded art names removed; Reset Settings resets theme and skins. Done 2026-10-12 (branch `hangar-step2`). 2.1 release prep redone the same day: What's New, all screenshot sets, the `docs-support-2.1` branch (`dea8685`), `Tools/release_check.sh`.
   - [ ] Step 3 (2.2): a free patterned pipe set and one free extra helicopter; contrast tests; ship 2.2.
 - [ ] **Phase 2:** StoreKit 2 one-time purchases, Restore, Ask to Buy, refunds. Includes App Store Connect business setup, EU trader status, and privacy text updates.
 - [ ] **Phase 3 (optional):** more skin sets; patterned pipes that also serve players who cannot rely on colour.

@@ -76,9 +76,3 @@ enum Difficulty: Double {
 enum PlayableCharacter: String {
     case helicopter = "helicopter"
 }
-
-extension PlayableCharacter {
-    func getAssetName() -> String {
-        return "Helicopter Player"
-    }
-}

@@ -1,6 +1,6 @@
 # Plan 02 — Cosmetic skins, Hangar screen, and in-app purchases
 
-**Status:** Phase 1 step 1 done 2026-10-12. Written 2026-10-08; Phase 1 revised 2026-10-12 (themes move to the Hangar; three steps; steps 1–2 ship in 2.1; no "more on the way" sentences).
+**Status:** Phase 1 steps 1 and 2 done 2026-10-12. Written 2026-10-08; Phase 1 revised 2026-10-12 (themes move to the Hangar; three steps; steps 1–2 ship in 2.1; no "more on the way" sentences).
 **Goal:** Players can change how the helicopter and pipes look. Some skins are free; others are one-time purchases. Purchases are **cosmetic only**.
 **Depends on:** [Plan 01](01_SINGLE_LAYER_UI.md) Stage B (or at least Stage A). The Hangar must be a UIKit screen built on the new pattern, not another `.sks`-backed scene.
 
@@ -50,12 +50,12 @@ Revised 2026-10-12: the Hangar also takes over the **menu theme** from Settings.
 - Tests to update: `GameLifecycleTests` uses "Menu Theme" in the Settings label list, `settingsSwitchPreservesFocusAcrossThemePresetAndLockRebuilds`, and the segmented-scanner test near line 880; move the theme parts to new Hangar tests. Add: Home item order; theme card selection persists and rebuilds with focus kept; the lock disables Hangar items; the scanner reaches every Hangar control in Timed and Step modes; Back returns Home. Add the Hangar to the `HelichopterUITests` audit walk.
 - Store screenshots: Home now has four buttons, and screenshot 4 shows themes in Settings. Re-capture all three sets for 2.1 after step 2 (move the theme shot to the Hangar).
 
-#### Step 2 — Skin plumbing with only Classic (one session, no new art)
+#### Step 2 — Skin plumbing with only Classic (one session, no new art) — done 2026-10-12
 
 - `Utils/Cosmetics.swift` with the data model below. `CosmeticsCatalog.all` holds `heli.classic` and `pipe.classic`.
 - `GameSettings.selectedHelicopterSkinID` / `selectedPipeSkinID` (`gs_` keys, unknown or unowned IDs fall back to Classic).
 - Replace the hard-coded art names (six places today): `"Helicopter Player"` in `HomeViewController.swift` (twice), `UserDefaults.swift`, and `HangarPanelView.swift` (the Classic card picture), and `pipe-yellow` / `cap-yellow` in `PipeFactory.swift` (twice) and `pipe-yellow` in `HangarPanelView.swift`.
-- Classic cards become real buttons ("Classic Helicopter. Equipped."), so step 3 only adds catalog entries and art.
+- Classic cards become real buttons, so step 3 only adds catalog entries and art. As built: the label is the name alone ("Classic Helicopter", so Voice Control users say "Tap Classic Helicopter"), "Equipped" is the accessibility value and the `.selected` trait, and `spokenDescription` is the hint, so VoiceOver reads "Classic Helicopter, Equipped, selected, button" and then the description.
 - A Hangar preview at the top (the equipped helicopter between two equipped pipes in the current theme and palette, static under Reduce Motion) is optional here; add it once there is more than one item to compare.
 
 #### Step 3 — First real new items, then release 2.2 (after 2.1)

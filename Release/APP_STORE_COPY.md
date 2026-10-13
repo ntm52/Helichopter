@@ -39,6 +39,8 @@ Helichopter works offline without an account, ads, or in-app purchases. Settings
 
 **What's New (2.1, ready to paste; owner to confirm after device checks):**
 
+New Hangar on the Home screen: choose the menu theme there, with a preview of each one. The menu theme has moved from Settings, which now has a button that opens the Hangar. When Settings is locked, the Hangar is locked too.
+
 Rebuilt menus: Home, Settings, Pause, and Round Over now fade as one whole screen, so two menus never appear at the same time. Taps and switch presses wait until the new screen is ready. With Reduce Motion on, the fade is shorter.
 
 Accessibility improvements:
@@ -65,7 +67,7 @@ No login, purchase, server connection, or special account is needed. The first-r
 2. For keyboard-emulating switch input, Space or Enter selects. In Settings → Switch Access, Auto-Scan Menus starts scanning when each menu opens; Menu Scan Mode → Step with Switch 2 uses secondary input (2) to advance and primary input to select. Sliders open Decrease/Increase/Done choices.
 3. During flight, hold the primary keyboard/controller switch for 3 seconds to pause. Release before selecting Resume or Home. The delay is adjustable from 2–10 seconds.
 4. With VoiceOver enabled, focus Helicopter flight control. Double-tap flaps, toggles hover, nudges up, or toggles rising according to the selected flight scheme. The Move down custom action provides downward control where applicable. Pause or accessibility escape opens the pause menu. Guidance is periodic, not continuous.
-5. Settings → Reset Settings → Restore Defaults restores Standard difficulty, default controls/theme/audio, while retaining scores and guide completion. Cancel leaves settings intact. Lock Settings must be off to reset.
+5. Settings → Reset Settings → Restore Defaults restores Standard difficulty, default controls/audio, the menu theme, and the Classic helicopter and pipes, while retaining scores and guide completion. Cancel leaves settings intact. Lock Settings must be off to reset.
 
 ## Accessibility statement
 
@@ -75,7 +77,7 @@ These features are implemented. Full sound-only play and physical assistive-devi
 
 ## Screenshot capture brief
 
-Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. The 2.1 screenshots (captured 2026-10-12, replacing 2.0's, which are in git history) are in `Release/Screenshots/`. Recapture with `StoreScreenshotTests` (see `CLAUDE.md`). In App Store Connect, replace all three sets (6.3", 6.9", iPad 13") on the 2.1 version.
+Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, Home, the Hangar (menu themes), control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. The 2.1 screenshots (recaptured 2026-10-12 with the Hangar, replacing 2.0's, which are in git history) are in `Release/Screenshots/`. Recapture with `StoreScreenshotTests` (see `CLAUDE.md`). In App Store Connect, replace all three sets (6.3", 6.9", iPad 13") on the 2.1 version.
 
 ## Account fields still needed
 

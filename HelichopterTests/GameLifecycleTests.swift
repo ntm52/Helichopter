@@ -230,8 +230,9 @@ struct GameLifecycleTests {
                     heli.removeAllActions()
                     heli.physicsBody?.isDynamic = false
                     // Include actual sky, theme overrides, shaded art and both cap directions.
+                    let skin = GameSettings.shared.selectedPipeSkin
                     for side in [false, true] {
-                        let pipe = try #require(PipeNode(textures: ("pipe-yellow", "cap-yellow"),
+                        let pipe = try #require(PipeNode(textures: (skin.pipeTextureName, skin.capTextureName),
                             of: CGSize(width: 110, height: 200), side: side,
                             tintColor: palette.pipeColor, blendFactor: palette.colorBlendFactor))
                         pipe.position = CGPoint(x: scene.frame.minX + scene.size.width * 0.7,
@@ -275,7 +276,14 @@ struct GameLifecycleTests {
             for suffix in ["", " iPad"] {
                 #expect(SKScene(fileNamed: "GameScene" + suffix) != nil)
             }
-            let frames = try SKTextureAtlas.upload(named: "Helicopter Player") { _, index in "r_player\(index)" }
+            for skin in CosmeticsCatalog.items(of: .helicopter) {
+                let frames = try SKTextureAtlas.upload(named: skin.assetName) { _, index in Cosmetic.helicopterFrameName(index) }
+                #expect(frames.count == Cosmetic.helicopterFrameCount)
+                #expect(frames.allSatisfy { $0.size() == CGSize(width: 200, height: 200) })
+            }
+            let frames = try SKTextureAtlas.upload(named: GameSettings.shared.selectedHelicopterSkin.assetName) { _, index in
+                Cosmetic.helicopterFrameName(index)
+            }
             #expect(frames.count == 60)
             #expect(frames.allSatisfy { $0.size() == CGSize(width: 200, height: 200) })
         }

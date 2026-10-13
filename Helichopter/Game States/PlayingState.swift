@@ -106,7 +106,7 @@ class PlayingState: GKState {
 
     private func preparePlayer(for scene: SKScene) {
         let character = PlayableCharacter.helicopter
-        let assetName = character.getAssetName()
+        let assetName = GameSettings.shared.selectedHelicopterSkin.assetName
 
         adapter.playerCharacter = HelicopterNode(
             animationTimeInterval: animationTimeInterval,
