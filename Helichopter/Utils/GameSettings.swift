@@ -189,7 +189,6 @@ final class GameSettings {
         let gapMax: CGFloat
         let pipeSpawnInterval: TimeInterval
         let pipeMoveDuration: TimeInterval
-        let scrollSpeed: Double
         let gravity: CGFloat            // negative value, applied to physicsWorld
         let flapStrength: CGFloat
         let terminalVelocity: CGFloat
@@ -200,7 +199,7 @@ final class GameSettings {
     static let gentlePreset = Preset(
         gapMin: 350, gapMax: 600,
         pipeSpawnInterval: 5.5, pipeMoveDuration: 10.0,
-        scrollSpeed: 60.0, gravity: -3.5,
+        gravity: -3.5,
         flapStrength: 35000, terminalVelocity: 300,
         hitboxFraction: 0.6, pipeHeightVariance: 0.5
     )
@@ -208,7 +207,7 @@ final class GameSettings {
     static let standardPreset = Preset(
         gapMin: 240, gapMax: 380,
         pipeSpawnInterval: 3.5, pipeMoveDuration: 7.0,
-        scrollSpeed: 100.0, gravity: -5.0,
+        gravity: -5.0,
         flapStrength: 50000, terminalVelocity: 480,
         hitboxFraction: 0.8, pipeHeightVariance: 1.0
     )
@@ -216,7 +215,7 @@ final class GameSettings {
     static let challengePreset = Preset(
         gapMin: 180, gapMax: 280,
         pipeSpawnInterval: 2.5, pipeMoveDuration: 4.0,
-        scrollSpeed: 140.0, gravity: -6.5,
+        gravity: -6.5,
         flapStrength: 60000, terminalVelocity: 600,
         hitboxFraction: 0.95, pipeHeightVariance: 1.0
     )
@@ -228,7 +227,6 @@ final class GameSettings {
         case gapMax             = "gs_gapMax"
         case pipeSpawnInterval  = "gs_pipeSpawnInterval"
         case pipeMoveDuration   = "gs_pipeMoveDuration"
-        case scrollSpeed        = "gs_scrollSpeed"
         case gravity            = "gs_gravity"
         case flapStrength       = "gs_flapStrength"
         case terminalVelocity   = "gs_terminalVelocity"
@@ -258,7 +256,6 @@ final class GameSettings {
         case .gapMax: return (100...600, 380)
         case .pipeSpawnInterval: return (1...15, 3.5)
         case .pipeMoveDuration: return (2...20, 7)
-        case .scrollSpeed: return (0...200, 100)
         case .gravity: return (-15 ... -0.5, -5)
         case .flapStrength: return (1000...100000, 50000)
         case .terminalVelocity: return (50...1000, 480)
@@ -336,11 +333,6 @@ final class GameSettings {
     var pipeMoveDuration: TimeInterval {
         get { read(.pipeMoveDuration) }
         set { write(newValue, for: .pipeMoveDuration) }
-    }
-
-    var scrollSpeed: Double {
-        get { read(.scrollSpeed) }
-        set { write(newValue, for: .scrollSpeed) }
     }
 
     var gravity: CGFloat {
@@ -522,8 +514,8 @@ final class GameSettings {
         set { write(newValue, for: .invulnerabilityDuration) }
     }
 
-    /// When true, the Settings button is disabled so the active configuration can't be changed
-    /// accidentally mid-session. Useful in classroom / caregiver setups.
+    /// When true, Settings and Hangar controls are disabled so the active configuration can't be
+    /// changed accidentally mid-session. Useful in classroom / caregiver setups.
     var isSettingsLocked: Bool {
         get { defaults.bool(forKey: Key.isSettingsLocked.rawValue) }
         set { defaults.set(newValue, forKey: Key.isSettingsLocked.rawValue) }
@@ -536,7 +528,6 @@ final class GameSettings {
         gapMax             = preset.gapMax
         pipeSpawnInterval  = preset.pipeSpawnInterval
         pipeMoveDuration   = preset.pipeMoveDuration
-        scrollSpeed        = preset.scrollSpeed
         gravity            = preset.gravity
         flapStrength       = preset.flapStrength
         terminalVelocity   = preset.terminalVelocity

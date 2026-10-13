@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A90192FB21F1BDF40020C612 /* PhysicsContactable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90192FA21F1BDF40020C612 /* PhysicsContactable.swift */; };
 		A903943420AD94F000376CC3 /* UserDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = A903943320AD94F000376CC3 /* UserDefaults.swift */; };
 		A92E72E2209D815B0015F647 /* PlayingState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92E72E1209D815B0015F647 /* PlayingState.swift */; };
 		A92E72E4209D81820015F647 /* GameOverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A92E72E3209D81820015F647 /* GameOverState.swift */; };
@@ -33,9 +32,7 @@
 		A9ACB99F209A0F4D00966991 /* GameSceneAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9ACB99E209A0F4D00966991 /* GameSceneAdapter.swift */; };
 		A9B9C729209EE31C0045548D /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B9C728209EE31C0045548D /* HomeViewController.swift */; };
 		A9B9F83620B449EC00FC0BDA /* Playable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B9F83520B449EC00FC0BDA /* Playable.swift */; };
-		A9CC5C3720A0216500040E61 /* ControlInputDirection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9CC5C3620A0216500040E61 /* ControlInputDirection.swift */; };
 		A9D4CFD9209AF53E006461AF /* SKTextureAtlas+FrameUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFD8209AF53E006461AF /* SKTextureAtlas+FrameUploader.swift */; };
-		A9D4CFDB209AFA06006461AF /* GameSceneProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFDA209AFA06006461AF /* GameSceneProtocol.swift */; };
 		A9D4CFDD209B3A50006461AF /* PipeNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFDC209B3A4F006461AF /* PipeNode.swift */; };
 		A9D4CFE0209B4040006461AF /* PipeFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D4CFDF209B4040006461AF /* PipeFactory.swift */; };
 		A9EC756420A6D3E9007C42EC /* SettingsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EC756320A6D3E9007C42EC /* SettingsPanelView.swift */; };
@@ -75,7 +72,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A90192FA21F1BDF40020C612 /* PhysicsContactable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicsContactable.swift; sourceTree = "<group>"; };
 		A903943320AD94F000376CC3 /* UserDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaults.swift; sourceTree = "<group>"; };
 		A92E72E1209D815B0015F647 /* PlayingState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayingState.swift; sourceTree = "<group>"; };
 		A92E72E3209D81820015F647 /* GameOverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameOverState.swift; sourceTree = "<group>"; };
@@ -103,9 +99,7 @@
 		A9ACB99E209A0F4D00966991 /* GameSceneAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneAdapter.swift; sourceTree = "<group>"; };
 		A9B9C728209EE31C0045548D /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
 		A9B9F83520B449EC00FC0BDA /* Playable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playable.swift; sourceTree = "<group>"; };
-		A9CC5C3620A0216500040E61 /* ControlInputDirection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlInputDirection.swift; sourceTree = "<group>"; };
 		A9D4CFD8209AF53E006461AF /* SKTextureAtlas+FrameUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SKTextureAtlas+FrameUploader.swift"; sourceTree = "<group>"; };
-		A9D4CFDA209AFA06006461AF /* GameSceneProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSceneProtocol.swift; sourceTree = "<group>"; };
 		A9D4CFDC209B3A4F006461AF /* PipeNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipeNode.swift; sourceTree = "<group>"; };
 		A9D4CFDF209B4040006461AF /* PipeFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipeFactory.swift; sourceTree = "<group>"; };
 		A9EC756320A6D3E9007C42EC /* SettingsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanelView.swift; sourceTree = "<group>"; };
@@ -266,9 +260,7 @@
 			children = (
 				A9ACB98A2099F0D300966991 /* Updatable.swift */,
 				A9ACB98C2099F0FC00966991 /* Touchable.swift */,
-				A9D4CFDA209AFA06006461AF /* GameSceneProtocol.swift */,
 				A9B9F83520B449EC00FC0BDA /* Playable.swift */,
-				A90192FA21F1BDF40020C612 /* PhysicsContactable.swift */,
 			);
 			path = Protocols;
 			sourceTree = "<group>";
@@ -371,7 +363,6 @@
 		A9CC5C3520A0215C00040E61 /* Control */ = {
 			isa = PBXGroup;
 			children = (
-				A9CC5C3620A0216500040E61 /* ControlInputDirection.swift */,
 				D8986E4C3047DADB00B4D8C4 /* FocusScanner.swift */,
 			);
 			path = Control;
@@ -575,10 +566,7 @@
 				D10000000000000000000001 /* SceneTextOverlay.swift in Sources */,
 				A9ACB9232099A1F200966991 /* GameScene.swift in Sources */,
 				A9ACB98D2099F0FC00966991 /* Touchable.swift in Sources */,
-				A90192FB21F1BDF40020C612 /* PhysicsContactable.swift in Sources */,
 				A9D4CFDD209B3A50006461AF /* PipeNode.swift in Sources */,
-				A9CC5C3720A0216500040E61 /* ControlInputDirection.swift in Sources */,
-				A9D4CFDB209AFA06006461AF /* GameSceneProtocol.swift in Sources */,
 				A9ACB98B2099F0D300966991 /* Updatable.swift in Sources */,
 				A92E72E6209D818B0015F647 /* PausedState.swift in Sources */,
 				A9ACB9252099A1F200966991 /* RootViewController.swift in Sources */,

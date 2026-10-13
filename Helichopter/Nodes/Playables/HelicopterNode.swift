@@ -1,7 +1,7 @@
 import SpriteKit
 import UIKit
 
-class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
+class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
     // MARK: - Protocol conformance
 
@@ -27,10 +27,6 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
 
     var shouldAcceptTouches: Bool = true {
         didSet { isUserInteractionEnabled = shouldAcceptTouches }
-    }
-
-    var shouldEnablePhysics: Bool = true {
-        didSet { physicsBody?.collisionBitMask = shouldEnablePhysics ? collisionBitMask : 0 }
     }
 
     /// In No-Fail mode pipes only report contact and never push back: a solid pipe corner

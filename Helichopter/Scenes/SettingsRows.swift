@@ -264,7 +264,7 @@ extension SettingsPanelView {
         for (i, palette) in GameSettings.allPalettes.enumerated() {
             let swatch = makeSwatch(palette, selected: palette.id == currentID, index: i)
             hs.addArrangedSubview(swatch)
-            paletteViews.append((swatch, palette.id))
+            paletteViews.append(swatch)
         }
 
         NSLayoutConstraint.activate([
@@ -341,7 +341,7 @@ extension SettingsPanelView {
     private func selectPalette(atIndex index: Int) {
         guard index < GameSettings.allPalettes.count else { return }
         GameSettings.shared.selectedPaletteID = GameSettings.allPalettes[index].id
-        for (i, (view, _)) in paletteViews.enumerated() {
+        for (i, view) in paletteViews.enumerated() {
             let chosen = (i == index)
             if chosen { view.accessibilityTraits.insert(.selected) }
             else { view.accessibilityTraits.remove(.selected) }

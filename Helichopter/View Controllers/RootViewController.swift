@@ -177,7 +177,6 @@ class RootViewController: UIViewController {
         sceneTextOverlay.refresh(in: skView)
     }
 
-
     func suspendInput() {
         inputSuspended = true
         ((viewIfLoaded as? SKView)?.scene as? GameScene)?.pauseForInterruption()
@@ -209,8 +208,6 @@ class RootViewController: UIViewController {
     }
 
     override var canBecomeFirstResponder: Bool { true }
-
-    override var shouldAutorotate: Bool { true }
 
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         UIDevice.current.userInterfaceIdiom == .pad ? .allButUpsideDown : .portrait

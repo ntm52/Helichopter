@@ -23,13 +23,6 @@ import Foundation
         #expect(gs.pipeSpawnInterval == 4.75)
     }
 
-    @Test func scrollSpeedRoundTrip() {
-        let saved = gs.scrollSpeed
-        defer { gs.scrollSpeed = saved }
-        gs.scrollSpeed = 123.0
-        #expect(gs.scrollSpeed == 123.0)
-    }
-
     @Test func gravityRoundTrip() {
         let saved = gs.gravity
         defer { gs.gravity = saved }
@@ -131,7 +124,6 @@ import Foundation
         #expect(gs.gapMax             == p.gapMax)
         #expect(gs.pipeSpawnInterval  == p.pipeSpawnInterval)
         #expect(gs.pipeMoveDuration   == p.pipeMoveDuration)
-        #expect(gs.scrollSpeed        == p.scrollSpeed)
         #expect(gs.gravity            == p.gravity)
         #expect(gs.flapStrength       == p.flapStrength)
         #expect(gs.terminalVelocity   == p.terminalVelocity)
@@ -145,7 +137,6 @@ import Foundation
         defer { restorePresetValues(saved) }
         gs.applyStandard()
         #expect(gs.gapMin      == p.gapMin)
-        #expect(gs.scrollSpeed == p.scrollSpeed)
         #expect(gs.gravity     == p.gravity)
     }
 
@@ -299,14 +290,14 @@ import Foundation
     private typealias PresetSnapshot = (
         gapMin: CGFloat, gapMax: CGFloat,
         pipeSpawnInterval: TimeInterval, pipeMoveDuration: TimeInterval,
-        scrollSpeed: Double, gravity: CGFloat,
+        gravity: CGFloat,
         flapStrength: CGFloat, terminalVelocity: CGFloat,
         hitboxFraction: CGFloat, pipeHeightVariance: CGFloat
     )
 
     private func capturePresetValues() -> PresetSnapshot {
         (gs.gapMin, gs.gapMax, gs.pipeSpawnInterval, gs.pipeMoveDuration,
-         gs.scrollSpeed, gs.gravity, gs.flapStrength, gs.terminalVelocity,
+         gs.gravity, gs.flapStrength, gs.terminalVelocity,
          gs.hitboxFraction, gs.pipeHeightVariance)
     }
 
@@ -315,7 +306,6 @@ import Foundation
         gs.gapMax             = s.gapMax
         gs.pipeSpawnInterval  = s.pipeSpawnInterval
         gs.pipeMoveDuration   = s.pipeMoveDuration
-        gs.scrollSpeed        = s.scrollSpeed
         gs.gravity            = s.gravity
         gs.flapStrength       = s.flapStrength
         gs.terminalVelocity   = s.terminalVelocity

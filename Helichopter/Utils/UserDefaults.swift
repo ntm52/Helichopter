@@ -20,17 +20,6 @@ extension UserDefaults {
         set(bool, forKey: setting.rawValue)
     }
     
-    func playableCharacter(for setting: Setting) -> PlayableCharacter? {
-        guard let rawPlayableCharacter = self.string(forKey: setting.rawValue) else {
-            return nil
-        }
-        return PlayableCharacter(rawValue: rawPlayableCharacter)
-    }
-    
-    func set(_ playableCharacter: PlayableCharacter, for setting: Setting) {
-        set(playableCharacter.rawValue, forKey: setting.rawValue)
-    }
-    
     func set(difficultyLevel level: Difficulty) {
         set(level.rawValue, forKey: Setting.difficulty.rawValue)
     }
@@ -41,7 +30,6 @@ extension UserDefaults {
     }
 }
 
-
 enum Setting: String {
 
     // MARK: - Cases
@@ -50,7 +38,6 @@ enum Setting: String {
     case lastScore
     case isSoundEffectsOn
     case isMusicOn
-    case pipeDistance
     case difficulty
     
     // MARK: - Methods
@@ -61,8 +48,7 @@ enum Setting: String {
             Setting.lastScore.rawValue: 0,
             Setting.isSoundEffectsOn.rawValue: true,
             Setting.isMusicOn.rawValue: true,
-            Setting.difficulty.rawValue: Difficulty.medium.rawValue,
-            Setting.pipeDistance.rawValue: true
+            Setting.difficulty.rawValue: Difficulty.medium.rawValue
         ])
     }
 }
@@ -71,8 +57,4 @@ enum Difficulty: Double {
     case easy = 5.5
     case medium = 3.5
     case hard = 2.5
-}
-
-enum PlayableCharacter: String {
-    case helicopter = "helicopter"
 }

@@ -1,7 +1,7 @@
 import SpriteKit
 import GameplayKit
 
-class GameSceneAdapter: NSObject, GameSceneProtocol {
+class GameSceneAdapter: NSObject {
 
     // MARK: - Properties
 
@@ -61,7 +61,7 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     private(set) var scoreSound = SKAction.playSoundFileNamed("Score.caf", waitForCompletion: false)
     private(set) var hitSound = SKAction.playSoundFileNamed("Dead.caf", waitForCompletion: false)
 
-    typealias PlayableCharacter = (PhysicsContactable & Updatable & Touchable & Playable & SKNode)
+    typealias PlayableCharacter = (Updatable & Touchable & Playable & SKNode)
     var playerCharacter: PlayableCharacter?
 
     private(set) lazy var menuAudio: SKAudioNode = {
@@ -77,8 +77,6 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
         audioNode.name = "playing audio"
         return audioNode
     }()
-
-    // MARK: - Conformance to GameSceneProtocol
 
     weak var scene: SKScene?
     var stateMachine: GKStateMachine?
@@ -98,7 +96,7 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
 
     // MARK: - Initializers
 
-    required init?(with scene: SKScene) {
+    init?(with scene: SKScene) {
         self.scene = scene
 
         guard let scene = self.scene else {
@@ -113,11 +111,6 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     }
 
     deinit { celebrationTimer?.invalidate() }
-
-    convenience init?(with scene: SKScene, stateMachine: GKStateMachine) {
-        self.init(with: scene)
-        self.stateMachine = stateMachine
-    }
 
     // MARK: - Helpers
 
@@ -159,18 +152,11 @@ class GameSceneAdapter: NSObject, GameSceneProtocol {
     }
 
     func removePipes() {
-        var nodes = [SKNode]()
-
-        scene?.children.forEach({ node in
-            let nodeName = node.name
-            if let doesContainNodeName = nodeName?.contains("pipe"), doesContainNodeName { nodes += [node] }
-        })
-        nodes.forEach { node in
+        scene?.children.filter { $0.name?.contains("pipe") == true }.forEach { node in
             node.removeAllActions()
             node.removeAllChildren()
             node.removeFromParent()
         }
-        nodes.removeAll()
     }
 
     private func prepareWorld(for scene: SKScene) {

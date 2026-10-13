@@ -11,7 +11,7 @@ final class SettingsPanelView: ScrollingPanelView {
     var adjustmentPanel: UIView?
     var adjustmentTargets: [NSObject] = []
     var returnControlLabel: String?
-    var paletteViews: [(UIView, String)] = []
+    var paletteViews: [UIView] = []
 
     /// Opens the Hangar, where the menu theme is now chosen.
     var onOpenHangar: (() -> Void)?

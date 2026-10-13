@@ -59,7 +59,6 @@ extension SettingsPanelView {
                     }
                 }
             }
-            updateValue()
             choices.addArrangedSubview(value)
             for (name, direction) in [("Decrease", Float(-1)), ("Increase", Float(1))] {
                 addChoice(name) { [weak slider] in

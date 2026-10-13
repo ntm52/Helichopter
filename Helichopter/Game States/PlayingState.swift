@@ -8,8 +8,7 @@ class PlayingState: GKState {
 
     unowned var adapter: GameSceneAdapter
 
-    private let playerScale = CGPoint(x: 0.4, y: 0.4)
-    // 20 frames × 0.05 s = 1 second per animation loop.
+    // 60 frames × 1/60 s = 1 second per animation loop.
     private let animationTimeInterval = HelicopterNode.rotorFrameInterval
 
     private(set) var infinitePipeProducer: SKAction! = nil
@@ -25,10 +24,7 @@ class PlayingState: GKState {
             return
         }
         preparePlayer(for: scene)
-
-        if let scene = adapter.scene {
-            infinitePipeProducer = PipeFactory.launch(for: scene, targetNode: scene)
-        }
+        infinitePipeProducer = PipeFactory.launch(for: scene, targetNode: scene)
     }
 
     // MARK: - Lifecycle
@@ -77,8 +73,7 @@ class PlayingState: GKState {
             (scene as? GameScene)?.hideFlightHint()
         }
 
-        let character = PlayableCharacter.helicopter
-        position(player: character, in: scene)
+        position(in: scene)
         player.shouldUpdate = true
     }
 
@@ -105,7 +100,6 @@ class PlayingState: GKState {
     // MARK: - Methods
 
     private func preparePlayer(for scene: SKScene) {
-        let character = PlayableCharacter.helicopter
         let assetName = GameSettings.shared.selectedHelicopterSkin.assetName
 
         adapter.playerCharacter = HelicopterNode(
@@ -117,14 +111,14 @@ class PlayingState: GKState {
             debugPrint(#function + " could not unwrap HelicopterNode, the execution will be aborted")
             return
         }
-        position(player: character, in: scene)
+        position(in: scene)
         scene.addChild(playableCharacter)
 
         adapter.updatables.append(playableCharacter)
         adapter.touchables.append(playableCharacter)
     }
 
-    private func position(player: PlayableCharacter, in scene: SKScene) {
+    private func position(in scene: SKScene) {
         guard let playerNode = adapter.playerCharacter else {
             return
         }

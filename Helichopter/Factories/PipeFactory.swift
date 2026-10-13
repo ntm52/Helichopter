@@ -23,10 +23,9 @@ struct PipeFactory {
 
         let producePipeAction = SKAction.run { [weak scene, weak targetNode] in
             guard let scene = scene, let targetNode = targetNode else { return }
-            guard let standardPipe = PipeFactory.produceStandardPipe(sceneSize: scene.size) else {
+            guard let pipe = PipeFactory.produceStandardPipe(sceneSize: scene.size) else {
                 return
             }
-            let pipe = standardPipe
             pipe.name = pipeName
             targetNode.addChild(pipe)
 
@@ -88,8 +87,6 @@ struct PipeFactory {
         let absoluteMaxGap = sceneHeight - unwrappedPipeBottom.size.height - minPipeHeight
         let minimum = min(settings.gapMin, absoluteMaxGap)
         let maximum = min(settings.gapMax, absoluteMaxGap)
-
-        // Clamp gap so the top pipe always has at least minPipeHeight
 
         let threshold = SKSpriteNode(color: .clear, size: CGSize(width: thresholdWidth, height: CGFloat.range(min: minimum, max: maximum)))
         threshold.position = CGPoint(x: pipeX, y: unwrappedPipeBottom.size.height + threshold.size.height / 2)

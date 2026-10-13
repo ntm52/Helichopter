@@ -2,12 +2,6 @@ import CoreGraphics
 
 extension CGFloat {
     
-    // MARK: - Properties
-    
-    var toRadians: CGFloat {
-        return CGFloat.pi * self / 180
-    }
-    
     // MARK: - Methods
     
     func clamp(min: CGFloat, max: CGFloat) -> CGFloat {

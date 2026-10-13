@@ -19,10 +19,6 @@ protocol GameSceneHUDDelegate: AnyObject {
 
 class GameScene: SKScene {
 
-    // MARK: - Constants
-
-    static var viewportSize: CGSize = .zero
-
     // MARK: - Properties
 
     lazy var stateMachine: GKStateMachine = GKStateMachine(states: [
@@ -30,12 +26,6 @@ class GameScene: SKScene {
         GameOverState(scene: sceneAdapter!),
         PausedState(scene: self, adapter: sceneAdapter!)
     ])
-
-    var entities = [GKEntity]()
-    var graphs   = [String: GKGraph]()
-
-    private var lastUpdateTime: TimeInterval = 0
-    let maximumUpdateDeltaTime: TimeInterval = 1.0 / 60.0
 
     var sceneAdapter: GameSceneAdapter?
     let selection = UISelectionFeedbackGenerator()
@@ -58,7 +48,6 @@ class GameScene: SKScene {
 
     override func sceneDidLoad() {
         super.sceneDidLoad()
-        lastUpdateTime = 0
         sceneAdapter = GameSceneAdapter(with: self)
         sceneAdapter?.stateMachine = stateMachine
         sceneAdapter?.onGameOverEntered = { [weak self] in
@@ -69,7 +58,6 @@ class GameScene: SKScene {
 
     override func didMove(to view: SKView) {
         super.didMove(to: view)
-        GameScene.viewportSize = view.bounds.size
         let theme = GameSettings.shared.selectedTheme
         backgroundColor = theme.sceneBackgroundColor
         view.backgroundColor = theme.sceneBackgroundColor
@@ -165,7 +153,6 @@ class GameScene: SKScene {
         cancelSwitchPauseHold()
         primarySwitchHeld = false
         helicopter?.prepareForNewRun()
-        lastUpdateTime = 0
         guard stateMachine.currentState is PlayingState else { return }
         if stateMachine.enter(PausedState.self) {
             setupOverlayScanner()
@@ -294,15 +281,9 @@ class GameScene: SKScene {
 
     override func update(_ currentTime: TimeInterval) {
         super.update(currentTime)
-        guard view != nil else { return }
-
-        let deltaTime = lastUpdateTime == 0 ? 0 : min(max(currentTime - lastUpdateTime, 0), maximumUpdateDeltaTime)
-        lastUpdateTime = currentTime
-
-        if isPaused { return }
+        guard view != nil, !isPaused else { return }
 
         updateVoiceGuidance(currentTime)
-        stateMachine.update(deltaTime: deltaTime)
         sceneAdapter?.updatables.filter { $0.shouldUpdate }.forEach { $0.update(currentTime) }
     }
 }
