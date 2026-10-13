@@ -67,8 +67,12 @@ final class AccessibilityAuditTests: XCTestCase {
         app.buttons["Hangar"].tap()
         XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5))
         try audit("Hangar")
-        let classic = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Classic Helicopter. Equipped."))
-        XCTAssertEqual(classic.count, 1, "The Classic card is read as one element")
+        for name in ["Classic Helicopter", "Classic Pipes"] {
+            let card = app.buttons[name]
+            XCTAssertTrue(card.exists, "\(name) is one button")
+            XCTAssertTrue(card.isSelected, "\(name) is equipped")
+            XCTAssertEqual(card.value as? String, "Equipped")
+        }
         app.buttons["Back"].tap()
 
         app.buttons["Settings"].tap()

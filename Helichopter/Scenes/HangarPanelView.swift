@@ -1,13 +1,18 @@
 import UIKit
-import SpriteKit
 
 /// The Hangar screen: how the game looks. It hosts a `HangarPanelView` and rebuilds it,
 /// keeping scroll and scanner focus, when the theme, the lock, or the text size changes.
-final class HangarViewController: PanelScreenViewController<HangarPanelView> { }
+final class HangarViewController: PanelScreenViewController<HangarPanelView> {
+    /// The panel being replaced still holds the card just chosen; the new one announces it.
+    override func configure(_ panel: HangarPanelView) {
+        panel.cardToAnnounce = self.panel?.chosenCardName
+    }
+}
 
 // MARK: - HangarPanelView
-// Menu Theme cards, then the helicopter and pipe looks. In this version only Classic
-// exists for helicopters and pipes, shown as static cards that are not controls.
+// Menu Theme cards, then one card per helicopter and pipe look in `CosmeticsCatalog`.
+// Only Classic exists so far; each card is a real control, so new looks need only
+// catalog entries and art.
 
 final class HangarPanelView: ScrollingPanelView {
 
@@ -16,14 +21,20 @@ final class HangarPanelView: ScrollingPanelView {
     static let lockedMessage = "Locked by a caregiver in Settings."
 
     private(set) var themeCards: [UIButton] = []
+    private(set) var helicopterCards: [UIButton] = []
+    private(set) var pipeCards: [UIButton] = []
     /// The card just chosen, so the rebuilt panel scans from it however it was chosen.
-    private var chosenThemeName: String?
+    fileprivate private(set) var chosenCardName: String?
+    /// The card chosen on the panel this one replaced, for VoiceOver to land on.
+    fileprivate var cardToAnnounce: String?
 
-    override var focusedSetting: String? { chosenThemeName ?? super.focusedSetting }
+    override var focusedSetting: String? { chosenCardName ?? super.focusedSetting }
 
-    /// After choosing a theme the rebuilt panel moves VoiceOver to the chosen card.
+    /// After choosing a card the rebuilt panel moves VoiceOver to it.
     override var announcementAfterRebuild: Any? {
-        themeCards.first { $0.accessibilityTraits.contains(.selected) } ?? self
+        let all = themeCards + helicopterCards + pipeCards
+        return all.first { cardToAnnounce != nil && $0.accessibilityLabel == cardToAnnounce }
+            ?? themeCards.first { $0.accessibilityTraits.contains(.selected) } ?? self
     }
 
     private var usesSingleColumn: Bool {
@@ -39,33 +50,35 @@ final class HangarPanelView: ScrollingPanelView {
         if gs.isSettingsLocked { lock([cards]) }
 
         sectionHeader("Helicopters")
-        classicRow(kind: "Helicopter", image: helicopterImage())
+        helicopterCards = CosmeticsCatalog.items(of: .helicopter).filter(\.isOwned).map { makeSkinCard($0) }
+        let helicopters = cardsRow(helicopterCards)
 
         sectionHeader("Pipes")
-        classicRow(kind: "Pipes", image: UIImage(named: "pipe-yellow")?.withRenderingMode(.alwaysTemplate),
-                   tint: gs.selectedPalette.pipeColor)
+        pipeCards = CosmeticsCatalog.items(of: .pipe).filter(\.isOwned).map { makeSkinCard($0) }
+        let pipes = cardsRow(pipeCards)
+
+        if gs.isSettingsLocked { lock([helicopters, pipes]) }
     }
 
     // MARK: Menu Theme
 
     private func themeCardsRow() -> UIView {
+        let currentID = GameSettings.shared.selectedThemeID
+        themeCards = GameSettings.allThemes.map { makeThemeCard($0, selected: $0.id == currentID) }
+        return cardsRow(themeCards)
+    }
+
+    /// Cards side by side at normal text sizes, one column at accessibility sizes.
+    private func cardsRow(_ items: [UIButton]) -> UIView {
         let row = UIView()
         row.backgroundColor = style.rowBg
 
-        let cards = UIStackView()
+        let cards = UIStackView(arrangedSubviews: items)
         cards.axis = usesSingleColumn ? .vertical : .horizontal
         cards.distribution = usesSingleColumn ? .fill : .fillEqually
         cards.alignment = .fill
         cards.spacing = 12
         cards.translatesAutoresizingMaskIntoConstraints = false
-
-        themeCards = []
-        let currentID = GameSettings.shared.selectedThemeID
-        for theme in GameSettings.allThemes {
-            let card = makeThemeCard(theme, selected: theme.id == currentID)
-            cards.addArrangedSubview(card)
-            themeCards.append(card)
-        }
 
         row.addSubview(cards)
         NSLayoutConstraint.activate([
@@ -174,54 +187,79 @@ final class HangarPanelView: ScrollingPanelView {
     private func chooseTheme(_ theme: UITheme) {
         guard !GameSettings.shared.isSettingsLocked else { return }
         GameSettings.shared.selectedThemeID = theme.id
-        chosenThemeName = theme.name
+        chosenCardName = theme.name
         onThemeChanged?()
     }
 
     // MARK: Helicopters and Pipes
 
-    /// The one look that exists so far, shown as equipped. Not a control: there is
-    /// nothing to choose yet, so the scanner and Voice Control skip it.
-    private func classicRow(kind: String, image: UIImage?, tint: UIColor? = nil) {
-        let row = UIView()
-        row.backgroundColor = style.rowBg
-        row.isAccessibilityElement = true
-        row.accessibilityLabel = "Classic \(kind). Equipped."
+    /// One look: its picture, name, and "Equipped" in words on the chosen one.
+    private func makeSkinCard(_ skin: Cosmetic) -> UIButton {
+        let equipped = GameSettings.shared.selectedSkin(of: skin.kind) == skin
+        let btn = UIButton(type: .custom)
+        btn.layer.cornerRadius = 12
+        btn.layer.borderWidth  = equipped ? 3.0 : 1.5
+        btn.layer.borderColor  = equipped ? style.accent.cgColor : style.div.cgColor
+        btn.backgroundColor    = style.swatchBg
+        btn.accessibilityLabel = skin.name
+        btn.accessibilityHint  = skin.spokenDescription
+        btn.isSelected = equipped
+        if equipped {
+            btn.accessibilityTraits.insert(.selected)
+            btn.accessibilityValue = "Equipped"
+        }
 
-        let picture = UIImageView(image: image)
+        let picture = UIImageView(image: skinImage(skin))
         picture.contentMode = .scaleAspectFit
         // Pipe art is drawn grey and tinted by the colour palette, as in play.
-        if let tint = tint { picture.tintColor = tint }
+        if skin.kind == .pipe { picture.tintColor = GameSettings.shared.selectedPalette.pipeColor }
         picture.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             picture.widthAnchor.constraint(equalToConstant: 64),
             picture.heightAnchor.constraint(equalToConstant: 64),
         ])
 
-        let nameL = makeLabel("Classic", size: 16, weight: .semibold, color: style.text)
-        let stateL = makeLabel("Equipped", size: 12, weight: .medium, color: style.sub)
-        let labels = UIStackView(arrangedSubviews: [nameL, stateL])
-        labels.axis = .vertical
-        labels.spacing = 2
+        let nameL = makeLabel(skin.name, size: 16, weight: .semibold, color: style.text)
+        var labels: [UIView] = [nameL]
+        if equipped {
+            labels.append(makeLabel("Equipped", size: 12, weight: .medium, color: style.sub))
+        }
+        let text = UIStackView(arrangedSubviews: labels)
+        text.axis = .vertical
+        text.spacing = 2
 
-        let hs = UIStackView(arrangedSubviews: [picture, labels])
+        let hs = UIStackView(arrangedSubviews: [picture, text])
         hs.axis = usesSingleColumn ? .vertical : .horizontal
         hs.alignment = usesSingleColumn ? .leading : .center
         hs.spacing = 14
         hs.translatesAutoresizingMaskIntoConstraints = false
-        row.addSubview(hs)
+        hs.isUserInteractionEnabled = false
+        btn.addSubview(hs)
         NSLayoutConstraint.activate([
-            hs.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            hs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            hs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 20),
-            hs.trailingAnchor.constraint(lessThanOrEqualTo: row.trailingAnchor, constant: -20),
+            hs.topAnchor.constraint(equalTo: btn.topAnchor, constant: 10),
+            hs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -10),
+            hs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: 12),
+            hs.trailingAnchor.constraint(lessThanOrEqualTo: btn.trailingAnchor, constant: -12),
         ])
-        appendRow(row)
+
+        let t = ButtonTarget { [weak self] in self?.chooseSkin(skin) }
+        controlTargets.append(t)
+        btn.addTarget(t, action: #selector(ButtonTarget.tapped), for: .touchUpInside)
+        return btn
     }
 
-    private func helicopterImage() -> UIImage {
-        let atlas = SKTextureAtlas(named: "Helicopter Player")
-        return UIImage(cgImage: atlas.textureNamed("r_player1").cgImage())
+    private func skinImage(_ skin: Cosmetic) -> UIImage? {
+        switch skin.kind {
+        case .helicopter: return skin.helicopterImage()
+        case .pipe: return UIImage(named: skin.pipeTextureName)?.withRenderingMode(.alwaysTemplate)
+        }
+    }
+
+    private func chooseSkin(_ skin: Cosmetic) {
+        guard !GameSettings.shared.isSettingsLocked, skin.isOwned else { return }
+        GameSettings.shared.select(skin)
+        chosenCardName = skin.name
+        onThemeChanged?()
     }
 
     // MARK: Notes

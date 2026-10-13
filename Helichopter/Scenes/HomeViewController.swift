@@ -37,8 +37,7 @@ final class HomeViewController: MenuViewController {
     override var announcement: Any? { titleLabel }
 
     override func buildMenu() {
-        let atlas = SKTextureAtlas(named: "Helicopter Player")
-        let mascot = UIImageView(image: UIImage(cgImage: atlas.textureNamed("r_player1").cgImage()))
+        let mascot = UIImageView(image: GameSettings.shared.selectedHelicopterSkin.helicopterImage())
         mascot.contentMode = .scaleAspectFit
         mascot.heightAnchor.constraint(equalToConstant: 110).isActive = true
         mascot.isAccessibilityElement = false
@@ -61,9 +60,10 @@ final class HomeViewController: MenuViewController {
             return
         }
         guard mascot.animationImages == nil else { return }
-        let atlas = SKTextureAtlas(named: "Helicopter Player")
-        mascot.animationImages = (1...60).map { UIImage(cgImage: atlas.textureNamed("r_player\($0)").cgImage()) }
-        mascot.animationDuration = 60 * HelicopterNode.rotorFrameInterval
+        let skin = GameSettings.shared.selectedHelicopterSkin
+        let frames = Cosmetic.helicopterFrameCount
+        mascot.animationImages = (1...frames).map { skin.helicopterImage(frame: $0) }
+        mascot.animationDuration = Double(frames) * HelicopterNode.rotorFrameInterval
         mascot.startAnimating()
     }
 

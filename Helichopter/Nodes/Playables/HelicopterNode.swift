@@ -108,7 +108,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable, PhysicsContactable {
         var textures = [SKTexture]()
         do {
             textures = try SKTextureAtlas.upload(named: named, beginIndex: 1) { _, index in
-                "r_player\(index)"
+                Cosmetic.helicopterFrameName(index)
             }
         } catch {
             debugPrint(#function, "texture atlas upload error:", error)

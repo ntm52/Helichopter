@@ -228,6 +228,8 @@ import Foundation
         settings.isSettingsLocked = true
         settings.scanningEnabled = true
         settings.selectedThemeID = "parchment"
+        defaults.set("heli.someday", forKey: "gs_selectedHelicopterSkinID")
+        defaults.set("pipe.someday", forKey: "gs_selectedPipeSkinID")
         defaults.set(42, for: .bestScore)
         defaults.set(true, forKey: "onboarding_completed_v1")
         defaults.set("keep", forKey: "unrelated")
@@ -236,11 +238,55 @@ import Foundation
         #expect(settings.noFailMode)
         #expect(!settings.calmMode && !settings.isSettingsLocked && !settings.scanningEnabled)
         #expect(settings.selectedThemeID == "nightSky")
+        #expect(defaults.object(forKey: "gs_selectedHelicopterSkinID") == nil)
+        #expect(defaults.object(forKey: "gs_selectedPipeSkinID") == nil)
         #expect(defaults.bool(for: .isMusicOn) && defaults.bool(for: .isSoundEffectsOn))
         #expect(defaults.integer(for: .bestScore) == 42)
         #expect(defaults.bool(forKey: "onboarding_completed_v1"))
         #expect(defaults.string(forKey: "unrelated") == "keep")
         #expect(GameSettings(defaults: defaults).gapMin == 240)
+    }
+
+    // MARK: - Skins
+
+    @Test func skinsDefaultToClassicAndRoundTrip() {
+        let settings = gs
+        #expect(settings.selectedHelicopterSkin == CosmeticsCatalog.classicHelicopter)
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.classicPipes)
+        settings.select(CosmeticsCatalog.classicPipes)
+        #expect(defaults.string(forKey: "gs_selectedPipeSkinID") == "pipe.classic")
+        #expect(settings.selectedSkin(of: .pipe) == CosmeticsCatalog.classicPipes)
+        settings.select(CosmeticsCatalog.classicHelicopter)
+        #expect(defaults.string(forKey: "gs_selectedHelicopterSkinID") == "heli.classic")
+        #expect(settings.selectedHelicopterSkinID == "heli.classic")
+    }
+
+    /// A removed, unknown, wrong-kind, or (later) refunded ID never leaves the player without art.
+    @Test func unknownOrWrongKindSkinIDsFallBackToClassic() {
+        let settings = gs
+        for (key, bad) in [("gs_selectedHelicopterSkinID", "heli.removed"),
+                           ("gs_selectedHelicopterSkinID", "pipe.classic"),
+                           ("gs_selectedPipeSkinID", "pipe.removed"),
+                           ("gs_selectedPipeSkinID", "heli.classic")] {
+            defaults.set(bad, forKey: key)
+        }
+        #expect(settings.selectedHelicopterSkin == CosmeticsCatalog.classicHelicopter)
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.classicPipes)
+        #expect(settings.selectedPipeSkinID == "pipe.classic")
+    }
+
+    @Test func catalogIsWellFormed() {
+        let all = CosmeticsCatalog.all
+        #expect(Set(all.map(\.id)).count == all.count)
+        #expect(Set(all.map(\.name)).count == all.count, "Names are spoken by Voice Control users, so each must be unique")
+        for kind in [CosmeticKind.helicopter, .pipe] {
+            #expect(CosmeticsCatalog.items(of: kind).first == CosmeticsCatalog.defaultItem(of: kind))
+            #expect(CosmeticsCatalog.defaultItem(of: kind).isOwned)
+        }
+        for item in all {
+            #expect(!item.spokenDescription.isEmpty)
+            #expect(item.name.allSatisfy { $0.isLetter || $0.isNumber || $0 == " " }, "Speakable name: \(item.name)")
+        }
     }
 
     // MARK: - Helpers

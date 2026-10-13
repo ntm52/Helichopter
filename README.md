@@ -29,7 +29,7 @@ Version 2.0 is a remodel of the original 2021 build, bringing it to current iOS 
 
 Press Space, Enter, 1, Up Arrow, or the controller's primary button to start scanning or select the highlighted control. Timed scanning moves focus on a timer; in Step with Switch 2 mode, use 2, an arrow mapped to secondary input, or the secondary controller button to advance.
 
-Select a slider to open Decrease, Increase, and Done; each adjustment changes 5% of its range. Select a segmented control to scan its choices. Settings scrolls focused controls into view and preserves focus after theme, preset, or lock changes. When locked, Back and Lock Settings remain reachable.
+Select a slider to open Decrease, Increase, and Done; each adjustment changes 5% of its range. Select a segmented control to scan its choices. Settings scrolls focused controls into view and preserves focus after preset, lock, or reset changes. When locked, Back and Lock Settings remain reachable.
 
 ## Switch controls during gameplay
 
@@ -84,7 +84,8 @@ regression tests cover all 18 theme/palette combinations. This does not certify
 all artwork pixels or replace testing with players who have low vision.
 
 Settings → Reset Settings opens a confirmation before restoring Standard difficulty,
-default controls, theme, and audio. Saved scores and first-run guide completion are kept.
+default controls, audio, the menu theme, and the Classic helicopter and pipes. Saved scores
+and first-run guide completion are kept.
 Unlock Settings first if the caregiver lock is enabled.
 
 ### Display preferences

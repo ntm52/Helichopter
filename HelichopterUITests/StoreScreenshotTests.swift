@@ -71,23 +71,28 @@ final class StoreScreenshotTests: XCTestCase {
 
         launch()
         capture("2-home")
+        // The menu themes live in the Hangar from 2.1.
+        app.buttons["Hangar"].tap()
+        XCTAssertTrue(app.buttons["Classic Pipes"].waitForExistence(timeout: 5))
+        capture("3-hangar")
+        app.buttons["Back"].tap()
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5))
         if isPad {
-            capture("3-difficulty-and-comfort")
+            capture("4-difficulty-and-comfort")
             scroll(app.staticTexts["Switch Access"], toTopAt: 0.17)
-            capture("4-switch-access-controls-themes")
+            capture("5-switch-access-controls-colours")
         } else {
             scroll(app.staticTexts["Comfort"], toTopAt: 0.255)
-            capture("3-comfort-and-switch-access")
+            capture("4-comfort-and-switch-access")
             scroll(app.sliders["Scan Dwell Time"], toTopAt: 0.175)
-            capture("4-controls-themes-colours")
+            capture("5-controls-and-colours")
             scroll(app.staticTexts["Difficulty Preset"], toTopAt: 0.255)
-            capture("5-difficulty")
+            capture("6-difficulty")
         }
         app.terminate()
 
         launch(guide: true)
-        capture(isPad ? "5-how-to-play" : "6-how-to-play")
+        capture(isPad ? "6-how-to-play" : "7-how-to-play")
     }
 }

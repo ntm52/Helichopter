@@ -299,7 +299,8 @@ final class GameSettings {
             defaults.removeObject(forKey: key.rawValue)
         }
         for key in ["gs_switchPauseHoldDuration", "gs_scanningEnabled",
-                    "gs_selectedPaletteID", "gs_selectedThemeID"] {
+                    "gs_selectedPaletteID", "gs_selectedThemeID",
+                    "gs_selectedHelicopterSkinID", "gs_selectedPipeSkinID"] {
             defaults.removeObject(forKey: key)
         }
         defaults.set(true, for: .isMusicOn)
@@ -438,6 +439,40 @@ final class GameSettings {
 
     var selectedTheme: UITheme {
         GameSettings.allThemes.first { $0.id == selectedThemeID } ?? GameSettings.themeNightSky
+    }
+
+    // MARK: - Skins (Plan 02)
+
+    /// Persisted ID of the chosen helicopter look. Unknown or unowned IDs read as Classic.
+    var selectedHelicopterSkinID: String {
+        get { selectedHelicopterSkin.id }
+        set { defaults.set(newValue, forKey: "gs_selectedHelicopterSkinID") }
+    }
+
+    var selectedHelicopterSkin: Cosmetic {
+        CosmeticsCatalog.item(id: defaults.string(forKey: "gs_selectedHelicopterSkinID"), of: .helicopter)
+    }
+
+    /// Persisted ID of the chosen pipe look. Unknown or unowned IDs read as Classic.
+    var selectedPipeSkinID: String {
+        get { selectedPipeSkin.id }
+        set { defaults.set(newValue, forKey: "gs_selectedPipeSkinID") }
+    }
+
+    var selectedPipeSkin: Cosmetic {
+        CosmeticsCatalog.item(id: defaults.string(forKey: "gs_selectedPipeSkinID"), of: .pipe)
+    }
+
+    /// The chosen look of either kind.
+    func selectedSkin(of kind: CosmeticKind) -> Cosmetic {
+        kind == .helicopter ? selectedHelicopterSkin : selectedPipeSkin
+    }
+
+    func select(_ skin: Cosmetic) {
+        switch skin.kind {
+        case .helicopter: selectedHelicopterSkinID = skin.id
+        case .pipe: selectedPipeSkinID = skin.id
+        }
     }
 
     // MARK: - Phase 5: Cognitive and sensory parameters

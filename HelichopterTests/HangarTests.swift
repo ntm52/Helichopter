@@ -2,8 +2,8 @@ import Testing
 import UIKit
 @testable import Helichopter
 
-/// The Hangar (Plan 02 Phase 1 step 1): Menu Theme cards moved from Settings, plus
-/// the static Classic helicopter and pipe cards.
+/// The Hangar (Plan 02 Phase 1 steps 1–2): Menu Theme cards moved from Settings, plus
+/// a card for each helicopter and pipe look in `CosmeticsCatalog` (only Classic so far).
 @MainActor @Suite("Hangar", .serialized)
 struct HangarTests {
     private func withSettings(_ work: () async throws -> Void) async rethrows {
@@ -19,6 +19,8 @@ struct HangarTests {
         GameSettings.shared.scanningEnabled = false
         GameSettings.shared.isSettingsLocked = false
         GameSettings.shared.selectedThemeID = GameSettings.themeNightSky.id
+        defaults.removeObject(forKey: "gs_selectedHelicopterSkinID")
+        defaults.removeObject(forKey: "gs_selectedPipeSkinID")
         try await work()
     }
 
@@ -36,6 +38,9 @@ struct HangarTests {
     }
 
     private var themeNames: [String] { GameSettings.allThemes.map(\.name) }
+    private var skinNames: [String] { CosmeticsCatalog.all.map(\.name) }
+    /// Every Hangar control in scan order after Back.
+    private var cardNames: [String] { themeNames + skinNames }
 
     private func descendants<T: UIView>(_ view: UIView, _: T.Type) -> [T] {
         (view as? T).map { [$0] } ?? view.subviews.flatMap { descendants($0, T.self) }
@@ -71,11 +76,14 @@ struct HangarTests {
             #expect(panel.themeCards.map(\.accessibilityLabel) == themeNames)
             #expect(panel.themeCards.allSatisfy { $0.accessibilityHint == "Menu theme" })
             #expect(panel.themeCards.filter { $0.accessibilityTraits.contains(.selected) }.map(\.accessibilityLabel) == ["Night Sky"])
-            // The Classic cards are read but are not controls, so nothing scans them.
-            func allViews(_ view: UIView) -> [UIView] { [view] + view.subviews.flatMap(allViews) }
-            let classic = allViews(panel).filter { $0.isAccessibilityElement && !($0 is UIControl) && ($0.accessibilityLabel ?? "").hasPrefix("Classic") }
-            #expect(classic.map(\.accessibilityLabel) == ["Classic Helicopter. Equipped.", "Classic Pipes. Equipped."])
-            #expect(panel.controls(in: panel).count == 1 + themeNames.count)
+            // Each look is a button: its name, "Equipped" as its value, its description as the hint.
+            let skins = panel.helicopterCards + panel.pipeCards
+            #expect(skins.map(\.accessibilityLabel) == ["Classic Helicopter", "Classic Pipes"])
+            #expect(skins.allSatisfy { $0.accessibilityTraits.contains(.selected) && $0.isSelected })
+            #expect(skins.allSatisfy { $0.accessibilityValue == "Equipped" })
+            #expect(skins.map(\.accessibilityHint) == CosmeticsCatalog.all.map(\.spokenDescription))
+            #expect(descendants(panel, UILabel.self).filter { $0.text == "Equipped" }.count == 2)
+            #expect(panel.controls(in: panel).count == 1 + cardNames.count)
             // No placeholder text or locked tiles.
             #expect(!descendants(panel, UILabel.self).contains { ($0.text ?? "").localizedCaseInsensitiveContains("on the way") })
             #expect(screen.scannersDuringTransition.first === panel.switchScanner)
@@ -112,6 +120,70 @@ struct HangarTests {
         }
     }
 
+    // MARK: Choosing a look
+
+    @Test func choosingASkinCardPersistsAndKeepsFocus() async throws {
+        try await withSettings {
+            // A stale choice (for example a look removed in an update) reads as Classic.
+            UserDefaults.standard.set("pipe.removed", forKey: "gs_selectedPipeSkinID")
+            let screen = hangarScreen()
+            defer { screen.screenWillDisappear() }
+            let first = try #require(screen.panel)
+            #expect(first.pipeCards.first?.accessibilityTraits.contains(.selected) == true)
+            screen.switchPrimaryBegan() // Starts scanning on Back.
+            for _ in first.switchScanner.items where first.focusedSetting != "Classic Pipes" {
+                screen.switchSecondaryBegan()
+            }
+            #expect(first.focusedSetting == "Classic Pipes")
+            screen.switchPrimaryBegan()
+            #expect(UserDefaults.standard.string(forKey: "gs_selectedPipeSkinID") == "pipe.classic")
+            let rebuilt = try #require(screen.panel)
+            #expect(rebuilt !== first)
+            #expect(rebuilt.focusedSetting == "Classic Pipes")
+            #expect(rebuilt.announcementAfterRebuild as? UIButton === rebuilt.pipeCards.first)
+
+            // A finger tap on the helicopter card does the same.
+            rebuilt.startScanning(focusing: "Back")
+            rebuilt.helicopterCards[0].sendActions(for: .touchUpInside)
+            #expect(UserDefaults.standard.string(forKey: "gs_selectedHelicopterSkinID") == "heli.classic")
+            #expect(screen.panel?.focusedSetting == "Classic Helicopter")
+        }
+    }
+
+    // MARK: Art
+
+    @Test func everyLookHasItsArt() throws {
+        for skin in CosmeticsCatalog.all {
+            switch skin.kind {
+            case .helicopter:
+                let image = skin.helicopterImage(frame: Cosmetic.helicopterFrameCount)
+                #expect(image.size.width > 0, "\(skin.name) is missing frames")
+            case .pipe:
+                #expect(UIImage(named: skin.pipeTextureName) != nil, "\(skin.name) is missing its pipe")
+                #expect(UIImage(named: skin.capTextureName) != nil, "\(skin.name) is missing its cap")
+            }
+        }
+    }
+
+    /// Art is chosen only through `CosmeticsCatalog`, so a new look needs no code changes.
+    @Test func artNamesLiveOnlyInTheCatalog() throws {
+        let appSources = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Helichopter")
+        let files = try #require(FileManager.default.enumerator(at: appSources, includingPropertiesForKeys: nil))
+        var offenders: [String] = []
+        var swiftFiles = 0
+        for case let url as URL in files where url.pathExtension == "swift" && url.lastPathComponent != "Cosmetics.swift" {
+            swiftFiles += 1
+            let source = try String(contentsOf: url, encoding: .utf8)
+            for name in ["\"Helicopter Player\"", "pipe-yellow", "cap-yellow", "r_player"] where source.contains(name) {
+                offenders.append("\(url.lastPathComponent): \(name)")
+            }
+        }
+        #expect(swiftFiles > 20)
+        #expect(offenders.isEmpty, "Hard-coded art names: \(offenders)")
+    }
+
     // MARK: Caregiver lock
 
     @Test func lockDisablesThemeCardsButKeepsBack() async throws {
@@ -120,13 +192,16 @@ struct HangarTests {
             let screen = hangarScreen()
             defer { screen.screenWillDisappear() }
             let panel = try #require(screen.panel)
-            #expect(panel.themeCards.allSatisfy { !$0.isEnabled })
-            #expect(panel.themeCards.allSatisfy { $0.superview?.superview?.alpha == 0.5 })
+            let cards = panel.themeCards + panel.helicopterCards + panel.pipeCards
+            #expect(cards.allSatisfy { !$0.isEnabled })
+            #expect(cards.allSatisfy { $0.superview?.superview?.alpha == 0.5 })
             #expect(descendants(panel, UILabel.self).contains { $0.text == "Locked by a caregiver in Settings." })
             screen.switchPrimaryBegan()
             #expect(scanLabels(panel) == ["Back"])
             panel.themeCards[1].sendActions(for: .touchUpInside)
             #expect(GameSettings.shared.selectedThemeID == GameSettings.themeNightSky.id)
+            panel.pipeCards[0].sendActions(for: .touchUpInside)
+            #expect(UserDefaults.standard.object(forKey: "gs_selectedPipeSkinID") == nil)
             var shown: Screen?
             screen.navigate = { shown = $0 }
             screen.switchPrimaryBegan()
@@ -143,7 +218,7 @@ struct HangarTests {
             defer { screen.screenWillDisappear() }
             let panel = try #require(screen.panel)
             #expect(!descendants(panel, UILabel.self).contains { $0.text == HangarPanelView.lockedMessage })
-            #expect(panel.themeCards.allSatisfy { $0.isEnabled })
+            #expect((panel.themeCards + panel.helicopterCards + panel.pipeCards).allSatisfy { $0.isEnabled })
         }
     }
 
@@ -155,13 +230,13 @@ struct HangarTests {
             defer { screen.screenWillDisappear() }
             let panel = try #require(screen.panel)
             screen.switchPrimaryBegan()
-            #expect(scanLabels(panel) == ["Back"] + themeNames)
+            #expect(scanLabels(panel) == ["Back"] + cardNames)
             var visited: [String] = []
             for _ in scanLabels(panel) {
                 visited.append(try #require(panel.focusedSetting))
                 screen.switchSecondaryBegan()
             }
-            #expect(visited == ["Back"] + themeNames)
+            #expect(visited == ["Back"] + cardNames)
             #expect(panel.focusedSetting == "Back") // Wraps around.
         }
     }
@@ -173,11 +248,11 @@ struct HangarTests {
             defer { screen.screenWillDisappear() }
             let panel = try #require(screen.panel)
             screen.switchPrimaryBegan()
-            #expect(scanLabels(panel) == ["Back"] + themeNames)
+            #expect(scanLabels(panel) == ["Back"] + cardNames)
             var seen = Set<String>()
             let reachedAll = try await waitUntil(timeout: 20) {
                 if let label = panel.focusedSetting { seen.insert(label) }
-                return seen.isSuperset(of: ["Back"] + themeNames)
+                return seen.isSuperset(of: ["Back"] + cardNames)
             }
             #expect(reachedAll, "Timed scan reached only \(seen)")
 

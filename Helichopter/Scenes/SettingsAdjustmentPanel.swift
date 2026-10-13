@@ -84,7 +84,7 @@ extension SettingsPanelView {
             }
         }
         if control.accessibilityLabel == "Reset Settings" {
-            let explanation = makeLabel("Restore Standard difficulty, default controls, theme, and audio. Saved scores and guide completion are kept.", size: 20, weight: .regular, color: style.text)
+            let explanation = makeLabel("Restore Standard difficulty, default controls, audio, the menu theme, and the Classic helicopter and pipes. Saved scores and guide completion are kept.", size: 20, weight: .regular, color: style.text)
             explanation.numberOfLines = 0
             choices.addArrangedSubview(explanation)
             addChoice("Cancel") { [weak self] in self?.closeAdjustment() }
