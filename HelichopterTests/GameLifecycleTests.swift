@@ -684,10 +684,11 @@ struct GameLifecycleTests {
                 #expect(locked.isAdjusting)
                 #expect(locked.switchScanner.items[0].accessibilityScanLabel == expected)
                 let texts = [AppLinks.privacySummary, AppLinks.acknowledgements]
-                #expect(locked.subviews.contains { panel in
-                    func labels(_ v: UIView) -> [String] { ((v as? UILabel)?.text).map { [$0] } ?? v.subviews.flatMap(labels) }
+                let showsText = locked.subviews.contains { panel in
+                    @MainActor func labels(_ v: UIView) -> [String] { ((v as? UILabel)?.text).map { [$0] } ?? v.subviews.flatMap(labels) }
                     return labels(panel).contains { texts.contains($0) }
-                })
+                }
+                #expect(showsText)
                 // Done is the last choice in both panels.
                 let scanner = locked.switchScanner
                 while scanner.items[scanner.currentIndex].accessibilityScanLabel != "Done" { scene.switchSecondaryBegan() }

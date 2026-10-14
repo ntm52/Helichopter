@@ -386,3 +386,10 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
   - `traitCollectionDidChange` in `SceneTextOverlay` and `ScrollingPanelView` is now `registerForTraitChanges([UITraitPreferredContentSizeCategory.self])`.
   - Tests: new `HelichopterTests/TestWindow.swift` (`makeTestWindow(frame:)`, a window in the host app's scene) replaces the deprecated `UIWindow(frame:)`; `@MainActor` on three nested test helpers; three needless `try`s removed.
   - **129 unit tests and both UI audits pass.**
+
+### 2026-10-14 — Last test warnings fixed (Claude Code)
+- The owner saw 10 deprecation warnings and a failed test in Xcode. That was a stale activity log from 2026-10-07: it names `SettingsScene.swift`, which was deleted on 2026-10-08, and the warned APIs are gone from the sources. A fresh build of the app has no warnings.
+- Correction to the 2026-10-13 entry: the test target still had main-actor warnings inside `#expect` (`ScreenTransitionTests` `expectCurrent`/`expectHome`, and a nested `labels` helper in `GameLifecycleTests`). Fixed with `@MainActor` on those helpers. The app and tests now build with zero warnings (only Xcode's AppIntents metadata note remains, which is not from our code).
+- Opening the project in Xcode re-sorted `project.pbxproj` (same lines, new order). Harmless.
+- **129 unit tests pass.**
+- **Launch screen memory warning** (shown by Xcode's storyboard check, not by `xcodebuild` or `ibtool`): the launch storyboard used the full `Background` starfield, whose @3x is 1536 × 4500 px (about 27 MB decoded). New `LaunchBackground` image set, used only by `LaunchScreen.storyboard`: the centre 512 × 1200 pt of the same art at 1x and 2x only (largest 1024 × 2400, about 10 MB). Aspect-fill only ever shows the middle ~1,110 pt on the tallest phone, so the crop is invisible; 3× phones scale the 2x copy up for the moment the launch screen shows. Gameplay and menus still use `Background`. Same owner-made art, so `Release/ASSET_RIGHTS.md` already covers it. The storyboard's stale `Background` 1920 × 1080 size note is gone too.

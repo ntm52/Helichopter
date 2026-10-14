@@ -94,10 +94,10 @@ struct ScreenTransitionTests {
     @Test func eachNavigationShowsOneCurrentScreen() async throws {
         try await withController { controller, skView, posts in
             let overlay = controller.sceneTextOverlay
-            func expectCurrent() {
+            @MainActor func expectCurrent() {
                 #expect(overlay.hostScene === skView.scene)
             }
-            func expectHome() {
+            @MainActor func expectHome() {
                 #expect(controller.menuScreen is HomeViewController)
                 #expect(skView.scene == nil)
                 #expect(overlay.isHidden)
