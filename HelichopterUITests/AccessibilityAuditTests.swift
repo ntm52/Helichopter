@@ -110,6 +110,26 @@ final class AccessibilityAuditTests: XCTestCase {
         try audit("Round Over")
     }
 
+    /// Auto Hover and Up/Down Switches split the play screen into Fly up and Fly down,
+    /// with a divider and Up and Down labels.
+    func testSplitFlightScreenPassesTheAudit() throws {
+        for scheme in ["2", "3"] {
+            app.launchArguments = ["-gs_noFailMode", "<true/>", "-gs_scanningEnabled", "NO", "-gs_isSettingsLocked", "NO",
+                                   "-onboarding_completed_v1", "YES", "-gs_controlScheme", "<integer>\(scheme)</integer>"]
+            app.launch()
+            app.buttons["Play"].tap()
+            XCTAssertTrue(app.buttons["Fly up"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["Fly down"].exists)
+            XCTAssertFalse(app.buttons["Helicopter flight control"].exists)
+            try audit("Playing, split screen \(scheme)")
+            app.buttons["Fly down"].tap()
+            app.buttons["Fly up"].tap()
+            app.buttons["Pause"].tap()
+            XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
     /// The Hangar rebuilds in each theme's colours when a card is chosen. The theme is
     /// not set by a launch argument here: that would hide the choice the cards save.
     func testHangarPassesTheAuditInEveryTheme() throws {

@@ -158,6 +158,16 @@ enum ControlScheme: Int {
     case holdHover   = 1  // hold to climb, release to fall
     case autoHover   = 2  // gravity off; switch nudges altitude up/down
     case twoSwitchUD = 3  // switch 1 = up, switch 2 = down; no gravity
+
+    /// Touching the top half moves up and the bottom half moves down. Tap to Flap and
+    /// Hold to Hover keep the whole screen as one target, since gravity brings them down.
+    var splitsTouchIntoUpAndDown: Bool { self == .autoHover || self == .twoSwitchUD }
+
+    /// The secondary switch pauses where it has no flight job.
+    var secondarySwitchPauses: Bool { self == .tapFlap || self == .holdHover }
+
+    /// Holding the primary switch to move up must not pause; both switches pause instead.
+    var holdingPrimaryPauses: Bool { self != .twoSwitchUD }
 }
 
 /// Menu scanning mode.
@@ -247,6 +257,8 @@ final class GameSettings {
         case hideGameWhilePaused     = "gs_hideGameWhilePaused"
         case invulnerabilityDuration = "gs_invulnerabilityDuration"
         case isSettingsLocked        = "gs_isSettingsLocked"
+        case voiceOverDirectTouch    = "gs_voiceOverDirectTouch"
+        case holdToPauseEnabled      = "gs_holdToPauseEnabled"
     }
 
     /// Bounds include every shipped preset and visible slider range.
@@ -366,6 +378,13 @@ final class GameSettings {
     var controlScheme: ControlScheme {
         get { ControlScheme(rawValue: Int(read(.controlScheme))) ?? .tapFlap }
         set { write(Double(newValue.rawValue), for: .controlScheme) }
+    }
+
+    /// Caregivers can turn hold-to-pause off for players who pause by accident; the
+    /// Pause button, and the switch pauses that are not holds, still work.
+    var holdToPauseEnabled: Bool {
+        get { defaults.object(forKey: Key.holdToPauseEnabled.rawValue) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.holdToPauseEnabled.rawValue) }
     }
 
     /// A deliberate primary-switch hold pauses flight. Longer delays allow sustained hover.
@@ -495,6 +514,13 @@ final class GameSettings {
     var helicopterOutline: Bool {
         get { defaults.object(forKey: Key.helicopterOutline.rawValue) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Key.helicopterOutline.rawValue) }
+    }
+
+    /// With VoiceOver on, touches on the flight area go straight to the helicopter, so
+    /// players tap or hold as they would without VoiceOver. Off: double-tap and actions.
+    var voiceOverDirectTouch: Bool {
+        get { defaults.object(forKey: Key.voiceOverDirectTouch.rawValue) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.voiceOverDirectTouch.rawValue) }
     }
 
     var hideGameWhilePaused: Bool {

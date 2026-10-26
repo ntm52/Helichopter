@@ -472,8 +472,10 @@ class RootViewController: UIViewController {
             // Secondary: B, Left Shoulder
             pad.buttonB.pressedChangedHandler          = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
             pad.leftShoulder.pressedChangedHandler     = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
-            // D-pad up/right = advance scan; down/left = secondary
+            // D-pad up = primary; down, left, and right = secondary, matching the arrow keys.
             pad.dpad.up.pressedChangedHandler          = { [weak self] _, _, p in self?.forwardController(primary: true,  pressed: p) }
+            pad.dpad.down.pressedChangedHandler        = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
+            pad.dpad.left.pressedChangedHandler        = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
             pad.dpad.right.pressedChangedHandler       = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
         }
     }

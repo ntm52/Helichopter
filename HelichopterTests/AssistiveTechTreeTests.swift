@@ -174,4 +174,62 @@ struct AssistiveTechTreeTests {
         #expect(flight.accessibilityUserInputLabels.contains("Helicopter flight control"))
         #expect(read.contains { spoken($0) == "Pause" && isActionable($0) })
     }
+
+    /// VoiceOver Direct Touch hands touches on the flight area straight to the game, so
+    /// players fly without double-tapping; Pause stays outside it as a normal button.
+    @Test func voiceOverDirectTouchPassesFlightTouchesToTheGame() throws {
+        let gs = GameSettings.shared
+        let savedDirect = gs.voiceOverDirectTouch
+        let savedScheme = gs.controlScheme
+        defer {
+            gs.voiceOverDirectTouch = savedDirect
+            gs.controlScheme = savedScheme
+        }
+        for direct in [true, false] {
+            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover, .twoSwitchUD] {
+                gs.voiceOverDirectTouch = direct
+                gs.controlScheme = scheme
+                let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+                let scene = try #require(GameScene(fileNamed: "GameScene"))
+                view.presentScene(scene)
+                defer { view.presentScene(nil) }
+                let overlay = SceneTextOverlay(frame: view.bounds)
+                view.addSubview(overlay)
+                overlay.refresh(in: view)
+                overlay.layoutIfNeeded()
+                let flights = elements(in: overlay).compactMap { $0 as? FlightAccessibilityElement }
+                let split = scheme.splitsTouchIntoUpAndDown
+                #expect(flights.map { spoken($0) } == (split ? ["Fly up", "Fly down"] : ["Helicopter flight control"]))
+                if split {
+                    // Voice Control: "Tap Up" and "Tap Down".
+                    #expect(flights[0].accessibilityUserInputLabels.first == "Up")
+                    #expect(flights[1].accessibilityUserInputLabels.first == "Down")
+                }
+                for flight in flights {
+                    #expect(flight.accessibilityTraits.contains(.allowsDirectInteraction) == direct)
+                    #expect(flight.accessibilityDirectTouchOptions.contains(.silentOnTouch) == direct)
+                    #expect(flight.accessibilityTraits.contains(.button))
+                    #expect(flight.accessibilityHint?.contains("Double-tap") == !direct)
+                }
+                // The overlay lets every touch on the flight areas through to the scene,
+                // including on the divider and its Up and Down labels.
+                let pause = try #require(elements(in: overlay).first { spoken($0) == "Pause" } as? UIView)
+                let pauseFrame = pause.convert(pause.bounds, to: overlay)
+                let top = split ? pauseFrame.maxY + 1 : overlay.bounds.midY + 1
+                for y in stride(from: top, to: overlay.bounds.maxY, by: 20) {
+                    for x in [overlay.bounds.minX + 10, overlay.bounds.midX, overlay.bounds.maxX - 20] {
+                        #expect(overlay.hitTest(CGPoint(x: x, y: y), with: nil) == nil, "\(scheme) at \(x), \(y)")
+                    }
+                }
+                // Pause sits above every flight area, so it is never swallowed by direct touch.
+                #expect(pauseFrame.maxY < overlay.bounds.midY)
+                let screenPause = UIAccessibility.convertToScreenCoordinates(pauseFrame, in: overlay)
+                #expect(flights.allSatisfy { !$0.accessibilityFrame.intersects(screenPause) })
+                // The Up area meets the Down area at the line drawn across the middle.
+                if split { #expect(abs(flights[0].accessibilityFrame.maxY - flights[1].accessibilityFrame.minY) < 0.5) }
+                // Switch Control and Voice Control activate each area in either mode.
+                #expect(flights.allSatisfy { $0.accessibilityActivate() })
+            }
+        }
+    }
 }

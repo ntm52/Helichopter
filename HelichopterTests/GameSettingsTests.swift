@@ -218,6 +218,12 @@ import Foundation
         settings.calmMode = true
         settings.isSettingsLocked = true
         settings.scanningEnabled = true
+        #expect(settings.voiceOverDirectTouch)
+        settings.voiceOverDirectTouch = false
+        #expect(settings.holdToPauseEnabled)
+        settings.holdToPauseEnabled = false
+        #expect(!GameSettings(defaults: defaults).holdToPauseEnabled)
+        #expect(!GameSettings(defaults: defaults).voiceOverDirectTouch)
         settings.selectedThemeID = "parchment"
         defaults.set("heli.someday", forKey: "gs_selectedHelicopterSkinID")
         defaults.set("pipe.someday", forKey: "gs_selectedPipeSkinID")
@@ -228,6 +234,7 @@ import Foundation
         #expect(settings.gapMin == 240)
         #expect(settings.noFailMode)
         #expect(!settings.calmMode && !settings.isSettingsLocked && !settings.scanningEnabled)
+        #expect(settings.voiceOverDirectTouch && settings.holdToPauseEnabled)
         #expect(settings.selectedThemeID == "nightSky")
         #expect(defaults.object(forKey: "gs_selectedHelicopterSkinID") == nil)
         #expect(defaults.object(forKey: "gs_selectedPipeSkinID") == nil)

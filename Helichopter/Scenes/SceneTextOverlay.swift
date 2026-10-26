@@ -20,7 +20,8 @@ final class SceneTextOverlay: UIView {
     private var newHighScoreLabel: UILabel?
     private var flightHintLabel: UILabel?
     private weak var hudStack: UIStackView?
-    private var flightElement: FlightAccessibilityElement?
+    /// One flight area, or Up and Down for schemes that split the screen.
+    private var flightElements: [FlightAccessibilityElement] = []
     // Stack constraints survive removing the scroll view, so track them per rebuild.
     private var layoutConstraints: [NSLayoutConstraint] = []
 
@@ -64,7 +65,7 @@ final class SceneTextOverlay: UIView {
         newHighScoreLabel = nil
         flightHintLabel = nil
         gameMenu = nil
-        flightElement = nil
+        flightElements = []
         builtPhase = nil
         accessibilityElements = nil
         accessibilityViewIsModal = false
@@ -155,25 +156,83 @@ final class SceneTextOverlay: UIView {
         scroll.isUserInteractionEnabled = true
         hud.addArrangedSubview(pause)
         pause.setContentCompressionResistancePriority(.required, for: .horizontal)
-        let element = FlightAccessibilityElement(accessibilityContainer: self)
-        element.game = game
-        element.host = self
-        element.accessibilityLabel = "Helicopter flight control"
-        // Voice Control: "Tap Fly" is quicker to say on every flap than the full label.
-        element.accessibilityUserInputLabels = ["Fly", "Flap", "Helicopter", "Helicopter flight control"]
-        element.accessibilityTraits = .button
-        element.accessibilityHint = game.accessibilityFlightHint
-        var actions: [UIAccessibilityCustomAction] = []
-        if GameSettings.shared.controlScheme != .tapFlap {
-            actions.append(UIAccessibilityCustomAction(name: "Move down", target: element, selector: #selector(FlightAccessibilityElement.moveDown)))
+        let scheme = GameSettings.shared.controlScheme
+        if scheme.splitsTouchIntoUpAndDown { addUpDownGuide(theme: theme) }
+        // Split schemes get Up and Down areas; the others keep one area on the lower half.
+        let areas: [FlightAccessibilityElement.Area] = scheme.splitsTouchIntoUpAndDown ? [.up, .down] : [.whole]
+        flightElements = areas.map { area in
+            let element = FlightAccessibilityElement(accessibilityContainer: self)
+            element.game = game
+            element.host = self
+            element.hud = hud
+            element.area = area
+            switch area {
+            case .whole:
+                element.accessibilityLabel = "Helicopter flight control"
+                // Voice Control: "Tap Fly" is quicker to say on every flap than the full label.
+                element.accessibilityUserInputLabels = ["Fly", "Flap", "Helicopter", "Helicopter flight control"]
+            case .up:
+                element.accessibilityLabel = "Fly up"
+                element.accessibilityUserInputLabels = ["Up", "Fly up", "Fly"]
+            case .down:
+                element.accessibilityLabel = "Fly down"
+                element.accessibilityUserInputLabels = ["Down", "Fly down"]
+            }
+            element.accessibilityTraits = .button
+            if GameSettings.shared.voiceOverDirectTouch {
+                // VoiceOver passes touches on the flight area straight through to the scene, so
+                // taps and holds fly at once. Silent, so speech never lags behind each flap.
+                // Switch Control and Voice Control still activate the element as before.
+                element.accessibilityTraits.insert(.allowsDirectInteraction)
+                element.accessibilityDirectTouchOptions = .silentOnTouch
+            }
+            element.accessibilityHint = game.accessibilityFlightHint(down: area == .down)
+            element.accessibilityCustomActions = [
+                UIAccessibilityCustomAction(name: "Pause", target: element, selector: #selector(FlightAccessibilityElement.pause))
+            ]
+            return element
         }
-        actions.append(UIAccessibilityCustomAction(name: "Pause", target: element, selector: #selector(FlightAccessibilityElement.pause)))
-        element.accessibilityCustomActions = actions
-        flightElement = element
-        accessibilityElements = [element, scroll]
+        accessibilityElements = flightElements + [scroll]
         showCurrentHUD(of: game)
         accessibilityViewIsModal = false
-        ScreenChangeAnnouncer.post(element)
+        ScreenChangeAnnouncer.post(flightElements.first)
+    }
+
+    /// A faint line across the middle with Up and Down beside it, for schemes where the
+    /// top half moves up and the bottom half moves down. It never takes a touch.
+    private func addUpDownGuide(theme: UITheme) {
+        let line = UIView()
+        line.translatesAutoresizingMaskIntoConstraints = false
+        line.backgroundColor = theme.titleTextColor.withAlphaComponent(0.35)
+        line.isUserInteractionEnabled = false
+        line.isAccessibilityElement = false
+        addSubview(line)
+        var constraints = [
+            line.leadingAnchor.constraint(equalTo: leadingAnchor),
+            line.trailingAnchor.constraint(equalTo: trailingAnchor),
+            line.centerYAnchor.constraint(equalTo: centerYAnchor),
+            line.heightAnchor.constraint(equalToConstant: 2)
+        ]
+        // Beside the right edge, away from the helicopter on the left. The Up and Down
+        // areas already speak these words, so VoiceOver skips the labels.
+        for (text, above) in [("Up", true), ("Down", false)] {
+            let label = UILabel()
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.text = text
+            label.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
+            label.adjustsFontForContentSizeCategory = true
+            label.textColor = theme.titleTextColor
+            label.backgroundColor = theme.sceneBackgroundColor
+            label.isUserInteractionEnabled = false
+            label.isAccessibilityElement = false
+            addSubview(label)
+            constraints += [
+                label.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -16),
+                above ? label.bottomAnchor.constraint(equalTo: line.topAnchor, constant: -6)
+                      : label.topAnchor.constraint(equalTo: line.bottomAnchor, constant: 6)
+            ]
+        }
+        NSLayoutConstraint.activate(constraints)
     }
 
     @objc private func pauseTapped() {
@@ -290,8 +349,14 @@ class DynamicTextButton: UIButton {
 
 /// A stable proxy on the actual UIKit overlay, independent of SpriteKit hit testing.
 final class FlightAccessibilityElement: UIAccessibilityElement {
+    /// `whole` is the lower half; `up` runs from below the HUD row to the middle, so the
+    /// Pause button stays outside it, and `down` is the lower half.
+    enum Area { case whole, up, down }
+
     weak var game: GameScene?
     weak var host: UIView?
+    weak var hud: UIView?
+    var area: Area = .whole
     override var accessibilityValue: String? {
         get { game?.accessibilityFlightStatus }
         set { }
@@ -299,14 +364,19 @@ final class FlightAccessibilityElement: UIAccessibilityElement {
     override var accessibilityFrame: CGRect {
         get {
             guard let host = host else { return .zero }
-            let rect = CGRect(x: 0, y: host.bounds.height * 0.5,
-                              width: host.bounds.width, height: host.bounds.height * 0.5)
+            let middle = host.bounds.height * 0.5
+            let rect: CGRect
+            if area == .up {
+                let top = hud.map { min($0.convert($0.bounds, to: host).maxY, middle) } ?? 0
+                rect = CGRect(x: 0, y: top, width: host.bounds.width, height: middle - top)
+            } else {
+                rect = CGRect(x: 0, y: middle, width: host.bounds.width, height: host.bounds.height - middle)
+            }
             return UIAccessibility.convertToScreenCoordinates(rect, in: host)
         }
         set { }
     }
-    override func accessibilityActivate() -> Bool { game?.accessibilityFly() ?? false }
-    @objc func moveDown() -> Bool { game?.accessibilityFly(down: true) ?? false }
+    override func accessibilityActivate() -> Bool { game?.accessibilityFly(down: area == .down) ?? false }
     @objc func pause() -> Bool {
         guard let game = game, game.stateMachine.currentState is PlayingState else { return false }
         game.pauseForInterruption()

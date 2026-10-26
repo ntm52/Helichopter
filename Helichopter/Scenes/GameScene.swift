@@ -35,6 +35,7 @@ class GameScene: SKScene {
     private(set) var overlayScanner: FocusScanner?
     private(set) var switchPauseTimer: Timer?
     private var primarySwitchHeld = false
+    private var secondarySwitchHeld = false
 
     deinit { switchPauseTimer?.invalidate() }
 
@@ -71,6 +72,7 @@ class GameScene: SKScene {
         overlayScanner?.stop()
         cancelSwitchPauseHold()
         primarySwitchHeld = false
+        secondarySwitchHeld = false
     }
 
     // MARK: - Flight hint
@@ -136,13 +138,19 @@ class GameScene: SKScene {
     }
 
     /// Shown until the first flight input; worded for how this player actually flies.
-    static func flightHintText(for scheme: ControlScheme, voiceOver: Bool) -> String {
-        if voiceOver { return "Double-tap the flight control to start" }
+    static func flightHintText(for scheme: ControlScheme, voiceOver: Bool,
+                               directTouch: Bool = GameSettings.shared.voiceOverDirectTouch) -> String {
+        if voiceOver {
+            guard directTouch else { return "Double-tap the flight control to start" }
+            return scheme.splitsTouchIntoUpAndDown
+                ? "Touch the top or bottom half of the screen to fly up or down"
+                : "Touch the lower half of the screen to fly"
+        }
         switch scheme {
         case .tapFlap: return "Tap or press your switch to fly"
         case .holdHover: return "Hold the screen or your switch to rise"
-        case .autoHover: return "Tap or press your switch to nudge up"
-        case .twoSwitchUD: return "Hold a switch to move up or down"
+        case .autoHover: return "Tap the top or bottom half, or press a switch, to nudge up or down"
+        case .twoSwitchUD: return "Hold the top or bottom half, or a switch, to move up or down"
         }
     }
 
@@ -152,6 +160,7 @@ class GameScene: SKScene {
     func pauseForInterruption() {
         cancelSwitchPauseHold()
         primarySwitchHeld = false
+        secondarySwitchHeld = false
         helicopter?.prepareForNewRun()
         guard stateMachine.currentState is PlayingState else { return }
         if stateMachine.enter(PausedState.self) {
@@ -186,12 +195,24 @@ class GameScene: SKScene {
         return true
     }
 
-    var accessibilityFlightHint: String {
-        switch GameSettings.shared.controlScheme {
+    /// The VoiceOver hint for a flight area; `down` is the lower area of a split screen.
+    func accessibilityFlightHint(down: Bool = false) -> String {
+        let scheme = GameSettings.shared.controlScheme
+        if GameSettings.shared.voiceOverDirectTouch {
+            // Touches pass straight through, so swipe gestures cannot start on the flight area.
+            let pause = "Pause is at the top of the screen."
+            switch scheme {
+            case .tapFlap: return "Direct touch. Tap the lower half of the screen to flap upward. \(pause)"
+            case .holdHover: return "Direct touch. Touch and hold the lower half of the screen to rise; lift your finger to fall. \(pause)"
+            case .autoHover: return "Direct touch. Tap here to nudge \(down ? "down" : "up"). \(pause)"
+            case .twoSwitchUD: return "Direct touch. Touch and hold here to move \(down ? "down" : "up"); lift your finger to stop. \(pause)"
+            }
+        }
+        switch scheme {
         case .tapFlap: return "Double-tap to flap upward. Use the Pause action to pause."
         case .holdHover: return "Double-tap to toggle rising and falling. Use the Pause action to pause."
-        case .autoHover: return "Double-tap to nudge up. Use the Move down action to nudge down, or Pause to pause."
-        case .twoSwitchUD: return "Double-tap to toggle rising and stopping. Use Move down to toggle descending and stopping, or Pause to pause."
+        case .autoHover: return "Double-tap to nudge \(down ? "down" : "up"). Use the Pause action to pause."
+        case .twoSwitchUD: return "Double-tap to toggle \(down ? "descending" : "rising") and stopping. Use the Pause action to pause."
         }
     }
 
@@ -309,25 +330,24 @@ extension GameScene: ScreenTransitionScanning {
 
 extension GameScene: SwitchInputReceivable {
 
+    /// Up/Down Switches pauses when both switches are held this long; a brief overlap does not.
+    static let bothSwitchesPauseDelay: TimeInterval = 0.5
+
     func switchPrimaryBegan() {
         // Ignore key repeat and the still-held pause gesture until its release.
         guard !primarySwitchHeld else { return }
         primarySwitchHeld = true
-        if stateMachine.currentState is PlayingState {
-            helicopter?.switchPrimaryBegan()
-            let timer = Timer(timeInterval: GameSettings.shared.switchPauseHoldDuration, repeats: false) { [weak self] _ in
-                guard let self = self, self.primarySwitchHeld,
-                      self.stateMachine.currentState is PlayingState else { return }
-                self.cancelSwitchPauseHold()
-                if self.stateMachine.enter(PausedState.self) {
-                    // Switch entry always enables navigation, even if menu auto-start is off.
-                    self.setupOverlayScanner(forceStart: true)
-                }
-            }
-            switchPauseTimer = timer
-            RunLoop.main.add(timer, forMode: .common)
-        } else {
+        guard stateMachine.currentState is PlayingState else {
             overlayScanner?.primaryActivate()
+            return
+        }
+        helicopter?.switchPrimaryBegan()
+        if GameSettings.shared.controlScheme.holdingPrimaryPauses {
+            if GameSettings.shared.holdToPauseEnabled {
+                startSwitchPause(after: GameSettings.shared.switchPauseHoldDuration)
+            }
+        } else if secondarySwitchHeld {
+            startSwitchPause(after: Self.bothSwitchesPauseDelay)
         }
     }
 
@@ -340,16 +360,51 @@ extension GameScene: SwitchInputReceivable {
     }
 
     func switchSecondaryBegan() {
-        if stateMachine.currentState is PlayingState {
-            helicopter?.switchSecondaryBegan()
-        } else {
+        guard !secondarySwitchHeld else { return }
+        secondarySwitchHeld = true
+        guard stateMachine.currentState is PlayingState else {
             overlayScanner?.secondaryAdvance()
+            return
+        }
+        let scheme = GameSettings.shared.controlScheme
+        // Tap to Flap and Hold to Hover have no flight job for it, so it pauses at once.
+        if scheme.secondarySwitchPauses {
+            pauseFromSwitch()
+            return
+        }
+        helicopter?.switchSecondaryBegan()
+        if !scheme.holdingPrimaryPauses && primarySwitchHeld {
+            startSwitchPause(after: Self.bothSwitchesPauseDelay)
         }
     }
 
     func switchSecondaryEnded() {
+        secondarySwitchHeld = false
+        // Releasing it ends the both-switches gesture, but not a primary hold in Auto Hover.
+        if !GameSettings.shared.controlScheme.holdingPrimaryPauses { cancelSwitchPauseHold() }
         if stateMachine.currentState is PlayingState {
             helicopter?.switchSecondaryEnded()
+        }
+    }
+
+    /// Pauses once the gesture has lasted `delay`; releasing the switch cancels it.
+    private func startSwitchPause(after delay: TimeInterval) {
+        cancelSwitchPauseHold()
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+            guard let self = self, self.primarySwitchHeld,
+                  self.stateMachine.currentState is PlayingState else { return }
+            self.pauseFromSwitch()
+        }
+        switchPauseTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func pauseFromSwitch() {
+        cancelSwitchPauseHold()
+        guard stateMachine.currentState is PlayingState else { return }
+        if stateMachine.enter(PausedState.self) {
+            // Switch entry always enables navigation, even if menu auto-start is off.
+            setupOverlayScanner(forceStart: true)
         }
     }
 

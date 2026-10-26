@@ -157,22 +157,27 @@ struct VoiceOverFlightTests {
             #expect(scene.action(forKey: "Pipe Action") != nil)
             overlay.refresh(in: view)
             #expect(overlay.accessibilityElements?.first as? FlightAccessibilityElement === proxy)
+            // Split schemes add a Down area after Up; the others have one area.
+            let flights = (overlay.accessibilityElements ?? []).compactMap { $0 as? FlightAccessibilityElement }
+            #expect(flights.count == (scheme.splitsTouchIntoUpAndDown ? 2 : 1))
+            #expect(flights.allSatisfy { $0.accessibilityCustomActions?.map(\.name) == ["Pause"] })
             switch scheme {
             case .tapFlap:
                 #expect(player.isAffectedByGravity)
-                #expect(!proxy.moveDown())
             case .holdHover:
                 #expect(player.isHoveringHeld)
                 #expect(proxy.accessibilityActivate())
                 #expect(!player.isHoveringHeld)
             case .autoHover:
                 #expect(!player.isAffectedByGravity)
-                #expect(proxy.moveDown())
+                #expect(player.physicsBody?.velocity.dy == GameSettings.shared.terminalVelocity)
+                #expect(flights[1].accessibilityActivate())
+                #expect(player.physicsBody?.velocity.dy == -GameSettings.shared.terminalVelocity)
             case .twoSwitchUD:
                 #expect(player.isTwoSwitchUpHeld)
-                #expect(proxy.moveDown())
+                #expect(flights[1].accessibilityActivate())
                 #expect(!player.isTwoSwitchUpHeld && player.isTwoSwitchDownHeld)
-                #expect(proxy.moveDown())
+                #expect(flights[1].accessibilityActivate())
                 #expect(!player.isTwoSwitchDownHeld)
             }
             #expect(proxy.accessibilityPerformEscape())

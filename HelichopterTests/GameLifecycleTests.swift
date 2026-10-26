@@ -52,14 +52,15 @@ struct GameLifecycleTests {
         scene.switchPrimaryEnded()
     }
 
-    @Test func heldPrimaryPausesEveryFlightSchemeAndResumesWithOneSwitch() async throws {
+    /// Up/Down Switches is left out: holding up must not pause it (see `bothSwitchesPauseUpDownSwitches`).
+    @Test func heldPrimaryPausesHoldSchemesAndResumesWithOneSwitch() async throws {
         try await withAsyncSettings {
             let gs = GameSettings.shared
             gs.switchPauseHoldDuration = 2
             gs.scanScheme = .autoScan
             gs.scanDwellTime = 0.5
             gs.noFailMode = true
-            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover, .twoSwitchUD] {
+            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover] {
                 gs.controlScheme = scheme
                 let scene = try #require(GameScene(fileNamed: "GameScene"))
                 let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
@@ -188,6 +189,7 @@ struct GameLifecycleTests {
             scene.switchPrimaryEnded()
             #expect(scene.stateMachine.currentState is PlayingState)
 
+            gs.controlScheme = .autoHover
             let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
             let removed = try #require(GameScene(fileNamed: "GameScene"))
             view.presentScene(removed)
@@ -356,6 +358,171 @@ struct GameLifecycleTests {
             }
             #expect(heli.physicsBody?.velocity.dy == 0)
             #expect(travelled > 40 && travelled < scene.size.height / 5)
+        }
+    }
+
+    /// In Tap to Flap and Hold to Hover the secondary switch (or an arrow key) has no flight
+    /// job, so it pauses at once; it never starts the pipes while the helicopter floats.
+    /// In Auto Hover and Up/Down Switches it moves down and starts the run.
+    @Test func secondarySwitchPausesOrMovesDownBySchemeAndHoldsStayUnpaused() throws {
+        try withSettings {
+            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover, .twoSwitchUD] {
+                GameSettings.shared.controlScheme = scheme
+                let scene = try #require(GameScene(fileNamed: "GameScene"))
+                let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+                scene.switchSecondaryBegan()
+                if scheme.secondarySwitchPauses {
+                    #expect(scene.stateMachine.currentState is PausedState, "\(scheme)")
+                    #expect(scene.overlayScanner?.isActive == true)
+                    #expect(heli.onFirstInput != nil)
+                    #expect(scene.action(forKey: "Pipe Action") == nil)
+                    // Still held: it cannot also step the menu until it is released.
+                    let index = scene.overlayScanner?.currentIndex
+                    scene.switchSecondaryBegan()
+                    #expect(scene.overlayScanner?.currentIndex == index)
+                    scene.switchSecondaryEnded()
+                } else {
+                    #expect(scene.stateMachine.currentState is PlayingState, "\(scheme)")
+                    #expect(heli.onFirstInput == nil)
+                    #expect(scene.action(forKey: "Pipe Action") != nil)
+                    #expect(!heli.isAffectedByGravity)
+                    #expect(scene.switchPauseTimer == nil)
+                    scene.switchSecondaryEnded()
+                }
+            }
+        }
+    }
+
+    /// Up/Down Switches pauses with both switches held for half a second. Holding one alone,
+    /// or a brief overlap, keeps flying; while both are held the helicopter holds still.
+    @Test func bothSwitchesPauseUpDownSwitches() async throws {
+        try await withAsyncSettings {
+            let gs = GameSettings.shared
+            gs.controlScheme = .twoSwitchUD
+            gs.switchPauseHoldDuration = 2
+            gs.scanScheme = .autoScan
+            gs.scanDwellTime = 0.5
+            let scene = try #require(GameScene(fileNamed: "GameScene"))
+            let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+            // A long hold of either switch alone never pauses.
+            scene.switchPrimaryBegan()
+            #expect(scene.switchPauseTimer == nil)
+            heli.update(1)
+            heli.update(1 + 1.0 / 60)
+            #expect(heli.physicsBody?.velocity.dy == 260)
+            // Both together: the helicopter holds still while the gesture counts down.
+            scene.switchSecondaryBegan()
+            let timer = try #require(scene.switchPauseTimer)
+            #expect(abs(timer.fireDate.timeIntervalSinceNow - GameScene.bothSwitchesPauseDelay) < 0.2)
+            heli.update(1 + 2.0 / 60)
+            #expect(try #require(heli.physicsBody?.velocity.dy) < 260)
+            // A brief overlap is cancelled by letting go of either switch.
+            scene.switchSecondaryEnded()
+            #expect(scene.switchPauseTimer == nil)
+            try await Task.sleep(nanoseconds: 700_000_000)
+            #expect(scene.stateMachine.currentState is PlayingState)
+            #expect(heli.isTwoSwitchUpHeld)
+            // Holding both, in either order, pauses.
+            scene.switchPrimaryEnded()
+            scene.switchSecondaryBegan()
+            scene.switchPrimaryBegan()
+            #expect(try await waitUntil { scene.stateMachine.currentState is PausedState })
+            #expect(scene.overlayScanner?.isActive == true)
+            #expect(!heli.isTwoSwitchUpHeld && !heli.isTwoSwitchDownHeld)
+            // The held switches cannot act on the menu until released.
+            scene.switchPrimaryBegan()
+            #expect(scene.stateMachine.currentState is PausedState)
+            scene.switchPrimaryEnded()
+            scene.switchSecondaryEnded()
+            try await activateGameItem(.resume, in: scene)
+            #expect(scene.stateMachine.currentState is PlayingState)
+        }
+    }
+
+    /// Caregivers can turn hold-to-pause off; the switch pauses that are not holds still work.
+    @Test func holdToPauseCanBeTurnedOff() async throws {
+        try await withAsyncSettings {
+            let gs = GameSettings.shared
+            gs.switchPauseHoldDuration = 2
+            gs.holdToPauseEnabled = false
+            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover] {
+                gs.controlScheme = scheme
+                let scene = try #require(GameScene(fileNamed: "GameScene"))
+                scene.switchPrimaryBegan()
+                #expect(scene.switchPauseTimer == nil, "\(scheme)")
+                scene.switchPrimaryEnded()
+                if scheme.secondarySwitchPauses {
+                    scene.switchSecondaryBegan()
+                    #expect(scene.stateMachine.currentState is PausedState)
+                }
+            }
+            gs.controlScheme = .twoSwitchUD
+            let scene = try #require(GameScene(fileNamed: "GameScene"))
+            scene.switchPrimaryBegan()
+            scene.switchSecondaryBegan()
+            #expect(try await waitUntil { scene.stateMachine.currentState is PausedState })
+        }
+    }
+
+    /// Auto Hover and Up/Down Switches: the top half moves up, the bottom half down, and a
+    /// touch keeps its direction until released. The other schemes use the whole screen.
+    @Test func touchTopMovesUpAndBottomMovesDownInSplitSchemes() throws {
+        try withSettings {
+            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover, .twoSwitchUD] {
+                #expect(HelicopterNode.touchMeansUp(atY: 100, inViewHeight: 844, scheme: scheme))
+                #expect(HelicopterNode.touchMeansUp(atY: 421, inViewHeight: 844, scheme: scheme))
+                #expect(HelicopterNode.touchMeansUp(atY: 700, inViewHeight: 844, scheme: scheme) == !scheme.splitsTouchIntoUpAndDown)
+            }
+            let gs = GameSettings.shared
+            gs.controlScheme = .autoHover
+            let hover = try #require(GameScene(fileNamed: "GameScene"))
+            let hoverHeli = try #require(hover.sceneAdapter?.playerCharacter as? HelicopterNode)
+            hoverHeli.touchBegan(up: false)
+            hoverHeli.touchEnded()
+            #expect(hoverHeli.physicsBody?.velocity.dy == -gs.terminalVelocity)
+            #expect(hoverHeli.onFirstInput == nil)
+            hoverHeli.touchBegan(up: true)
+            hoverHeli.touchEnded()
+            #expect(hoverHeli.physicsBody?.velocity.dy == gs.terminalVelocity)
+
+            gs.controlScheme = .twoSwitchUD
+            let scene = try #require(GameScene(fileNamed: "GameScene"))
+            let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
+            heli.touchBegan(up: false)
+            #expect(heli.isTwoSwitchDownHeld && !heli.isTwoSwitchUpHeld)
+            heli.touchEnded()
+            #expect(!heli.isTwoSwitchDownHeld)
+            heli.touchBegan(up: true)
+            #expect(heli.isTwoSwitchUpHeld)
+            heli.touchEnded()
+            #expect(!heli.isTwoSwitchUpHeld)
+            // Touch never starts a switch pause gesture.
+            #expect(scene.switchPauseTimer == nil)
+        }
+    }
+
+    @Test func guideDescribesEachSchemesPause() {
+        withSettings {
+            let gs = GameSettings.shared
+            gs.switchPauseHoldDuration = 4
+            gs.holdToPauseEnabled = true
+            gs.controlScheme = .tapFlap
+            #expect(GuideViewController.pauseInstructions(for: gs).contains("hold your primary switch for 4 seconds"))
+            #expect(GuideViewController.pauseInstructions(for: gs).contains("secondary switch"))
+            gs.controlScheme = .holdHover
+            #expect(GuideViewController.pauseInstructions(for: gs).contains("With one switch"))
+            gs.controlScheme = .autoHover
+            #expect(!GuideViewController.pauseInstructions(for: gs).contains("secondary"))
+            gs.controlScheme = .twoSwitchUD
+            #expect(GuideViewController.pauseInstructions(for: gs).contains("both switches"))
+            #expect(!GuideViewController.pauseInstructions(for: gs).contains("primary"))
+            gs.holdToPauseEnabled = false
+            for scheme in [ControlScheme.tapFlap, .holdHover, .autoHover] {
+                gs.controlScheme = scheme
+                #expect(!GuideViewController.pauseInstructions(for: gs).contains("hold your primary"))
+            }
+            gs.controlScheme = .twoSwitchUD
+            #expect(GuideViewController.pages(for: gs)[0].body.contains("bottom half"))
         }
     }
 
@@ -729,7 +896,7 @@ struct GameLifecycleTests {
             let overlay = try #require(scene.panel)
             let expected = ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size",
                             "Background Scroll", "No-Fail Mode", "Calm Mode", "Show Score", "Auto-Scan Menus",
-                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "Hold Switch to Pause",
+                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "VoiceOver Direct Touch", "Pause by Holding Switch", "Hold Switch to Pause",
                             "Sound Effects", "Music", "Lock Settings"] + GameSettings.allPalettes.map { $0.name }
             for label in expected { try focusSetting(label, in: scene) }
             #expect(overlay.scrollPosition.y > 0)

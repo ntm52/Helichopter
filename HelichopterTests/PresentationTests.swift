@@ -130,7 +130,8 @@ struct PresentationTests {
             }
         }
         #expect(texts.count == 4)
-        #expect(GameScene.flightHintText(for: .tapFlap, voiceOver: true).contains("Double-tap"))
+        #expect(GameScene.flightHintText(for: .tapFlap, voiceOver: true, directTouch: false).contains("Double-tap"))
+        #expect(!GameScene.flightHintText(for: .tapFlap, voiceOver: true, directTouch: true).contains("Double-tap"))
     }
 
     @Test func contrastAndPausePreferencesPersist() {

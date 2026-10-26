@@ -95,6 +95,8 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
     private(set) var isTwoSwitchUpHeld = false
     private(set) var isTwoSwitchDownHeld = false
+    /// The direction of the touch in progress, so its release ends the matching input.
+    private var touchIsUp = true
     // Cached after physics body creation; avoids per-frame optional unwrapping
     private var cachedMass: CGFloat = 1.0
 
@@ -230,10 +232,11 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
         case .twoSwitchUD:
             // isAffectedByGravity remains false. Direct velocity control.
+            // Both held is the pause gesture, so the helicopter holds still rather than rising.
             let speed: CGFloat = 260
-            if isTwoSwitchUpHeld {
+            if isTwoSwitchUpHeld && !isTwoSwitchDownHeld {
                 body.velocity.dy = speed
-            } else if isTwoSwitchDownHeld {
+            } else if isTwoSwitchDownHeld && !isTwoSwitchUpHeld {
                 body.velocity.dy = -speed
             } else {
                 body.velocity.dy *= CGFloat(pow(0.85, delta * 60))
@@ -261,19 +264,22 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
     }
 
     private func handleInputBegan(primary: Bool) {
+        let scheme = GameSettings.shared.controlScheme
+        // Tap to Flap and Hold to Hover have no use for the secondary switch. It must not
+        // start the run either: pipes would come while the helicopter floats with gravity off.
+        guard primary || scheme == .autoHover || scheme == .twoSwitchUD else { return }
+
         // Fire the first-input hook (starts pipe spawning, fades hint) exactly once per run.
         if let cb = onFirstInput { onFirstInput = nil; cb() }
 
-        switch GameSettings.shared.controlScheme {
+        switch scheme {
         case .tapFlap:
-            if primary { flap() }
+            flap()
 
         case .holdHover:
-            if primary {
-                isHoveringHeld = true
-                isAffectedByGravity = true  // enable gravity so it falls when released
-                impact.impactOccurred()
-            }
+            isHoveringHeld = true
+            isAffectedByGravity = true  // enable gravity so it falls when released
+            impact.impactOccurred()
 
         case .autoHover:
             // Nudge up on primary, nudge down on secondary. Set a bounded speed rather than
@@ -305,18 +311,36 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
 extension HelicopterNode: Touchable {
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+    /// True when a touch at this height in the view means up. Only Auto Hover and Up/Down
+    /// Switches split the screen; the line sits at the view's middle, where the HUD draws it.
+    static func touchMeansUp(atY y: CGFloat, inViewHeight height: CGFloat,
+                             scheme: ControlScheme = GameSettings.shared.controlScheme) -> Bool {
+        !scheme.splitsTouchIntoUpAndDown || y < height / 2
+    }
+
+    /// A touch keeps the direction it started with, even if the finger slides across the line.
+    func touchBegan(up: Bool) {
         guard shouldAcceptTouches else { return }
-        handleInputBegan(primary: true)
+        touchIsUp = up
+        handleInputBegan(primary: up)
+    }
+
+    func touchEnded() {
+        handleInputEnded(primary: touchIsUp)
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first, let view = touch.view else { return touchBegan(up: true) }
+        touchBegan(up: Self.touchMeansUp(atY: touch.location(in: view).y, inViewHeight: view.bounds.height))
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard shouldAcceptTouches else { return }
-        handleInputEnded(primary: true)
+        touchEnded()
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>?, with event: UIEvent?) {
-        handleInputEnded(primary: true)
+        touchEnded()
     }
 }
 

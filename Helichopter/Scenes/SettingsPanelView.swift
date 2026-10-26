@@ -115,9 +115,15 @@ final class SettingsPanelView: ScrollingPanelView {
                      selectedIndex: gs.controlScheme.rawValue) { idx in
             if let scheme = ControlScheme(rawValue: idx) { gs.controlScheme = scheme }
         }
+        toggleRow("VoiceOver Direct Touch",
+                  detail: "With VoiceOver on, touching the lower half of the game flies the helicopter at once, with no double-tap. Turn off to fly with double-taps and VoiceOver actions instead.",
+                  isOn: gs.voiceOverDirectTouch) { v in gs.voiceOverDirectTouch = v }
 
+        toggleRow("Pause by Holding Switch",
+                  detail: "Hold the primary switch to pause in Tap to Flap, Hold to Hover, and Auto Hover. Turn off if a player pauses by accident; the Pause button still works. The secondary switch pauses Tap to Flap and Hold to Hover, and holding both switches pauses Up/Down Switches.",
+                  isOn: gs.holdToPauseEnabled) { v in gs.holdToPauseEnabled = v }
         sliderRow("Hold Switch to Pause",
-                  detail: "Hold the primary switch to pause, then release before choosing a menu item. For longer hover holds, increase this delay.",
+                  detail: "How long to hold the primary switch to pause. Release it before choosing a menu item.",
                   lo: "2 s", hi: "10 s",
                   min: 2, max: 10,
                   value: Float(gs.switchPauseHoldDuration), seconds: true) { v in
