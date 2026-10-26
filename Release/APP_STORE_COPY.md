@@ -1,6 +1,6 @@
 # App Store submission copy
 
-Version 2.0 listing as entered in App Store Connect (October 2026), plus the 2.1 What's New. Edit this file first, then copy changes into App Store Connect.
+Version 2.0 listing as entered in App Store Connect (October 2026), plus the 2.1 What's New. For 2.1, the description's last paragraph and the review notes were updated (2026-10-26) for VoiceOver Direct Touch and the new pause options; paste both into App Store Connect. Edit this file first, then copy changes into App Store Connect.
 
 > **Before in-app purchases ship:** the description and review notes below say there are no purchases. Update them, the age-rating answers, and the DSA trader status as described in [Plans/02_COSMETICS_AND_STORE.md](../Plans/02_COSMETICS_AND_STORE.md).
 
@@ -33,7 +33,7 @@ Make the experience comfortable:
 - Adjust background scrolling and choose among three themes and six colour palettes.
 - Replay How to Play whenever you need a reminder.
 
-Menus and Settings offer scalable text and switch scanning. VoiceOver provides flight actions and spoken gap guidance. During keyboard or controller play, hold the primary switch to pause, then release it before choosing a menu item. Settings let you adjust the hold delay and scanning speed.
+Menus and Settings offer scalable text and switch scanning. With VoiceOver, touch the game to fly at once, or use double-taps and actions; spoken gap guidance tells you where the next gap is. Each flight scheme has its own way to pause with switches, and Settings let you adjust the hold delay and scanning speed or turn hold-to-pause off.
 
 Helichopter works offline without an account, ads, or in-app purchases. Settings and scores are saved on your device.
 
@@ -42,6 +42,11 @@ Helichopter works offline without an account, ads, or in-app purchases. Settings
 New Hangar on the Home screen: choose the menu theme there, with a preview of each one. The menu theme has moved from Settings, which now has a button that opens the Hangar. When Settings is locked, the Hangar is locked too.
 
 Rebuilt menus: Home, Settings, Pause, and Round Over now fade as one whole screen, so two menus never appear at the same time. Taps and switch presses wait until the new screen is ready. With Reduce Motion on, the fade is shorter.
+
+New ways to fly and pause:
+- VoiceOver Direct Touch (on by default): with VoiceOver on, touch the lower half of the game to fly at once, with no double-tap. Gap guidance is still spoken, and the Pause button stays at the top. Turn it off in Settings to fly with double-taps and actions.
+- In Auto Hover and Up/Down Switches, touch above the middle of the screen to move up and below it to move down. A faint line marks the middle.
+- Pausing suits each flight scheme. In Tap to Flap and Hold to Hover, the secondary switch pauses at once. In Up/Down Switches, hold both switches for half a second, so holding one switch to rise no longer pauses. New setting Pause by Holding Switch turns off hold-to-pause for players who pause by accident.
 
 Accessibility improvements:
 - VoiceOver reads each Settings switch and slider once, with its description as a hint, and announces each screen once. Settings sections are headings, so the rotor can jump between them.
@@ -52,6 +57,8 @@ Accessibility improvements:
 
 Other changes:
 - In a narrow iPad window, such as Split View or Slide Over, the game is drawn larger.
+- A game controller's d-pad can now move down in Auto Hover and Up/Down Switches.
+- In Tap to Flap and Hold to Hover, the secondary switch no longer starts a round without moving the helicopter.
 - In No-Fail Mode, landing on a pipe corner no longer pushes the helicopter forwards or backwards.
 - The app uses less power on menu screens.
 
@@ -65,8 +72,8 @@ No login, purchase, server connection, or special account is needed. The first-r
 
 1. Open Settings. Choose Gentle for slower play. No-Fail Mode is on by default; turn it off to reach Round Over after a collision.
 2. For keyboard-emulating switch input, Space or Enter selects. In Settings → Switch Access, Auto-Scan Menus starts scanning when each menu opens; Menu Scan Mode → Step with Switch 2 uses secondary input (2) to advance and primary input to select. Sliders open Decrease/Increase/Done choices.
-3. During flight, hold the primary keyboard/controller switch for 3 seconds to pause. Release before selecting Resume or Home. The delay is adjustable from 2–10 seconds.
-4. With VoiceOver enabled, focus Helicopter flight control. Double-tap flaps, toggles hover, nudges up, or toggles rising according to the selected flight scheme. The Move down custom action provides downward control where applicable. Pause or accessibility escape opens the pause menu. Guidance is periodic, not continuous.
+3. During flight, tap Pause at the top of the screen. With a keyboard or controller: in Tap to Flap, Hold to Hover, and Auto Hover, hold the primary switch (Space) for 3 seconds (adjustable from 2–10 seconds; Settings → Pause by Holding Switch turns this off); in Tap to Flap and Hold to Hover, the secondary switch (2) also pauses at once; in Up/Down Switches, hold both switches for half a second. Release before selecting Resume or Home.
+4. With VoiceOver enabled and Settings → VoiceOver Direct Touch on (the default), touching the lower half of the game flies directly: a tap flaps, and a hold hovers in Hold to Hover. In Auto Hover and Up/Down Switches, the screen is split into Fly up (upper half) and Fly down (lower half) areas. The Pause button at the top works as a normal VoiceOver button. With Direct Touch off, focus Helicopter flight control (or Fly up / Fly down) and double-tap; its Pause action or the accessibility escape gesture opens the pause menu. Gap guidance is periodic, not continuous.
 5. Settings → Reset Settings → Restore Defaults restores Standard difficulty, default controls/audio, the menu theme, and the Classic helicopter and pipes, while retaining scores and guide completion. Cancel leaves settings intact. Lock Settings must be off to reset.
 
 ## Accessibility statement
@@ -77,7 +84,7 @@ These features are implemented. Full sound-only play and physical assistive-devi
 
 ## Screenshot capture brief
 
-Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, Home, the Hangar (menu themes), control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. The 2.1 screenshots (recaptured 2026-10-12 with the Hangar, replacing 2.0's, which are in git history) are in `Release/Screenshots/`. Recapture with `StoreScreenshotTests` (see `CLAUDE.md`). In App Store Connect, replace all three sets (6.3", 6.9", iPad 13") on the 2.1 version.
+Use real release-candidate screens on iPhone and iPad; do not upload test-layout captures as product screenshots. Capture gameplay with a visible gap, Home, the Hangar (menu themes), control choices, Comfort settings, and How to Play. Lead with gameplay. Optional captions: “Fly at your own pace”, “Choose how you fly”, “Practice with No-Fail Mode”, “Adjust your comfort settings”. Verify required sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/) at upload time. The 2.1 screenshots (recaptured 2026-10-26 with the Hangar, Direct Touch, and the pause options, replacing 2.0's, which are in git history) are in `Release/Screenshots/`: 8 per phone size, 6 for iPad. Recapture with `StoreScreenshotTests` (see `CLAUDE.md`). In App Store Connect, replace all three sets (6.3", 6.9", iPad 13") on the 2.1 version.
 
 ## Account fields still needed
 
