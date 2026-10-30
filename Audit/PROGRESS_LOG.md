@@ -422,3 +422,11 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Roadmap: 2.1 is build 4 (raised in `05dcfbd`), not 3.
 - Checks: `Tools/release_check.sh` passes (2.1 (4); only the expected unsigned-build WARN). **135 unit tests and all 3 UI audit tests pass**, no build warnings; the screenshot test passes on iPhone 17, iPhone 18 Pro Max, and iPad Pro 13-inch.
 - Next (owner): device checks (roadmap step 2), then archive, upload, paste the description, What's New, and review notes, replace the three screenshot sets, and submit. After approval, merge and push `docs-support-2.1`.
+
+### 2026-10-29 — App Store Connect brought up to date for 2.1 (Claude Code)
+- Build 5 (uploaded by the owner; `CURRENT_PROJECT_VERSION = 5` committed with this entry) is "Ready to Submit" and is now attached to version 2.1. Build 4 stays in internal testing.
+- Version 2.1 had the 2.0 description and review notes and an empty What's New and Promotional Text. All four were replaced with the text in `Release/APP_STORE_COPY.md`, saved, and checked after a reload.
+- Screenshots: the old 2.0 sets were removed from the version (they stay in the Asset Library) and the 2.1 sets uploaded in order: iPhone 6.3" (8), iPhone 6.9" (8), iPad 13" (6).
+- Checked and left alone: name and subtitle, Games › Casual, support and privacy URLs, review contact, age rating (4+; the new social-media questions were already answered No; Parental Controls Yes), App Privacy (Data Not Collected), Accessibility Nutrition Labels (VoiceOver and Voice Control still held), release option (release automatically after approval).
+- Keywords rewritten to use 99 of 100 characters: `helicopter,switch,adaptive,accessible,CVI,contrast,arcade,calm,offline,hover,obstacle,easy,practice`. Changes from the previous App Store Connect list: "high contrast" became "contrast" (one word frees space and still matches), "relaxing" became "calm" (Calm Mode), "obstacles" became "obstacle" (plurals match), and "offline" and "easy" (Gentle preset) were added. Saved in App Store Connect and in `Release/APP_STORE_COPY.md`.
+- Not done: Add for Review. The owner submits after the roadmap step 2 device checks.

@@ -12,7 +12,9 @@ Version 2.0 listing as entered in App Store Connect (October 2026), plus the 2.1
 
 **Promotional text:** Guide a helicopter through the gaps with adjustable controls, gentle practice, and room to find your own rhythm. Play offline on iPhone and iPad.
 
-**Keywords:** helicopter,flying,arcade,practice,relaxing,switch,hover,obstacles
+**Keywords:** helicopter,switch,adaptive,accessible,CVI,contrast,arcade,calm,offline,hover,obstacle,easy,practice
+
+(99 of 100 characters, entered on 2.1 on 2026-10-29. Words already in the name, subtitle, or category are not repeated; the App Store matches singular and plural and combines single words, so "contrast" also covers "high contrast".)
 
 **Description:**
 
