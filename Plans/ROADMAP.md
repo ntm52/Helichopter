@@ -8,7 +8,7 @@ Written 2026-10-08, after version 2.0 went live. Work top to bottom unless the o
 
 - [x] Commit the build-number change in `project.pbxproj` (`CURRENT_PROJECT_VERSION` 1 → 2, the uploaded build) and tag the release `2.0` in git. Done 2026-10-08 (commit `1edfa21`, tag `2.0`).
 - [x] **Owner:** Publish the Accessibility Nutrition Label drafts in App Store Connect now that 2.0 is live (Larger Text, Dark Interface, Sufficient Contrast, Reduced Motion, Differentiate Without Color Alone). Published 2026-10-08.
-- [ ] **When 2.1 is released:** update `docs/support.html` (live site; push publishes it) to the 2.1 names: Timed / Step with Switch 2 scanning, Up/Down Switches flight. It still describes 2.0 on purpose. **Prepared 2026-10-12** on the unpushed branch `docs-support-2.1` (commits `bb8524a`, `dea8685`, `b17aa5c`): merge it into `master` and push after Apple approves 2.1.
+- [x] **When 2.1 is released:** update `docs/support.html` (live site; push publishes it) to the 2.1 names: Timed / Step with Switch 2 scanning, Up/Down Switches flight. It still describes 2.0 on purpose. **Prepared 2026-10-12** on the unpushed branch `docs-support-2.1` (commits `bb8524a`, `dea8685`, `b17aa5c`): merge it into `master` and push after Apple approves 2.1. **Done 2026-10-30:** merged into `master` and pushed after 2.1 was distributed.
 - [ ] **Owner:** Check Xcode → Window → Organizer → Crashes, Hangs, and Feedback weekly for the first month (until about 2026-11-08). Ongoing; does not block step 1. This needs no SDK and does not change the privacy answers.
 
 ## 1. Remove the "double page" effect — [Plan 01](01_SINGLE_LAYER_UI.md)

@@ -430,3 +430,7 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Checked and left alone: name and subtitle, Games › Casual, support and privacy URLs, review contact, age rating (4+; the new social-media questions were already answered No; Parental Controls Yes), App Privacy (Data Not Collected), Accessibility Nutrition Labels (VoiceOver and Voice Control still held), release option (release automatically after approval).
 - Keywords rewritten to use 99 of 100 characters: `helicopter,switch,adaptive,accessible,CVI,contrast,arcade,calm,offline,hover,obstacle,easy,practice`. Changes from the previous App Store Connect list: "high contrast" became "contrast" (one word frees space and still matches), "relaxing" became "calm" (Calm Mode), "obstacles" became "obstacle" (plurals match), and "offline" and "easy" (Gentle preset) were added. Saved in App Store Connect and in `Release/APP_STORE_COPY.md`.
 - Not done: Add for Review. The owner submits after the roadmap step 2 device checks.
+
+### 2026-10-30 — 2.1 support page published (Claude Code)
+- 2.1 has been distributed on the App Store (owner). Merged `docs-support-2.1` (`bb8524a`, `dea8685`, `b17aa5c`; only `docs/support.html`) into `master` and pushed, which publishes the support page on GitHub Pages: 2.1 scan and flight names, the Hangar theme, per-scheme pausing, VoiceOver Direct Touch, and the new reset defaults.
+- Roadmap item "When 2.1 is released" ticked. The local `docs-support-2.1` branch can be deleted.
