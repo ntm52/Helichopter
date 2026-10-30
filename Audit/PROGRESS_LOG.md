@@ -433,4 +433,4 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 
 ### 2026-10-30 — 2.1 support page published (Claude Code)
 - 2.1 has been distributed on the App Store (owner). Merged `docs-support-2.1` (`bb8524a`, `dea8685`, `b17aa5c`; only `docs/support.html`) into `master` and pushed, which publishes the support page on GitHub Pages: 2.1 scan and flight names, the Hangar theme, per-scheme pausing, VoiceOver Direct Touch, and the new reset defaults.
-- Roadmap item "When 2.1 is released" ticked. The local `docs-support-2.1` branch can be deleted.
+- Roadmap item "When 2.1 is released" ticked. The local `docs-support-2.1` branch was then deleted.
