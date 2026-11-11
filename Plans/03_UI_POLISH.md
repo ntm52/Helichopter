@@ -1,0 +1,166 @@
+# Plan 03 — UI polish: an open, finished-looking app
+
+**Status:** Written 2026-11-11. Not started, except the launch screen art (done 2026-11-11, see Stage 3).
+**Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
+**Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
+**Release:** see "Decisions needed" 1. Recommended: ship the 2.2 skins first, then this as 2.3.
+
+---
+
+## 1. What looks unfinished today
+
+Observed 2026-11-11 from the simulator and `Release/Screenshots/`. Each point names the screen so it can be checked off.
+
+**Everywhere**
+- One button look for everything: a dark navy slab the full width of the screen. Play, Skip guide, and Pause all carry the same weight, so nothing reads as the main action.
+- The plain system font at near-default sizes, with a thin-weight title. No type scale: sizes 12, 13, 15, 16, and others are chosen per label.
+- Spacing and corner radii are chosen per view (radii 6, 8, 12; insets 10, 12, 16, 20). Nothing lines up to a shared grid.
+- Colours come straight from the theme with no surface levels. Cards in the Hangar and palette swatches are neutral grey (`#1C1C1C`-like) on a navy page, which looks like a different app pasted in.
+- No response to touch beyond the system default: no pressed state on custom buttons, no motion apart from the cross-fade.
+
+**Home**
+- A small mascot, a thin title, and four identical slabs, bunched in the middle with the lower third empty.
+- Launch → Home: the helicopter jumps in size and position when Home fades in.
+
+**Settings**
+- Rows run edge to edge with hairlines, so the page reads as one dense table. Section headings are tiny capitals.
+- Too many words on screen. Several rows carry four to six lines of small grey text (Pause by Holding Switch, VoiceOver Direct Touch).
+- One list of about 25 controls. It is long to scroll and, for a switch user, long to scan.
+- Three unrelated control looks in one screen: red, green, and blue outlined preset buttons; a home-made segmented control; and bare blue text used as buttons ("Reset Settings", "Menu Theme: Night Sky. Change it in the Hangar", which also runs to both screen edges).
+- "◀ Back" floats centred above the title rather than sitting in a header.
+
+**Hangar**
+- Grey cards on navy, small pictures in large cards, and half the screen empty.
+
+**Play (HUD, Pause, Round Over)**
+- "Score 1." and "Best 18" sit in cramped boxes jammed against a very wide Pause slab. The full stop after the score shows.
+- Pause and Round Over reuse the Home slabs with no card or title treatment.
+
+**Guide**
+- Paragraphs set directly over the starfield, so stars show through the text. Three identical slabs under it.
+
+**App icon**
+- Still the hand-drawn green helicopter that was on the launch screen.
+
+---
+
+## 2. Rules that do not bend
+
+These come from `HELICHOPTER_PROJECT.md` and `CLAUDE.md`. Polish that breaks one is a regression.
+
+1. Every control stays reachable by the app's scanner, iOS Switch Control, VoiceOver, and Voice Control. Labels stay speakable words. Scan order stays predictable.
+2. Dynamic Type everywhere, up to the largest accessibility size. Any side-by-side layout must fall back to one column at accessibility sizes.
+3. Text contrast stays at WCAG AA or better in all three themes; the UI audit must keep passing on every screen.
+4. Touch targets get bigger or stay the same, never smaller. Players with motor disabilities rely on the large buttons. "Open" means more space around things, not smaller things.
+5. Reduce Motion and Calm Mode are honoured by anything that moves or vibrates.
+6. UIKit menus, SpriteKit gameplay only, no refresh timers, screen changes only through `RootViewController.present(_:)`.
+7. No new fonts or art without an entry in `Release/ASSET_RIGHTS.md`. The plan uses only system fonts (SF Rounded) and SF Symbols, which need no entry.
+8. Existing spoken labels and the order of controls stay as they are unless a stage says otherwise, so the 137 unit tests keep their meaning.
+
+---
+
+## 3. Design direction (to confirm in Stage 0)
+
+- **Type:** SF Rounded (`UIFontDescriptor.withDesign(.rounded)`), which is friendlier and still the system font, so Dynamic Type and every language keep working. A scale of five text styles: display (title), heading, body, label, caption. Body no smaller than 17 pt.
+- **Space:** one spacing scale (4, 8, 12, 16, 24, 32, 48) and two radii (14 for controls, 20 for cards). Content has a maximum width (about 560 pt) and is centred, so iPad stops looking stretched.
+- **Surfaces:** each theme defines page, card, and raised-card colours, plus one accent. Nothing uses a colour outside the theme.
+- **Buttons:** three kinds. Primary (filled accent, one per screen), secondary (card-coloured with a border), quiet (text with an icon). All at least 56 pt tall.
+- **Icons:** an SF Symbol beside each main label (play, wrench, paintbrush, question mark). This also serves principle 3, "the player never has to read". Icons are decorative to VoiceOver; the label stays the spoken name.
+- **Fewer words:** one short line under a setting's name. Longer explanations move to a "More about this" page, reusing the adjustment-page pattern that switch users already have.
+- **Feedback:** a pressed state on every button; a light haptic on choose (off in Calm Mode); nothing that loops.
+
+---
+
+## 4. Stages
+
+Each stage leaves `master` releasable with the full suite green. Do them in order; 1 is the foundation for the rest.
+
+### Stage 0 — Agree the look (short; owner decides)
+
+- Build a mock sheet before touching app code: Home, Settings, Hangar, and Play in the proposed style, in Night Sky and Parchment, at default and largest text size. Static images or an HTML page are enough.
+- Offer two directions if the first is not clearly right (for example "soft cards" and "bold arcade").
+- The owner picks one and answers "Decisions needed". Record the choice at the top of this file.
+
+### Stage 1 — Design tokens (no visible redesign yet)
+
+- New `Scenes/DesignSystem.swift`: spacing, radii, the type scale (`scaledFont` gains the rounded design), and the three button kinds as small `UIButton` subclasses built on the existing `DynamicTextButton` and `MenuButton` (focus border by callback stays).
+- `UITheme` gains the surface levels and accent. `SettingsStyle` reads them instead of deriving its own.
+- Replace per-view numbers and colours with tokens across `MenuStackView`, `ScrollingPanelView`, `SettingsRows`, `SettingsAdjustmentPanel`, `HangarPanelView`, `SceneTextOverlay`, `GameMenuView`.
+- Tests: a contrast test for every text-on-surface pair in every theme; `DynamicTypeTests` still pass.
+
+### Stage 2 — Home
+
+- Larger animated mascot, a bold rounded wordmark, Play as the one primary button, then Hangar, Settings, and How to Play as secondary buttons with icons. Content sits in the upper two-thirds with even spacing rather than bunched in the middle.
+- Scanner order and labels unchanged (Play, Hangar, Settings, How to Play).
+
+### Stage 3 — Launch screen and app icon
+
+- [x] Launch screen shows the Classic helicopter instead of the hand-drawn green one. Done 2026-11-11: new `LaunchHelicopter` image set (frame 1 of the Classic atlas); the old `LaunchScreen` image set is deleted.
+- [ ] Place and size the launch helicopter to match the Home mascot from Stage 2, so launch flows into Home without a jump.
+- [ ] App icon redrawn from the Classic helicopter art (decision 3). Needs all icon sizes, an `ASSET_RIGHTS.md` entry, and a new 1024 px icon in App Store Connect.
+
+### Stage 4 — Settings and Hangar panels
+
+- Rows become inset rounded cards grouped by section, with margins at the screen edges. Headings use the heading style.
+- A real header: Back at the leading edge with a chevron symbol (spoken label still "Back"), title beside or below it.
+- One short description line per row; long text moves behind "More about this".
+- Presets, segmented choices, Reset, and the Hangar pointer use the shared button kinds.
+- Hangar: cards use theme surfaces, larger pictures, equal heights.
+- **4b (larger, optional):** split Settings into category pages (Difficulty, Comfort, Controls and Switches, Colours, Sound, Caregiver). This is the biggest gain in openness and cuts the scan length for switch users, but it changes navigation and many tests. Decide after 4 (decision 2).
+
+### Stage 5 — Play: HUD, Pause, Round Over
+
+- Score and Best as two clear chips; Pause as a button with an icon, still large, at the trailing edge. Remove the stray full stop.
+- Pause and Round Over as a centred card with a title, the score shown large on Round Over, one primary button (Resume or Play Again) and secondary ones.
+- No change to `GameSceneHUDDelegate` or to what the overlay is told.
+
+### Stage 6 — Guide
+
+- Text on a card so stars never show through it. One picture per step. Next is primary; Read aloud and Skip are secondary.
+
+### Stage 7 — Feedback and motion
+
+- Pressed states, the choose haptic, and a short spring on screen content after the cross-fade (plain fade under Reduce Motion).
+
+### Stage 8 — Release
+
+- All three screenshot sets, What's New, the support page if any wording changed, `Tools/release_check.sh`.
+- Owner: a full device pass (roadmap step 2), because every screen will have changed again.
+
+---
+
+## 5. How to check each stage
+
+- Full unit suite and `HelichopterUITests` (the accessibility audit on every screen).
+- A screenshot sheet of the changed screens: three themes × default and largest text size × iPhone 17 and iPad Pro 13-inch. Look at it; do not rely on tests for looks. (On 2026-11-11 the tests passed while "Helicopter" was breaking mid-word in the Hangar.)
+- Scan each changed screen with the app's scanner in Timed and Step modes.
+- Stop the app on the simulator afterwards.
+
+---
+
+## 6. Risks
+
+| Risk | Mitigation |
+|---|---|
+| Polish shrinks targets or adds reading | Rule 4 and "Fewer words"; check at the largest text size every stage. |
+| Tests pin exact labels, order, and some frames | Keep labels and order; update only layout assertions, one stage at a time. |
+| `StoreScreenshotTests` frames shots from the Settings layout | Re-tune it in Stage 4; re-capture in Stage 8. |
+| A full redesign delays the finished 2.2 skins | Decision 1: ship 2.2 first. |
+| Taste: the result still feels generic | Stage 0 mock sheet and owner sign-off before code. |
+
+---
+
+## 7. Decisions needed from the owner
+
+1. **Release order.** Recommended: finish 2.2 release prep and ship the skins, then do this plan as 2.3. Alternative: hold 2.2 and ship both together.
+2. **Settings as category pages (Stage 4b):** yes, no, or decide after seeing Stage 4.
+3. **App icon:** redraw it from the Classic helicopter, or keep the green one as the app's recognisable mark.
+4. **Icons beside labels on Home and in menus:** yes (recommended) or text only.
+5. **Direction:** chosen from the Stage 0 mock sheet.
+
+## 8. Done when
+
+- [ ] Every screen uses the shared tokens, button kinds, and theme surfaces; no per-view colours or sizes remain.
+- [ ] The owner has looked at every screen on a device and agrees it no longer looks vibe-coded.
+- [ ] Full suite and UI audit green; device accessibility pass done.
+- [ ] Docs updated (`HELICHOPTER_PROJECT.md` architecture table, roadmap, progress log).

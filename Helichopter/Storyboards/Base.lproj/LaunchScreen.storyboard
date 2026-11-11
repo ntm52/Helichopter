@@ -19,7 +19,7 @@
                             <imageView userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchBackground" translatesAutoresizingMaskIntoConstraints="NO" id="eCY-Un-8Cj">
                                 <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
                             </imageView>
-                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" insetsLayoutMarginsFromSafeArea="NO" image="LaunchScreen" translatesAutoresizingMaskIntoConstraints="NO" id="yAJ-pv-Edz">
+                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" insetsLayoutMarginsFromSafeArea="NO" image="LaunchHelicopter" translatesAutoresizingMaskIntoConstraints="NO" id="yAJ-pv-Edz">
                                 <rect key="frame" x="120" y="164" width="135" height="484"/>
                             </imageView>
                         </subviews>
@@ -51,6 +51,6 @@
     </scenes>
     <resources>
         <image name="LaunchBackground" width="512" height="1200"/>
-        <image name="LaunchScreen" width="100" height="100"/>
+        <image name="LaunchHelicopter" width="200" height="200"/>
     </resources>
 </document>

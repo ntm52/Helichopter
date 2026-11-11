@@ -14,6 +14,7 @@ AI-assisted output made by the owner for this app may be used commercially. Conf
 | Helicopter (60 frames) | Owner-made; source and converter in `Tools/helicopter-kit/` | Cleared by owner statement |
 | Two Tone Helicopter (60 frames, `Helicopter Two-Tone.spriteatlas`), added Nov 11, 2026 for 2.2 | The owner's Classic helicopter art, repainted by `Tools/helicopter-kit/make_frames.py two-tone` (darkens the panels below the waistline). Script written with Claude Code; no outside artwork. | Cleared: derived only from owner-made art |
 | Striped Pipes (`pipe-striped`, `cap-striped`), added Nov 11, 2026 for 2.2 | Body drawn entirely by `Tools/pipe-kit/make_pipes.py` (diagonal stripes; script written with Claude Code). The cap is a copy of the owner's Classic cap. No outside artwork. | Cleared: script-drawn plus owner-made art. Confirm the AI tool's terms permit commercial use of its output, as for the other AI-assisted art. |
+| Launch screen helicopter (`LaunchHelicopter`), changed Nov 11, 2026 | Frame 1 of the owner's Classic helicopter atlas, copied. Replaces the owner's earlier hand-drawn green helicopter (`LaunchScreen` image set, deleted). | Cleared: owner-made art |
 | Pipes, caps, background, launch image, UI buttons | Owner-made (local GIMP files in the sibling `Helichopter Assets/` folder) | Cleared by owner statement |
 | App icon | Owner-made | Cleared by owner statement |
 | Particle sprites (`Assets/Particles/`) | Inherited from the original BSD project | Covered by the BSD licence; remove if unused |

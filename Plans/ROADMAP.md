@@ -40,6 +40,14 @@ Do a second pass of this list after Plan 01 Stage B, since every menu will have 
 - [ ] **Phase 2:** StoreKit 2 one-time purchases, Restore, Ask to Buy, refunds. Includes App Store Connect business setup, EU trader status, and privacy text updates.
 - [ ] **Phase 3 (optional):** more skin sets; patterned pipes that also serve players who cannot rely on colour.
 
+## 3b. UI polish — [Plan 03](03_UI_POLISH.md)
+
+Owner request 2026-11-11: the app "appears very vibe-coded"; make the UI feel more open and more polished.
+
+- [x] Launch screen shows the Classic helicopter, not the hand-drawn green one. Done 2026-11-11 (not committed).
+- [ ] Stage 0: mock sheet and owner decisions (release order, Settings pages, app icon, icons, direction). **Start here.**
+- [ ] Stages 1–8: design tokens, Home, launch position and app icon, Settings and Hangar panels, play screens, guide, feedback, release.
+
 ## 4. Further improvements (suggested; pick by audience need)
 
 Ordered by value to players, highest first.

@@ -35,6 +35,7 @@ These apply to every change, including cosmetics and the store.
 | `HELICHOPTER_PROJECT.md` (this file) | Current state, architecture, known issues, release checklist. |
 | `Plans/ROADMAP.md` | Ordered list of future work, with links to detailed plans. |
 | `Plans/01_SINGLE_LAYER_UI.md` | Plan to remove the "double page" effect by giving every screen one drawing layer. |
+| `Plans/03_UI_POLISH.md` | Plan to make every screen look designed and open: shared tokens, type, buttons, and a new Home, Settings, Hangar, HUD, and guide. |
 | `Plans/02_COSMETICS_AND_STORE.md` | Plan for cosmetic helicopter and pipe skins, a Hangar/Store screen, and in-app purchases. |
 | `Audit/PROGRESS_LOG.md` | Session-by-session history. Append here. |
 | `Audit/REVIEW_2026-09-05.md`, `Audit/APP_STORE_READINESS.md` | Historical pre-release audits. Read only for background. |
