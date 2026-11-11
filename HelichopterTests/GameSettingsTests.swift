@@ -259,6 +259,22 @@ import Foundation
         #expect(settings.selectedHelicopterSkinID == "heli.classic")
     }
 
+    @Test func newSkinsRoundTripAndResetReturnsToClassic() {
+        let settings = gs
+        settings.select(CosmeticsCatalog.twoToneHelicopter)
+        settings.select(CosmeticsCatalog.stripedPipes)
+        #expect(defaults.string(forKey: "gs_selectedHelicopterSkinID") == "heli.twotone")
+        #expect(defaults.string(forKey: "gs_selectedPipeSkinID") == "pipe.striped")
+        #expect(settings.selectedHelicopterSkin == CosmeticsCatalog.twoToneHelicopter)
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.stripedPipes)
+        #expect(CosmeticsCatalog.all.allSatisfy { $0.isOwned })
+        // Only pipes with a pattern keep their art unstretched.
+        #expect(CosmeticsCatalog.all.filter(\.repeatsPipeArt) == [CosmeticsCatalog.stripedPipes])
+        settings.resetToDefaults()
+        #expect(settings.selectedHelicopterSkin == CosmeticsCatalog.classicHelicopter)
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.classicPipes)
+    }
+
     /// A removed, unknown, wrong-kind, or (later) refunded ID never leaves the player without art.
     @Test func unknownOrWrongKindSkinIDsFallBackToClassic() {
         let settings = gs

@@ -1,6 +1,6 @@
 # Asset provenance and rights register
 
-Updated October 1, 2026 with the owner's statements. Apple Guideline 5.2 requires rights to every asset in the app. Keep the evidence below current, and update this file whenever an asset is added or replaced.
+Updated November 11, 2026 (2.2 skins added); owner's statements from October 1, 2026. Apple Guideline 5.2 requires rights to every asset in the app. Keep the evidence below current, and update this file whenever an asset is added or replaced.
 
 ## Owner statement (October 1, 2026)
 
@@ -12,6 +12,8 @@ AI-assisted output made by the owner for this app may be used commercially. Conf
 |---|---|---|
 | Original project code | Root `LICENSE`: BSD 3-Clause, copyright 2018 Astemir Eleev | Allowed, including commercially and with in-app purchases. The copyright notice and disclaimer must ship with the app (planned Acknowledgements screen). |
 | Helicopter (60 frames) | Owner-made; source and converter in `Tools/helicopter-kit/` | Cleared by owner statement |
+| Two Tone Helicopter (60 frames, `Helicopter Two-Tone.spriteatlas`), added Nov 11, 2026 for 2.2 | The owner's Classic helicopter art, repainted by `Tools/helicopter-kit/make_frames.py two-tone` (darkens the panels below the waistline). Script written with Claude Code; no outside artwork. | Cleared: derived only from owner-made art |
+| Striped Pipes (`pipe-striped`, `cap-striped`), added Nov 11, 2026 for 2.2 | Body drawn entirely by `Tools/pipe-kit/make_pipes.py` (diagonal stripes; script written with Claude Code). The cap is a copy of the owner's Classic cap. No outside artwork. | Cleared: script-drawn plus owner-made art. Confirm the AI tool's terms permit commercial use of its output, as for the other AI-assisted art. |
 | Pipes, caps, background, launch image, UI buttons | Owner-made (local GIMP files in the sibling `Helichopter Assets/` folder) | Cleared by owner statement |
 | App icon | Owner-made | Cleared by owner statement |
 | Particle sprites (`Assets/Particles/`) | Inherited from the original BSD project | Covered by the BSD licence; remove if unused |

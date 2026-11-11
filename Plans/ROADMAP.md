@@ -36,7 +36,7 @@ Do a second pass of this list after Plan 01 Stage B, since every menu will have 
 - [ ] **Phase 1.** No purchases yet. **Steps 1–2 shipped in 2.1** (2026-10-30); step 3 ships in 2.2.
   - [x] Step 1 (2.1): Hangar screen on Home; Menu Theme moves there from Settings (Settings keeps a pointer button). Shared panel base extracted from `SettingsPanelView` first. Done 2026-10-12 (branch `hangar-step1`, merged into `master`, not pushed).
   - [x] Step 2 (2.1): skin catalog and selected-skin settings with only Classic; hard-coded art names removed; Reset Settings resets theme and skins. Done 2026-10-12 (branch `hangar-step2`). 2.1 release prep redone the same day: What's New, all screenshot sets, the `docs-support-2.1` branch (`dea8685`), `Tools/release_check.sh`.
-  - [ ] Step 3 (2.2): a free patterned pipe set and one free extra helicopter; contrast tests; ship 2.2.
+  - [ ] Step 3 (2.2): a free patterned pipe set and one free extra helicopter; contrast tests; ship 2.2. **Code and art done 2026-11-11** on branch `hangar-step3` (Striped Pipes, Two Tone Helicopter; version 2.2, build 6). **Next:** merge, then 2.2 release prep (What's New, all three screenshot sets, support page, `Tools/release_check.sh`) and the **Owner** device check with a switch and VoiceOver.
 - [ ] **Phase 2:** StoreKit 2 one-time purchases, Restore, Ask to Buy, refunds. Includes App Store Connect business setup, EU trader status, and privacy text updates.
 - [ ] **Phase 3 (optional):** more skin sets; patterned pipes that also serve players who cannot rely on colour.
 
@@ -45,7 +45,7 @@ Do a second pass of this list after Plan 01 Stage B, since every menu will have 
 Ordered by value to players, highest first.
 
 1. **Continuous audio guidance for blind players.** Today VoiceOver speaks gap guidance at most every 2 seconds. Add optional non-speech cues: a tone whose pitch follows the helicopter's height relative to the next gap, and a soft tick as a pipe approaches. Give it its own volume and an on/off switch. This is the biggest remaining step toward sound-only play. Write a dedicated plan first.
-2. **Differentiate without colour.** Pattern fills on pipes (stripes or dots) when iOS "Differentiate Without Color" is on. Can share art work with pipe skins in Plan 02.
+2. **Differentiate without colour.** Striped Pipes (2.2, chosen in the Hangar) are the pattern fill. Still open: equip them automatically when iOS "Differentiate Without Color" is on, without overriding a player's own choice.
 3. **Player profiles.** Shared iPads in schools and therapy rooms need per-player settings and scores. `GameSettings` already uses injectable storage; this needs a profile picker on Home and a profile key prefix. Profiles must be switch-accessible and lockable by the caregiver lock.
 4. **More sound cues.** Gap cleared, near miss, and pipe approaching, each with its own toggle. Respect Calm Mode.
 5. **Localisation.** Move UI strings into a String Catalog (`Localizable.xcstrings`). Start with Spanish. Listing copy and screenshots need translation too. Easier after Plan 01, when strings live in Swift instead of `.sks` files.

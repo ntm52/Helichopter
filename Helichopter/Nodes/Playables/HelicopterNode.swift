@@ -102,11 +102,11 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
     // MARK: - Initializers
 
-    convenience init(animationTimeInterval: TimeInterval, withTextureAtlas named: String, size: CGSize) {
+    convenience init(animationTimeInterval: TimeInterval, skin: Cosmetic, size: CGSize) {
         var textures = [SKTexture]()
         do {
-            textures = try SKTextureAtlas.upload(named: named, beginIndex: 1) { _, index in
-                Cosmetic.helicopterFrameName(index)
+            textures = try SKTextureAtlas.upload(named: skin.assetName, beginIndex: 1) { _, index in
+                skin.helicopterFrameName(index)
             }
         } catch {
             debugPrint(#function, "texture atlas upload error:", error)

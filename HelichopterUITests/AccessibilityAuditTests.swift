@@ -147,4 +147,39 @@ final class AccessibilityAuditTests: XCTestCase {
         app.buttons["Back"].tap()
         XCTAssertTrue(app.buttons["Hangar"].waitForExistence(timeout: 5))
     }
+
+    /// Choosing the other helicopter and pipes equips them, and the Hangar and the play
+    /// screen pass the audit with them. Classic is equipped again at the end, because the
+    /// choice is saved and the other tests expect Classic.
+    func testOtherLooksPassTheAuditInTheHangarAndInPlay() throws {
+        app.launchArguments += ["-onboarding_completed_v1", "YES"]
+        app.launch()
+        try equip(["Two Tone Helicopter", "Striped Pipes"])
+        for name in ["Classic Helicopter", "Classic Pipes"] {
+            XCTAssertFalse(app.buttons[name].isSelected, "\(name) is no longer equipped")
+        }
+        try audit("Hangar, other looks")
+        app.buttons["Back"].tap()
+        app.buttons["Play"].tap()
+        XCTAssertTrue(app.buttons["Helicopter flight control"].waitForExistence(timeout: 5))
+        app.buttons["Helicopter flight control"].tap()
+        try audit("Playing, other looks")
+        app.terminate()
+
+        app.launch()
+        try equip(["Classic Helicopter", "Classic Pipes"])
+    }
+
+    /// Opens the Hangar from Home and chooses each named look.
+    private func equip(_ names: [String]) throws {
+        app.buttons["Hangar"].tap()
+        XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5))
+        for name in names {
+            app.buttons[name].tap()
+            let chosen = expectation(for: NSPredicate(format: "isSelected == true"), evaluatedWith: app.buttons[name])
+            XCTAssertEqual(XCTWaiter.wait(for: [chosen], timeout: 5), .completed, "\(name) card must be marked selected")
+            XCTAssertEqual(app.buttons[name].value as? String, "Equipped")
+            Thread.sleep(forTimeInterval: 0.5) // The rebuilt panel fades in.
+        }
+    }
 }

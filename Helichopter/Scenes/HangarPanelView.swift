@@ -211,8 +211,6 @@ final class HangarPanelView: ScrollingPanelView {
 
         let picture = UIImageView(image: skinImage(skin))
         picture.contentMode = .scaleAspectFit
-        // Pipe art is drawn grey and tinted by the colour palette, as in play.
-        if skin.kind == .pipe { picture.tintColor = GameSettings.shared.selectedPalette.pipeColor }
         picture.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             picture.widthAnchor.constraint(equalToConstant: 64),
@@ -229,15 +227,22 @@ final class HangarPanelView: ScrollingPanelView {
         text.spacing = 2
 
         let hs = UIStackView(arrangedSubviews: [picture, text])
-        hs.axis = usesSingleColumn ? .vertical : .horizontal
-        hs.alignment = usesSingleColumn ? .leading : .center
-        hs.spacing = 14
+        // The picture sits above the name, so a name gets the card's full width and
+        // never breaks inside a word when two cards share a row.
+        hs.axis = .vertical
+        hs.alignment = .leading
+        hs.spacing = 10
         hs.translatesAutoresizingMaskIntoConstraints = false
         hs.isUserInteractionEnabled = false
         btn.addSubview(hs)
+        // Pinned to the top, so names line up across a row whether or not a card says
+        // "Equipped"; the weak bottom pin gives a card on its own row its height.
+        let hugBottom = hs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -10)
+        hugBottom.priority = .defaultLow
         NSLayoutConstraint.activate([
             hs.topAnchor.constraint(equalTo: btn.topAnchor, constant: 10),
-            hs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -10),
+            hs.bottomAnchor.constraint(lessThanOrEqualTo: btn.bottomAnchor, constant: -10),
+            hugBottom,
             hs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: 12),
             hs.trailingAnchor.constraint(lessThanOrEqualTo: btn.trailingAnchor, constant: -12),
         ])
@@ -251,7 +256,8 @@ final class HangarPanelView: ScrollingPanelView {
     private func skinImage(_ skin: Cosmetic) -> UIImage? {
         switch skin.kind {
         case .helicopter: return skin.helicopterImage()
-        case .pipe: return UIImage(named: skin.pipeTextureName)?.withRenderingMode(.alwaysTemplate)
+        // Pipe art is drawn grey and takes the colour palette's pipe colour, as in play.
+        case .pipe: return skin.pipePreviewImage(tint: GameSettings.shared.selectedPalette.pipeColor)
         }
     }
 

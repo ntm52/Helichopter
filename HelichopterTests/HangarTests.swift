@@ -3,7 +3,7 @@ import UIKit
 @testable import Helichopter
 
 /// The Hangar (Plan 02 Phase 1 steps 1–2): Menu Theme cards moved from Settings, plus
-/// a card for each helicopter and pipe look in `CosmeticsCatalog` (only Classic so far).
+/// a card for each helicopter and pipe look in `CosmeticsCatalog` (Classic and one more of each).
 @MainActor @Suite("Hangar", .serialized)
 struct HangarTests {
     private func withSettings(_ work: () async throws -> Void) async rethrows {
@@ -78,9 +78,14 @@ struct HangarTests {
             #expect(panel.themeCards.filter { $0.accessibilityTraits.contains(.selected) }.map(\.accessibilityLabel) == ["Night Sky"])
             // Each look is a button: its name, "Equipped" as its value, its description as the hint.
             let skins = panel.helicopterCards + panel.pipeCards
-            #expect(skins.map(\.accessibilityLabel) == ["Classic Helicopter", "Classic Pipes"])
-            #expect(skins.allSatisfy { $0.accessibilityTraits.contains(.selected) && $0.isSelected })
-            #expect(skins.allSatisfy { $0.accessibilityValue == "Equipped" })
+            #expect(skins.map(\.accessibilityLabel)
+                    == ["Classic Helicopter", "Two Tone Helicopter", "Classic Pipes", "Striped Pipes"])
+            let equipped = skins.filter { $0.accessibilityTraits.contains(.selected) && $0.isSelected }
+            #expect(equipped.map(\.accessibilityLabel) == ["Classic Helicopter", "Classic Pipes"])
+            #expect(equipped.allSatisfy { $0.accessibilityValue == "Equipped" })
+            #expect(skins.filter { !equipped.contains($0) }.allSatisfy {
+                $0.accessibilityValue == nil && !$0.isSelected && !$0.accessibilityTraits.contains(.selected)
+            })
             #expect(skins.map(\.accessibilityHint) == CosmeticsCatalog.all.map(\.spokenDescription))
             #expect(descendants(panel, UILabel.self).filter { $0.text == "Equipped" }.count == 2)
             #expect(panel.controls(in: panel).count == 1 + cardNames.count)
@@ -147,6 +152,22 @@ struct HangarTests {
             rebuilt.helicopterCards[0].sendActions(for: .touchUpInside)
             #expect(UserDefaults.standard.string(forKey: "gs_selectedHelicopterSkinID") == "heli.classic")
             #expect(screen.panel?.focusedSetting == "Classic Helicopter")
+
+            // Choosing another look equips it, and only it, and keeps focus on its card.
+            for (skin, key) in [(CosmeticsCatalog.stripedPipes, "gs_selectedPipeSkinID"),
+                                (CosmeticsCatalog.twoToneHelicopter, "gs_selectedHelicopterSkinID")] {
+                let panel = try #require(screen.panel)
+                let cards = panel.helicopterCards + panel.pipeCards
+                try #require(cards.first { $0.accessibilityLabel == skin.name }).sendActions(for: .touchUpInside)
+                #expect(UserDefaults.standard.string(forKey: key) == skin.id)
+                let after = try #require(screen.panel)
+                #expect(after.focusedSetting == skin.name)
+                let sameKind = skin.kind == .pipe ? after.pipeCards : after.helicopterCards
+                #expect(sameKind.filter { $0.accessibilityTraits.contains(.selected) }.map(\.accessibilityLabel) == [skin.name])
+                #expect(sameKind.filter { $0.accessibilityValue == "Equipped" }.count == 1)
+            }
+            #expect(GameSettings.shared.selectedPipeSkin == CosmeticsCatalog.stripedPipes)
+            #expect(GameSettings.shared.selectedHelicopterSkin == CosmeticsCatalog.twoToneHelicopter)
         }
     }
 
@@ -158,9 +179,14 @@ struct HangarTests {
             case .helicopter:
                 let image = skin.helicopterImage(frame: Cosmetic.helicopterFrameCount)
                 #expect(image.size.width > 0, "\(skin.name) is missing frames")
+                // Every helicopter shares Classic's canvas, so the marker and hitbox still fit.
+                #expect(image.size == CosmeticsCatalog.classicHelicopter.helicopterImage().size)
             case .pipe:
                 #expect(UIImage(named: skin.pipeTextureName) != nil, "\(skin.name) is missing its pipe")
                 #expect(UIImage(named: skin.capTextureName) != nil, "\(skin.name) is missing its cap")
+                // The Hangar picture has Classic's shape, whatever the art's height.
+                let preview = try #require(skin.pipePreviewImage(tint: .green))
+                #expect(preview.size == CGSize(width: 60, height: 120))
             }
         }
     }
@@ -176,7 +202,8 @@ struct HangarTests {
         for case let url as URL in files where url.pathExtension == "swift" && url.lastPathComponent != "Cosmetics.swift" {
             swiftFiles += 1
             let source = try String(contentsOf: url, encoding: .utf8)
-            for name in ["\"Helicopter Player\"", "pipe-yellow", "cap-yellow", "r_player"] where source.contains(name) {
+            for name in ["\"Helicopter Player\"", "\"Helicopter Two-Tone\"", "pipe-yellow", "cap-yellow",
+                         "pipe-striped", "cap-striped", "r_player", "r_twotone"] where source.contains(name) {
                 offenders.append("\(url.lastPathComponent): \(name)")
             }
         }
