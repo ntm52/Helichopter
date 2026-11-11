@@ -17,6 +17,13 @@ struct Cosmetic: Identifiable, Equatable {
     /// A helicopter's texture atlas, or the suffix of a pipe's `pipe-` and `cap-` images.
     let assetName: String
     let productID: String?        // nil = free
+    /// Pipes only. False: the art is a 9-slice that stretches to the pipe's height.
+    /// True: the art is one tall pattern that is cropped (and repeated if the pipe is taller),
+    /// because stretching would change the pattern's shape.
+    var repeatsPipeArt = false
+    /// Helicopters only. The start of each rotor frame's image name. An asset catalog needs
+    /// every image name to be unique, so each helicopter's atlas has its own prefix.
+    var framePrefix = "r_player"
 
     static func == (lhs: Cosmetic, rhs: Cosmetic) -> Bool { lhs.id == rhs.id }
 
@@ -31,18 +38,36 @@ extension Cosmetic {
     static let helicopterFrameCount = 60
 
     /// The name of rotor frame `index` (1 to 60) in the helicopter's atlas.
-    static func helicopterFrameName(_ index: Int) -> String { "r_player\(index)" }
+    func helicopterFrameName(_ index: Int) -> String { "\(framePrefix)\(index)" }
 
     /// Rotor frame `index` as an image, for UIKit screens.
     func helicopterImage(frame index: Int = 1) -> UIImage {
         let atlas = SKTextureAtlas(named: assetName)
-        return UIImage(cgImage: atlas.textureNamed(Self.helicopterFrameName(index)).cgImage())
+        return UIImage(cgImage: atlas.textureNamed(helicopterFrameName(index)).cgImage())
     }
 
     // MARK: Pipe art
 
     var pipeTextureName: String { "pipe-\(assetName)" }
     var capTextureName: String { "cap-\(assetName)" }
+
+    /// The open end of the pipe body in `tint`, coloured as in play, for UIKit screens.
+    func pipePreviewImage(tint: UIColor) -> UIImage? {
+        guard let art = UIImage(named: pipeTextureName), let whole = art.cgImage else { return nil }
+        // Classic's whole body is twice as tall as wide; show the same shape of any taller art.
+        let rows = min(whole.height, whole.width * 2)
+        guard let top = whole.cropping(to: CGRect(x: 0, y: 0, width: whole.width, height: rows)) else { return nil }
+        let picture = UIImage(cgImage: top, scale: art.scale, orientation: .up)
+        let format = UIGraphicsImageRendererFormat.preferred()
+        format.scale = art.scale
+        return UIGraphicsImageRenderer(size: picture.size, format: format).image { context in
+            let rect = CGRect(origin: .zero, size: picture.size)
+            picture.draw(in: rect)
+            tint.setFill()
+            context.fill(rect, blendMode: .multiply)   // as SpriteKit blends the palette colour
+            picture.draw(in: rect, blendMode: .destinationIn, alpha: 1)
+        }
+    }
 }
 
 enum CosmeticsCatalog {
@@ -52,13 +77,26 @@ enum CosmeticsCatalog {
         spokenDescription: "The original helicopter",
         assetName: "Helicopter Player", productID: nil)
 
+    /// The Classic art with a dark underside (`Tools/helicopter-kit/make_frames.py two-tone`).
+    static let twoToneHelicopter = Cosmetic(
+        id: "heli.twotone", kind: .helicopter, name: "Two Tone Helicopter",
+        spokenDescription: "Light on top with a dark underside",
+        assetName: "Helicopter Two-Tone", productID: nil, framePrefix: "r_twotone")
+
     static let classicPipes = Cosmetic(
         id: "pipe.classic", kind: .pipe, name: "Classic Pipes",
         spokenDescription: "Plain pipes with a wider cap at the open end",
         assetName: "yellow", productID: nil)
 
+    /// Light and dark stripes, so pipes stand out by pattern as well as colour
+    /// (`Tools/pipe-kit/make_pipes.py`).
+    static let stripedPipes = Cosmetic(
+        id: "pipe.striped", kind: .pipe, name: "Striped Pipes",
+        spokenDescription: "Diagonal light and dark stripes that show without relying on colour",
+        assetName: "striped", productID: nil, repeatsPipeArt: true)
+
     /// Every item, in the order the Hangar shows them.
-    static let all: [Cosmetic] = [classicHelicopter, classicPipes]
+    static let all: [Cosmetic] = [classicHelicopter, twoToneHelicopter, classicPipes, stripedPipes]
 
     static func items(of kind: CosmeticKind) -> [Cosmetic] { all.filter { $0.kind == kind } }
 

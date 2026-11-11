@@ -100,11 +100,9 @@ class PlayingState: GKState {
     // MARK: - Methods
 
     private func preparePlayer(for scene: SKScene) {
-        let assetName = GameSettings.shared.selectedHelicopterSkin.assetName
-
         adapter.playerCharacter = HelicopterNode(
             animationTimeInterval: animationTimeInterval,
-            withTextureAtlas: assetName,
+            skin: GameSettings.shared.selectedHelicopterSkin,
             size: adapter.playerSize)
 
         guard let playableCharacter = adapter.playerCharacter else {

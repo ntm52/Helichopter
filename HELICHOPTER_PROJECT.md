@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-11-11):** Version 2.1 (build 5, git tag `2.1`) is live on the App Store, distributed 2026-10-30. It carries Plan 01 Stage B (every menu in UIKit, one cross-fade per screen change), the Hangar (Plan 02 Phase 1 steps 1–2), VoiceOver Direct Touch, the top/bottom touch split, and per-scheme switch pausing. Development is post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.2: Plan 02 Phase 1 step 3 (a free patterned pipe set and one free extra helicopter). The device accessibility checks in roadmap step 2 are still unticked. 135 unit tests and 3 UI tests passed at the last recorded run (2026-10-26); the UI tests run Apple's accessibility audit on every screen.
+**Status (2026-11-11):** Version 2.1 (build 5, git tag `2.1`) is live on the App Store, distributed 2026-10-30. It carries Plan 01 Stage B (every menu in UIKit, one cross-fade per screen change), the Hangar (Plan 02 Phase 1 steps 1–2), VoiceOver Direct Touch, the top/bottom touch split, and per-scheme switch pausing. Development is post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.2 (build 6; version already set): Plan 02 Phase 1 step 3, whose code and art are done on branch `hangar-step3` (Striped Pipes and a Two Tone Helicopter, both free). 2.2 still needs release prep and the owner's device check. The device accessibility checks in roadmap step 2 are still unticked. 137 unit tests and 4 UI tests pass on `hangar-step3` (2026-11-11); the UI tests run Apple's accessibility audit on every screen.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -41,7 +41,8 @@ These apply to every change, including cosmetics and the store.
 | `Release/` | App Store listing copy, asset rights register, privacy notes, screenshots. |
 | `docs/` | Public GitHub Pages site (privacy and support pages). Changes here go live when pushed. |
 | `Tools/release_check.sh` | Pre-submission checks. Accepts a `.xcarchive`. |
-| `Tools/helicopter-kit/` | Source art and the converter that builds the 60-frame helicopter atlas. |
+| `Tools/helicopter-kit/` | Source art and the converter that builds each helicopter skin's 60-frame atlas. |
+| `Tools/pipe-kit/` | The script that draws the Striped Pipes art. |
 
 ---
 
@@ -57,7 +58,7 @@ The app has one `RootViewController` holding an `SKView`. Home, the first-run gu
 | `Scenes/HomeViewController.swift` | Home: mascot (60-frame `UIImageView` animation, still under Reduce Motion), title, and `HomeAction` Play, Hangar, Settings, How to Play. |
 | `Scenes/GuideViewController.swift` | First-run guide: three pages, Read this step aloud, Next/Back/Skip/Done. Shown at launch until `onboarding_completed_v1` is set, and from How to Play. |
 | `Scenes/ScrollingPanelView.swift` | Shared base for Settings and the Hangar. `ScrollingPanelView`: the Back header and title, the scrolling stack, its own switch scanner over `controls(in:)`, the focus ring, scroll position, `SettingsStyle` (theme-derived colours), `ButtonTarget`, and the shared row helpers (section headings, labels, buttons, `lock(_:)` for the caregiver lock). `PanelScreenViewController<Panel>`: hosts one panel and swaps in a fresh one (0.25 s fade) when the theme, a preset, the lock, Reset, or text size changes, keeping scroll position, scanner focus (`focusedSetting`), and an open adjustment page; Back goes Home. |
-| `Scenes/HangarPanelView.swift` | The Hangar (`HangarViewController`, `HangarPanelView`), opened from Home and from the Settings pointer. Menu Theme cards (preview, name, "Chosen", `.selected`; choosing one saves `selectedThemeID`, rebuilds, and keeps focus and VoiceOver on the card), then Helicopters and Pipes, with one card per owned look in `CosmeticsCatalog` (picture, name, "Equipped" in words and as the VoiceOver value, `.selected`, description as the hint; choosing one saves the skin, rebuilds, and keeps focus). Only Classic exists so far. The caregiver lock disables every card and shows "Locked by a caregiver in Settings." Single column at accessibility text sizes. |
+| `Scenes/HangarPanelView.swift` | The Hangar (`HangarViewController`, `HangarPanelView`), opened from Home and from the Settings pointer. Menu Theme cards (preview, name, "Chosen", `.selected`; choosing one saves `selectedThemeID`, rebuilds, and keeps focus and VoiceOver on the card), then Helicopters and Pipes, with one card per owned look in `CosmeticsCatalog` (picture, name, "Equipped" in words and as the VoiceOver value, `.selected`, description as the hint; choosing one saves the skin, rebuilds, and keeps focus). Two of each exist: Classic and Two-Tone helicopters, Classic and Striped pipes. Pipe pictures are coloured by the palette as in play (`Cosmetic.pipePreviewImage`). The caregiver lock disables every card and shows "Locked by a caregiver in Settings." Single column at accessibility text sizes. |
 | `Scenes/SettingsViewController.swift` | The Settings screen: a `PanelScreenViewController<SettingsPanelView>` that also opens the Hangar from the pointer button. |
 | `Scenes/SettingsPanelView.swift` | The Settings list: sections, the adjustment page for sliders and segmented controls, and the caregiver lock. The menu theme is no longer here: a "Menu Theme: <name>. Change it in the Hangar" button opens the Hangar (disabled when locked). |
 | `Scenes/SettingsRows.swift` | The Settings row builders (preset, slider, toggle, segmented, palette). Also `SettingsSlider` and `SettingsSwitch`: their accessibility frame covers the whole row (the row's own text is hidden from VoiceOver), and assistive technology activating a slider (VoiceOver double-tap, Switch Control) opens the adjustment page; a finger tap does not. Time sliders speak seconds; others speak a percentage (`UISlider.spokenValue`). |
@@ -68,13 +69,13 @@ The app has one `RootViewController` holding an `SKView`. Home, the first-run gu
 | `Adapters/GameSceneAdapter.swift` | Gameplay hub: physics, scoring, best-score saving, sounds, collisions, and the HUD delegate calls. |
 | `Game States/*.swift` | `PlayingState` (pipe spawning, first-input start), `PausedState`, `GameOverState`. |
 | `Nodes/Playables/HelicopterNode.swift` | Player sprite: atlas animation, physics, all four control schemes, contrast marker, No-Fail pulse. |
-| `Nodes/Game Components/PipeNode.swift` | 9-slice pipe body and cap, tinted by palette, with a contrast border. |
+| `Nodes/Game Components/PipeNode.swift` | Pipe body and cap, tinted by palette, with a contrast border. Classic's body is a stretched 9-slice; a skin with `repeatsPipeArt` (Striped) is cropped from one tall image so its pattern never stretches. |
 | `Nodes/Game Components/InfiniteSpriteScrollNode.swift` | Tiling parallax background. |
-| `Factories/PipeFactory.swift` | Spawns pipe pairs from `GameSettings`. Texture names `pipe-yellow`/`cap-yellow` are hard-coded here. |
+| `Factories/PipeFactory.swift` | Spawns pipe pairs from `GameSettings`, in the chosen pipe skin. |
 | `Control/FocusScanner.swift` | Timed and manual scanning for every UIKit menu and Settings (`FocusScannable`). |
 | `Extensions/SKNode+GameplayBoundary.swift` | `addGameplayBoundary(path:)`: the black/white outline on the helicopter and pipes. |
 | `Utils/GameSettings.swift` | Singleton for every setting, preset, palette, theme, and chosen skin (`selectedHelicopterSkin`, `selectedPipeSkin`; unknown or unowned IDs read as Classic; Reset returns them to Classic). Bounded, validated, persisted with `gs_` keys. |
-| `Utils/Cosmetics.swift` | `Cosmetic` and `CosmeticsCatalog` (Plan 02): every helicopter and pipe look, with its spoken name and description, art name, and (later) product ID. **The only place art names live**; gameplay, Home, and the Hangar ask the catalog (`artNamesLiveOnlyInTheCatalog` enforces this). Only Classic so far. |
+| `Utils/Cosmetics.swift` | `Cosmetic` and `CosmeticsCatalog` (Plan 02): every helicopter and pipe look, with its spoken name and description, art name, and (later) product ID. **The only place art names live**; gameplay, Home, and the Hangar ask the catalog (`artNamesLiveOnlyInTheCatalog` enforces this). Free looks: Classic and Two-Tone helicopters, Classic and Striped pipes. |
 | `Utils/UserDefaults.swift` | Legacy `Setting` and `Difficulty` enums, kept for migration and best score. |
 
 Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle, onboarding, palette contrast, presentation, Dynamic Type, and window sizes.
@@ -85,11 +86,11 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 
 - **`ColorPalette`** colours the helicopter and pipes. Pipes use `colorBlendFactor = 1.0`; the detailed helicopter art uses `0.35` so its shading survives. Six palettes: Default, High Contrast, Deuteranopia, Protanopia, Tritanopia, Low Luminance (`gs_selectedPaletteID`).
 - **`UITheme`** colours menus and scene backgrounds. Three themes: Night Sky, Parchment, Neon Night (`gs_selectedThemeID`), chosen in the Hangar. Light themes (`backgroundSpriteTintColor` set) hide the scrolling starfield, because tinting a dark texture cannot make it light. `helicopterTintColor` overrides the palette colour (Parchment uses `#CC2626`).
-- Gameplay contrast does not rely on fill colours: the helicopter has a black/white marker and pipes have black/white borders. `PaletteContrastTests` render all 18 theme/palette combinations.
+- Gameplay contrast does not rely on fill colours: the helicopter has a black/white marker and pipes have black/white borders. `PaletteContrastTests` render all 18 theme/palette combinations, and `renderedGameplayBoundariesAcrossEveryThemeAndPalette` renders every helicopter and pipe skin in all 18.
 
 ### Helicopter atlas
 
-`Assets/Assets.xcassets/Playable Characters/Helicopter Player.spriteatlas/`: 60 frames, `r_player1`–`r_player60`, white/greyscale, 1×/2×/3×, played at 60 FPS. Regenerate with `python3 Tools/helicopter-kit/make_frames.py`. **The folder must keep its `.spriteatlas` extension**; without it `SKTextureAtlas` returns an empty atlas and gameplay crashes. The atlas name and frame names live only in `Utils/Cosmetics.swift` (`CosmeticsCatalog.classicHelicopter`, `Cosmetic.helicopterFrameName`); pipes use `pipe-<asset>` and `cap-<asset>` from the same catalog entry.
+`Assets/Assets.xcassets/Playable Characters/Helicopter Player.spriteatlas/`: 60 frames, `r_player1`–`r_player60`, white/greyscale, 1×/2×/3×, played at 60 FPS. The Two-Tone skin is a second atlas, `Helicopter Two-Tone.spriteatlas`, with the same frames and canvas. Regenerate either with `python3 Tools/helicopter-kit/make_frames.py [classic|two-tone]`. **The folder must keep its `.spriteatlas` extension**; without it `SKTextureAtlas` returns an empty atlas and gameplay crashes. The atlas name and frame names live only in `Utils/Cosmetics.swift` (`CosmeticsCatalog.classicHelicopter`, `Cosmetic.helicopterFrameName`); pipes use `pipe-<asset>` and `cap-<asset>` from the same catalog entry.
 
 ---
 

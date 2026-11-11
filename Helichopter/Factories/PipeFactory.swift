@@ -65,7 +65,6 @@ struct PipeFactory {
         // clean colour swaps at runtime without a second set of PNGs.
         let palette = GameSettings.shared.selectedPalette
         let skin = settings.selectedPipeSkin
-        let textures = (pipe: skin.pipeTextureName, cap: skin.capTextureName)
 
         // Variance 0.0 = all pipes at minimum height (predictable), 1.0 = full range
         let desiredGap = min(settings.gapMin, sceneHeight - 120)
@@ -73,7 +72,7 @@ struct PipeFactory {
                                         sceneHeight - minPipeHeight - desiredGap))
         let bottomHeight = CGFloat.range(min: 70, max: max(70, maxBottomHeight))
         let pipeBottomSize = CGSize(width: pipeWidth, height: bottomHeight)
-        let pipeBottom = PipeNode(textures: textures,
+        let pipeBottom = PipeNode(skin: skin,
                                   of: pipeBottomSize, side: false,
                                   tintColor: palette.pipeColor, blendFactor: palette.colorBlendFactor)
         pipeBottom?.position = CGPoint(x: pipeX, y: bottomHeight / 2)
@@ -100,7 +99,7 @@ struct PipeFactory {
 
         let topHeight = max(minPipeHeight, sceneHeight - unwrappedPipeBottom.size.height - threshold.size.height)
         let pipeTopSize = CGSize(width: pipeWidth, height: topHeight)
-        let pipeTop = PipeNode(textures: textures,
+        let pipeTop = PipeNode(skin: skin,
                                of: pipeTopSize, side: true,
                                tintColor: palette.pipeColor, blendFactor: palette.colorBlendFactor)
         pipeTop?.position = CGPoint(x: pipeX, y: unwrappedPipeBottom.size.height + threshold.size.height + topHeight / 2)

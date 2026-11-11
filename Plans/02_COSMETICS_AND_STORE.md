@@ -1,6 +1,6 @@
 # Plan 02 — Cosmetic skins, Hangar screen, and in-app purchases
 
-**Status:** Phase 1 steps 1 and 2 done 2026-10-12. Written 2026-10-08; Phase 1 revised 2026-10-12 (themes move to the Hangar; three steps; steps 1–2 ship in 2.1; no "more on the way" sentences).
+**Status:** Phase 1 steps 1 and 2 done 2026-10-12 and shipped in 2.1 (2026-10-30). Step 3 code and art done 2026-11-11 on branch `hangar-step3` (2.2, build 6); device checks and release prep remain. Written 2026-10-08; Phase 1 revised 2026-10-12 (themes move to the Hangar; three steps; steps 1–2 ship in 2.1; no "more on the way" sentences).
 **Goal:** Players can change how the helicopter and pipes look. Some skins are free; others are one-time purchases. Purchases are **cosmetic only**.
 **Depends on:** [Plan 01](01_SINGLE_LAYER_UI.md) Stage B (or at least Stage A). The Hangar must be a UIKit screen built on the new pattern, not another `.sks`-backed scene.
 
@@ -58,7 +58,13 @@ Revised 2026-10-12: the Hangar also takes over the **menu theme** from Settings.
 - Classic cards become real buttons, so step 3 only adds catalog entries and art. As built: the label is the name alone ("Classic Helicopter", so Voice Control users say "Tap Classic Helicopter"), "Equipped" is the accessibility value and the `.selected` trait, and `spokenDescription` is the hint, so VoiceOver reads "Classic Helicopter, Equipped, selected, button" and then the description.
 - A Hangar preview at the top (the equipped helicopter between two equipped pipes in the current theme and palette, static under Reduce Motion) is optional here; add it once there is more than one item to compare.
 
-#### Step 3 — First real new items, then release 2.2 (after 2.1)
+#### Step 3 — First real new items, then release 2.2 (after 2.1) — code and art done 2026-11-11
+
+> **As built (2026-11-11, branch `hangar-step3`):** the owner chose diagonal stripes and a two-tone helicopter from a preview sheet.
+> - **Striped Pipes** (`pipe.striped`): `Tools/pipe-kit/make_pipes.py` draws one tall greyscale image (60 × 840 pt). Stripes cannot be 9-sliced, so `Cosmetic.repeatsPipeArt` makes `PipeNode` crop the art to the pipe's height (repeating it only for a pipe taller than 1,540 scene units). The cap is a copy of Classic's.
+> - **Two Tone Helicopter** (`heli.twotone`): `make_frames.py` now builds named skins from the one body image; `two-tone` darkens the panels below the waistline. Same alpha, crop, and canvas as Classic. It is greyscale art tinted by the palette, like Classic (decision 4: greyscale-only for now).
+> - Hangar pipe pictures are now multiplied by the palette colour, as in play, instead of drawn as a flat template, so the stripes show.
+> - **Not done:** turning Striped Pipes on automatically with iOS Differentiate Without Color (left as the player's choice); the optional Hangar preview; the build number is 6, not 1, because builds have counted up across versions. Still to do before 2.2 ships: owner device check with a switch and VoiceOver, What's New, screenshots (the Hangar shot changed), the support page, and `Tools/release_check.sh`.
 
 - **A patterned pipe set, free** (stripes or dots). It is the roadmap's "Differentiate without colour" item, can be drawn by `Tools/` scripts with no outside art rights, and gives the Pipes section a real second choice. Consider also turning it on automatically when iOS Differentiate Without Color is on.
 - **One extra free helicopter** made with `Tools/helicopter-kit/make_frames.py` (extend it to take an input image and output name).

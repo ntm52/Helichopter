@@ -220,8 +220,11 @@ struct GameLifecycleTests {
     @Test func renderedGameplayBoundariesAcrossEveryThemeAndPalette() throws {
         try withSettings {
             let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
-            for theme in GameSettings.allThemes {
+            // Every helicopter and pipe look, in all 18 theme and palette combinations.
+            for helicopter in CosmeticsCatalog.items(of: .helicopter) {
+              for theme in GameSettings.allThemes {
                 for palette in GameSettings.allPalettes {
+                    GameSettings.shared.select(helicopter)
                     GameSettings.shared.selectedThemeID = theme.id
                     GameSettings.shared.selectedPaletteID = palette.id
                     let scene = try #require(GameScene(fileNamed: "GameScene"))
@@ -232,15 +235,16 @@ struct GameLifecycleTests {
                     heli.removeAllActions()
                     heli.physicsBody?.isDynamic = false
                     // Include actual sky, theme overrides, shaded art and both cap directions.
-                    let skin = GameSettings.shared.selectedPipeSkin
-                    for side in [false, true] {
-                        let pipe = try #require(PipeNode(textures: (skin.pipeTextureName, skin.capTextureName),
+                    for (column, skin) in CosmeticsCatalog.items(of: .pipe).enumerated() {
+                      for side in [false, true] {
+                        let pipe = try #require(PipeNode(skin: skin,
                             of: CGSize(width: 110, height: 200), side: side,
                             tintColor: palette.pipeColor, blendFactor: palette.colorBlendFactor))
-                        pipe.position = CGPoint(x: scene.frame.minX + scene.size.width * 0.7,
+                        pipe.position = CGPoint(x: scene.frame.minX + scene.size.width * (0.55 + 0.25 * CGFloat(column)),
                                                 y: side ? scene.frame.maxY - 100 : scene.frame.minY + 100)
                         scene.addChild(pipe)
                         try assertRenderedBoundary(pipe, in: view)
+                      }
                     }
                     try assertRenderedBoundary(heli, in: view)
                     heli.triggerInvulnerability()
@@ -249,8 +253,42 @@ struct GameLifecycleTests {
                     #expect(heli.alpha == 1 && abs(heli.colorBlendFactor - 0.35) < 0.0001)
                     let texture = try #require(view.texture(from: scene, crop: scene.frame))
                     Attachment.record(try #require(UIImage(cgImage: texture.cgImage()).pngData()),
-                                      named: "Gameplay-\(theme.id)-\(palette.id).png")
+                                      named: "Gameplay-\(helicopter.id)-\(theme.id)-\(palette.id).png")
                 }
+              }
+            }
+        }
+    }
+
+    /// A patterned pipe shows its art unstretched at every height, with no gap or overlap;
+    /// Classic stays one stretched 9-slice. Neither changes the pipe's size or physics.
+    @Test func patternedPipesCropTheirArtAndClassicStretches() throws {
+        func bodies(_ pipe: PipeNode) -> [SKSpriteNode] {
+            pipe.children.compactMap { $0 as? SKSpriteNode }.filter { $0.name == PipeNode.bodyName }
+                .sorted { $0.position.y < $1.position.y }
+        }
+        for height in [70, 200, 1300, 4000] as [CGFloat] {
+            for side in [false, true] {
+                let size = CGSize(width: 110, height: height)
+                let pipe = try #require(PipeNode(skin: CosmeticsCatalog.stripedPipes, of: size, side: side))
+                let pieces = bodies(pipe)
+                // The art is 60 × 840 points, so 1,540 units tall at the pipe's width.
+                #expect(pieces.count == (height > 1540 ? 3 : 1))
+                #expect(abs(try #require(pieces.first).frame.minY + height / 2) < 0.01)
+                #expect(abs(try #require(pieces.last).frame.maxY - height / 2) < 0.01)
+                for (lower, upper) in zip(pieces, pieces.dropFirst()) {
+                    #expect(abs(lower.frame.maxY - upper.frame.minY) < 0.01)
+                }
+                for piece in pieces {
+                    let art = try #require(piece.texture).size()
+                    #expect(piece.size.width == 110)
+                    #expect(abs(art.height / art.width - piece.size.height / piece.size.width) < 0.02,
+                            "Stripes are stretched at height \(height)")
+                }
+                let classic = try #require(PipeNode(skin: CosmeticsCatalog.classicPipes, of: size, side: side))
+                #expect(bodies(classic).map(\.size) == [size])
+                #expect(pipe.size == classic.size)
+                #expect(pipe.physicsBody?.area == classic.physicsBody?.area)
             }
         }
     }
@@ -279,12 +317,13 @@ struct GameLifecycleTests {
                 #expect(SKScene(fileNamed: "GameScene" + suffix) != nil)
             }
             for skin in CosmeticsCatalog.items(of: .helicopter) {
-                let frames = try SKTextureAtlas.upload(named: skin.assetName) { _, index in Cosmetic.helicopterFrameName(index) }
+                let frames = try SKTextureAtlas.upload(named: skin.assetName) { _, index in skin.helicopterFrameName(index) }
                 #expect(frames.count == Cosmetic.helicopterFrameCount)
                 #expect(frames.allSatisfy { $0.size() == CGSize(width: 200, height: 200) })
             }
-            let frames = try SKTextureAtlas.upload(named: GameSettings.shared.selectedHelicopterSkin.assetName) { _, index in
-                Cosmetic.helicopterFrameName(index)
+            let selected = GameSettings.shared.selectedHelicopterSkin
+            let frames = try SKTextureAtlas.upload(named: selected.assetName) { _, index in
+                selected.helicopterFrameName(index)
             }
             #expect(frames.count == 60)
             #expect(frames.allSatisfy { $0.size() == CGSize(width: 200, height: 200) })

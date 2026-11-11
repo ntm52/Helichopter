@@ -4,29 +4,54 @@ typealias IsTopPipe = Bool
 
 class PipeNode: SKSpriteNode {
 
+    /// The name of each sprite that draws the pipe's body.
+    static let bodyName = "pipeBody"
+
     // MARK: - Initializers
 
     /// - Parameters:
     ///   - tintColor: Palette color blended onto the white/grayscale Phase 6 art.
     ///   - blendFactor: `SKSpriteNode.colorBlendFactor`. 0 = original art, 1 = solid tint.
-    init?(textures: (pipe: String, cap: String), of size: CGSize, side: IsTopPipe,
+    init?(skin: Cosmetic, of size: CGSize, side: IsTopPipe,
           tintColor: UIColor = .white, blendFactor: CGFloat = 0.0) {
 
         // Outer node is a physics-only container — visuals live in the body and cap children.
         super.init(texture: nil, color: .clear, size: size)
 
-        let bodyTexture = SKTexture(imageNamed: textures.pipe)
+        let bodyTexture = SKTexture(imageNamed: skin.pipeTextureName)
+        // The art's height at the pipe's width, for art that keeps its shape.
+        let artHeight = size.width * bodyTexture.size().height / max(bodyTexture.size().width, 1)
 
-        // 9-slice stretching: top and bottom 1/6 of the texture are pixel-perfect
-        // (decorative edge detail); the middle 4/6 stretches to any pipe height.
-        // Phase 6 pipe art is 60×120 px with the fixed bands occupying 20 px each.
-        let body = SKSpriteNode(texture: bodyTexture, color: tintColor, size: size)
-        body.colorBlendFactor = blendFactor
-        body.centerRect = CGRect(x: 0.0, y: 1.0 / 6.0, width: 1.0, height: 4.0 / 6.0)
-        body.zPosition = 1
-        addChild(body)
+        if skin.repeatsPipeArt, artHeight > 0 {
+            // A pattern must not stretch, so each piece shows as much of the art as it is
+            // tall. The art is taller than any pipe in the bundled layouts, so one piece is
+            // usual; a taller pipe repeats the art, which is drawn to join without a seam.
+            var filled: CGFloat = 0
+            while filled < size.height {
+                let pieceHeight = min(artHeight, size.height - filled)
+                let crop = CGRect(x: 0, y: 0, width: 1, height: pieceHeight / artHeight)
+                let piece = SKSpriteNode(texture: SKTexture(rect: crop, in: bodyTexture), color: tintColor,
+                                         size: CGSize(width: size.width, height: pieceHeight))
+                piece.name = Self.bodyName
+                piece.colorBlendFactor = blendFactor
+                piece.position = CGPoint(x: 0, y: -size.height / 2 + filled + pieceHeight / 2)
+                piece.zPosition = 1
+                addChild(piece)
+                filled += pieceHeight
+            }
+        } else {
+            // 9-slice stretching: top and bottom 1/6 of the texture are pixel-perfect
+            // (decorative edge detail); the middle 4/6 stretches to any pipe height.
+            // Phase 6 pipe art is 60×120 px with the fixed bands occupying 20 px each.
+            let body = SKSpriteNode(texture: bodyTexture, color: tintColor, size: size)
+            body.name = Self.bodyName
+            body.colorBlendFactor = blendFactor
+            body.centerRect = CGRect(x: 0.0, y: 1.0 / 6.0, width: 1.0, height: 4.0 / 6.0)
+            body.zPosition = 1
+            addChild(body)
+        }
 
-        let capTexture = SKTexture(imageNamed: textures.cap)
+        let capTexture = SKTexture(imageNamed: skin.capTextureName)
         // Cap width scales proportionally from the designed texture ratio (cap 80px / body 60px).
         let capWidth  = size.width * (capTexture.size().width / bodyTexture.size().width)
         let capHeight = capTexture.size().height
