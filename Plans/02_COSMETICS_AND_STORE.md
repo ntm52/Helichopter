@@ -1,6 +1,6 @@
 # Plan 02 — Cosmetic skins, Hangar screen, and in-app purchases
 
-**Status:** Phase 1 steps 1 and 2 done 2026-10-12 and shipped in 2.1 (2026-10-30). Step 3 code and art done 2026-11-11 on branch `hangar-step3` (2.2, build 6); device checks and release prep remain. Written 2026-10-08; Phase 1 revised 2026-10-12 (themes move to the Hangar; three steps; steps 1–2 ship in 2.1; no "more on the way" sentences).
+**Status:** Phase 1 steps 1 and 2 done 2026-10-12 and shipped in 2.1 (2026-10-30). Step 3 code and art done 2026-11-11 and merged into `master` (2.2, build 6); device checks and release prep remain. Written 2026-10-08; Phase 1 revised 2026-10-12 (themes move to the Hangar; three steps; steps 1–2 ship in 2.1; no "more on the way" sentences).
 **Goal:** Players can change how the helicopter and pipes look. Some skins are free; others are one-time purchases. Purchases are **cosmetic only**.
 **Depends on:** [Plan 01](01_SINGLE_LAYER_UI.md) Stage B (or at least Stage A). The Hangar must be a UIKit screen built on the new pattern, not another `.sks`-backed scene.
 
@@ -60,7 +60,7 @@ Revised 2026-10-12: the Hangar also takes over the **menu theme** from Settings.
 
 #### Step 3 — First real new items, then release 2.2 (after 2.1) — code and art done 2026-11-11
 
-> **As built (2026-11-11, branch `hangar-step3`):** the owner chose diagonal stripes and a two-tone helicopter from a preview sheet.
+> **As built (2026-11-11, branch `hangar-step3`, merged into `master`):** the owner chose diagonal stripes and a two-tone helicopter from a preview sheet.
 > - **Striped Pipes** (`pipe.striped`): `Tools/pipe-kit/make_pipes.py` draws one tall greyscale image (60 × 840 pt). Stripes cannot be 9-sliced, so `Cosmetic.repeatsPipeArt` makes `PipeNode` crop the art to the pipe's height (repeating it only for a pipe taller than 1,540 scene units). The cap is a copy of Classic's.
 > - **Two Tone Helicopter** (`heli.twotone`): `make_frames.py` now builds named skins from the one body image; `two-tone` darkens the panels below the waistline. Same alpha, crop, and canvas as Classic. It is greyscale art tinted by the palette, like Classic (decision 4: greyscale-only for now).
 > - Hangar pipe pictures are now multiplied by the palette colour, as in play, instead of drawn as a flat template, so the stripes show.
