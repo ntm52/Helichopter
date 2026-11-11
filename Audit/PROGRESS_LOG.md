@@ -434,3 +434,11 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 ### 2026-10-30 — 2.1 support page published (Claude Code)
 - 2.1 has been distributed on the App Store (owner). Merged `docs-support-2.1` (`bb8524a`, `dea8685`, `b17aa5c`; only `docs/support.html`) into `master` and pushed, which publishes the support page on GitHub Pages: 2.1 scan and flight names, the Hangar theme, per-scheme pausing, VoiceOver Direct Touch, and the new reset defaults.
 - Roadmap item "When 2.1 is released" ticked. The local `docs-support-2.1` branch was then deleted.
+
+### 2026-11-11 — Documents brought up to date with the 2.1 release (Claude Code)
+- Documents only; no code changed and no tests were run.
+- `HELICHOPTER_PROJECT.md`: status now says 2.1 (build 5) is live, names 2.2 (Plan 02 Phase 1 step 3) as the next release, and quotes the last recorded test counts (135 unit, 3 UI, 2026-10-26). The double-page known issue is marked fixed in 2.1.
+- `CLAUDE.md` and `README.md` say 2.1 is live. `Plans/01_SINGLE_LAYER_UI.md` status says Stage B shipped in 2.1.
+- `Plans/ROADMAP.md`: Stage B ticked as released; Plan 02 Phase 1 steps 1–2 marked shipped.
+- Git tag `2.1` created locally on `480303f` (the commit that set build 5, the uploaded build). Not pushed.
+- Left open, because nothing records them as done: the owner's device screen recordings (Plan 01 "Manual checks"), every device check in roadmap step 2, and the weekly Organizer crash check (its month ended about 2026-11-08).

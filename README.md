@@ -63,7 +63,7 @@ in Settings preserves the selected setting and an open adjustment panel.
 
 ## Status
 
-Version 2.0 is available on the App Store. See [HELICHOPTER_PROJECT.md](HELICHOPTER_PROJECT.md) for the architecture and current state, [Plans/ROADMAP.md](Plans/ROADMAP.md) for planned work, and [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md) for history.
+Version 2.1 is available on the App Store. See [HELICHOPTER_PROJECT.md](HELICHOPTER_PROJECT.md) for the architecture and current state, [Plans/ROADMAP.md](Plans/ROADMAP.md) for planned work, and [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md) for history.
 
 ## Helicopter artwork and animation
 

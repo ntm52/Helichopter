@@ -1,6 +1,6 @@
 # Plan 01 — One drawing layer per screen (remove the "double page" effect)
 
-**Status:** Stage A code merged on `master` 2026-10-08 but **will not ship on its own** (owner decision: no 2.0.1 hotfix). Stage B code is complete (steps 1–6 done 2026-10-08) and ships as **2.1** once the owner's device recordings pass. Written 2026-10-08.
+**Status:** Stage A code merged on `master` 2026-10-08 but **will not ship on its own** (owner decision: no 2.0.1 hotfix). Stage B code is complete (steps 1–6 done 2026-10-08) and **shipped in 2.1 (build 5), distributed 2026-10-30**. The owner's device recordings under "Manual checks" are not recorded as done. Written 2026-10-08.
 **Goal:** Every screen change looks like one page replacing another. No screen ever shows two menus, two backgrounds, or a menu sitting still while the page behind it slides.
 **Order:** Do this before the cosmetics store ([Plan 02](02_COSMETICS_AND_STORE.md)), so the Hangar/Store screen is built on the new pattern instead of adding another screen with the same problem.
 

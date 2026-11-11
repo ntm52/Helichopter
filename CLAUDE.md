@@ -1,6 +1,6 @@
 # Helichopter — notes for Claude
 
-Accessible SpriteKit/UIKit helicopter game for iPhone and iPad. **Version 2.0 is live on the App Store**; work is now post-launch improvement.
+Accessible SpriteKit/UIKit helicopter game for iPhone and iPad. **Version 2.1 is live on the App Store**; work is now post-launch improvement.
 
 ## Read first
 
