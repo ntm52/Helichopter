@@ -48,7 +48,8 @@ Owner request 2026-11-11: the app "appears very vibe-coded"; make the UI feel mo
 - [x] Stage 0: mock sheet and owner decisions. Done 2026-11-11: direction B "Bold arcade"; 2.2 is held and ships with the polish; Settings pages decided after Stage 4; app icon redrawn from Classic; icons beside labels. Details at the top of Plan 03.
 - [x] Stage 1: design tokens, theme surfaces, and the three button kinds (`Scenes/DesignSystem.swift`). Done 2026-11-11 (not committed).
 - [x] Stage 2: Home with a larger mascot, the leaning wordmark, Play as the large primary button, and icon tiles. Done 2026-11-11 (not committed).
-- [ ] Stages 3–8 (**start at Stage 3, launch position and app icon**): design tokens, Home, launch position and app icon, Settings and Hangar panels, play screens, guide, feedback, release.
+- [x] Stage 3: the launch screen's helicopter and sky sit exactly where Home shows them (`LaunchMatchesHomeTests`); new app icon drawn from the Classic helicopter (`Tools/icon-kit/make_icon.py`). Done 2026-11-12; the owner approved the icon.
+- [ ] Stages 4–8 (**start at Stage 4, Settings and Hangar panels**): Settings and Hangar panels, play screens, guide, feedback, release.
 
 ## 4. Further improvements (suggested; pick by audience need)
 

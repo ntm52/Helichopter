@@ -34,3 +34,4 @@ Carthage/Build/
 # Regenerated helicopter previews and intermediate exports
 Tools/helicopter-kit/output/
 Tools/helicopter-kit/__pycache__/
+Tools/icon-kit/output/

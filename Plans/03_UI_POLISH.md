@@ -1,6 +1,6 @@
 # Plan 03 — UI polish: an open, finished-looking app
 
-**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Launch screen art done (see Stage 3). **Next: Stage 3 (launch position and app icon).**
+**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stage 3 done 2026-11-12. **Next: Stage 4 (Settings and Hangar panels).**
 **Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
 **Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
 **Release:** the 2.2 skins are held and ship together with this plan in one release (owner decision 2026-11-11).
@@ -128,11 +128,11 @@ Original scope:
 - Larger animated mascot, a bold rounded wordmark, Play as the one primary button, then Hangar, Settings, and How to Play as secondary buttons with icons. Content sits in the upper two-thirds with even spacing rather than bunched in the middle.
 - Scanner order and labels unchanged (Play, Hangar, Settings, How to Play).
 
-### Stage 3 — Launch screen and app icon
+### Stage 3 — Launch screen and app icon (done 2026-11-12)
 
 - [x] Launch screen shows the Classic helicopter instead of the hand-drawn green one. Done 2026-11-11: new `LaunchHelicopter` image set (frame 1 of the Classic atlas); the old `LaunchScreen` image set is deleted.
-- [ ] Place and size the launch helicopter to match the Home mascot from Stage 2, so launch flows into Home without a jump.
-- [ ] App icon redrawn from the Classic helicopter art (decision 3). Needs all icon sizes, an `ASSET_RIGHTS.md` entry, and a new 1024 px icon in App Store Connect.
+- [x] Place and size the launch helicopter to match the Home mascot from Stage 2, so launch flows into Home without a jump. Done 2026-11-12: the helicopter is 170 pt and sits 155 pt above the centre of the safe area (144.67 pt on full-screen iPad), which is where Home's centred column puts the mascot at the default text size. The launch sky is now the top of Home's sky, drawn from the top at the screen's width, so the stars do not move either. A launch storyboard cannot read Home's layout, so these numbers are copied by hand; `LaunchMatchesHomeTests` fails when Home moves and the storyboard has not followed. **Later stages that change Home's height must update the storyboard.** Does not match, and cannot: a first launch (it opens the guide), a text size other than the default, a theme other than Night Sky, a helicopter other than Classic, and an iPad window narrower than full screen (about 10 pt off).
+- [x] App icon redrawn from the Classic helicopter art (decision 3). Done 2026-11-12: `Tools/icon-kit/make_icon.py` draws it (the Classic body with one bold rotor blade, leaning nose-up over an amber moon on the Night Sky navy) and writes all 19 sizes; recorded in `ASSET_RIGHTS.md`. App Store Connect takes the icon from the uploaded build, so nothing is uploaded by hand. **Owner approved the icon 2026-11-12.**
 
 ### Stage 4 — Settings and Hangar panels
 
