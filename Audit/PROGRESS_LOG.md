@@ -493,3 +493,6 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - Deleted the remote branches `updates/1.1`, `1.2`, `1.3`, `1.4`, and `1.4.1` from GitHub, at the owner's request. Each was fully merged into `master` (`git branch -r --merged master`), so no commit was lost. `master` is now the only branch, locally and on GitHub.
 - The owner asked whether limiting the wordmark's size harms accessibility; the answer given is recorded in Plan 03 Stage 2 as still awaiting the owner's decision.
 
+### 2026-11-12 — Wordmark size limit confirmed (Claude Code)
+- **Owner decision:** keep the Home wordmark's one-line size limit and the audit exemption for it (`AccessibilityAuditTests.audit`, Dynamic Type check on the label "Helichopter" only). Reasoning given to the owner: the name is a logo, not an instruction or control, and VoiceOver reads it regardless; the known cost is that on iPhone at the largest text size it stops at about 50 pt while body text is about 53 pt. Not tested with low-vision players. Recorded in Plan 03 Stage 2. The earlier notes saying this awaits the owner are superseded.
+- No code changed. Next: Plan 03 Stage 3 (launch position and app icon).

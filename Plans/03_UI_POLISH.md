@@ -119,7 +119,7 @@ Original scope:
 
 What was built:
 - Mascot 170 pt tall (110 at accessibility text sizes). **Stage 3 must match the launch screen to this size and position.**
-- The wordmark: `TypeStyle.wordmark` (46 pt black rounded) in the theme's text colour with a solid accent shadow, leaning 3 degrees on a holder view. `fitWordmark()` limits its size to one line of the screen, so it grows with Dynamic Type only until it fills the width. The UI audit's Dynamic Type check is excused for this one label (see `AccessibilityAuditTests.audit`); **the owner should confirm this is acceptable.**
+- The wordmark: `TypeStyle.wordmark` (46 pt black rounded) in the theme's text colour with a solid accent shadow, leaning 3 degrees on a holder view. `fitWordmark()` limits its size to one line of the screen, so it grows with Dynamic Type only until it fills the width. The UI audit's Dynamic Type check is excused for this one label (see `AccessibilityAuditTests.audit`); **Owner decision 2026-11-12: keep the one-line limit.** The name is treated as a logo; the cost is that at the largest text size on iPhone it stops at about 50 pt, slightly smaller than the button labels.
 - Play is the one primary button, large (`ButtonSize.large`, at least 86 pt plus the edge), with a play icon. Hangar, Settings, and How to Play are a row of tiles with the icon above the title (`MenuStackView.addTileRow`); at accessibility sizes they are a column with the icon before the title. `ArcadeButton.setIcon(systemName:placement:)` is available to later stages.
 - Not done: moving the content into the upper two-thirds. With the larger mascot and Play the column fills most of the screen, so it is still centred.
 
