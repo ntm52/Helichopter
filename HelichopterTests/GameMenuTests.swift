@@ -75,6 +75,17 @@ struct GameMenuTests {
                 let menu = try #require(overlay.gameMenu)
                 #expect(texts(menu) == ["Paused"])
                 #expect(titles(overlay) == ["Resume", "Home"])
+                // Resume is the one primary button. The menu sits on a card inside the screen.
+                #expect(menu.buttons.map(\.kind) == [.primary, .secondary])
+                menu.layoutIfNeeded()
+                let card = try #require(menu.card)
+                let cardFrame = card.convert(card.bounds, to: menu)
+                #expect(cardFrame.minX >= Spacing.l && cardFrame.maxX <= menu.bounds.width - Spacing.l)
+                for view in [menu.titleLabel] + menu.buttons {
+                    let frame = view.convert(view.bounds, to: menu)
+                    #expect(cardFrame.insetBy(dx: Spacing.l, dy: Spacing.l).contains(frame), "\(type(of: view)) is inside the card")
+                }
+                #expect(menu.titleLabel.textColor == menu.theme.textColor)
                 #expect(game.menuItems.map(\.action) == [.resume, .home])
                 #expect(menu.buttons.map { $0.accessibilityHint } == ["Resumes the game", "Goes to the main menu"])
                 #expect(menu.titleLabel.accessibilityTraits.contains(.header))
@@ -106,8 +117,14 @@ struct GameMenuTests {
             adapter.score = 4
             #expect(game.stateMachine.enter(GameOverState.self))
             #expect(adapter.score == 0)
-            #expect(texts(overlay) == ["Round Over", "Best Score: 10", "Current Score: 4"])
+            // The round's score is the largest thing on the card; VoiceOver hears its full name.
+            #expect(texts(overlay) == ["Round Over", "Score", "4", "Best 10"])
+            let menu = try #require(overlay.gameMenu)
+            #expect(menu.scoreLabel?.accessibilityLabel == "Current Score: 4" && menu.bestLabel?.accessibilityLabel == "Best Score: 10")
+            #expect((menu.scoreLabel?.font.pointSize ?? 0) > menu.titleLabel.font.pointSize)
             #expect(titles(overlay) == ["Home", "Try Again"])
+            // Try Again is the one primary button; both have a picture.
+            #expect(menu.buttons.map(\.kind) == [.secondary, .primary])
             #expect(game.menuItems.map(\.action) == [.home, .retry])
 
             // A new record is saved before the menu reads it.
@@ -115,7 +132,7 @@ struct GameMenuTests {
             adapter.score = 12
             GameSettings.shared.calmMode = true
             #expect(game.stateMachine.enter(GameOverState.self))
-            #expect(texts(overlay) == ["Well Done!", "Best Score: 12", "Current Score: 12"])
+            #expect(texts(overlay) == ["Well Done!", "Score", "12", "Best 12"])
 
             // Hidden scores stay hidden on Round Over too.
             #expect(game.stateMachine.enter(PlayingState.self))

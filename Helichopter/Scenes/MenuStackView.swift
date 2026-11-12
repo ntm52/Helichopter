@@ -45,10 +45,15 @@ class MenuStackView: UIView {
 
     /// Called after a button's choice is acted on, so the host can update without waiting.
     var onAction: (() -> Void)?
+    /// The card behind the column, when the menu sits on one (Pause and Round Over).
+    private(set) var card: SurfaceView?
 
-    init(traits: UITraitCollection) {
+    /// `onCard` puts the column on a card, for a menu that floats over the game.
+    init(traits: UITraitCollection, onCard: Bool = false) {
         self.traits = traits
         super.init(frame: .zero)
+        // Room between the column and the card's edge, on every side.
+        let inset = onCard ? Spacing.xl : 0
         scroll.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
@@ -59,7 +64,7 @@ class MenuStackView: UIView {
         let hug = stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor)
         hug.priority = .defaultLow
         // As wide as the screen allows, up to the content width.
-        let fill = stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor)
+        let fill = stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -2 * inset)
         fill.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: Spacing.m),
@@ -68,14 +73,27 @@ class MenuStackView: UIView {
             scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -Spacing.l),
             scroll.contentLayoutGuide.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
             stack.centerXAnchor.constraint(equalTo: scroll.contentLayoutGuide.centerXAnchor),
-            stack.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth),
+            stack.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth - 2 * inset),
             fill,
             scroll.contentLayoutGuide.heightAnchor.constraint(greaterThanOrEqualTo: scroll.frameLayoutGuide.heightAnchor),
             stack.centerYAnchor.constraint(equalTo: scroll.contentLayoutGuide.centerYAnchor),
-            stack.topAnchor.constraint(greaterThanOrEqualTo: scroll.contentLayoutGuide.topAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: scroll.contentLayoutGuide.bottomAnchor),
+            stack.topAnchor.constraint(greaterThanOrEqualTo: scroll.contentLayoutGuide.topAnchor, constant: inset),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: scroll.contentLayoutGuide.bottomAnchor, constant: -inset - (onCard ? Stroke.edge : 0)),
             hug
         ])
+        if onCard {
+            let card = SurfaceView(theme: theme)
+            card.translatesAutoresizingMaskIntoConstraints = false
+            card.isUserInteractionEnabled = false
+            scroll.insertSubview(card, belowSubview: stack)
+            NSLayoutConstraint.activate([
+                card.topAnchor.constraint(equalTo: stack.topAnchor, constant: -inset),
+                card.bottomAnchor.constraint(equalTo: stack.bottomAnchor, constant: inset + Stroke.edge),
+                card.leadingAnchor.constraint(equalTo: stack.leadingAnchor, constant: -inset),
+                card.trailingAnchor.constraint(equalTo: stack.trailingAnchor, constant: inset)
+            ])
+            self.card = card
+        }
         accessibilityElements = [scroll]
         registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (menu: MenuStackView, _: UITraitCollection) in
             menu.tileRows.forEach { menu.arrange($0, compatibleWith: menu.traitCollection) }
@@ -92,7 +110,8 @@ class MenuStackView: UIView {
         label.adjustsFontForContentSizeCategory = true
         label.numberOfLines = 0
         label.textAlignment = alignment
-        label.textColor = theme.titleTextColor
+        // On a card, text is in the card's text colour; over the sky, the title colour.
+        label.textColor = card == nil ? theme.titleTextColor : theme.textColor
         label.setContentCompressionResistancePriority(.required, for: .vertical)
         if style == .display { label.accessibilityTraits = .header }
         stack.addArrangedSubview(label)

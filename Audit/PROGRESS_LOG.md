@@ -529,3 +529,12 @@ New 20-frame helicopter (white/grayscale, 20 FPS). 9-slice pipes (no more UIGrap
 - **Looked at:** every page in Night Sky at phone width (picture sheet), and the menu and four pages as simulator screenshots. **Not looked at:** the pages in Parchment and Neon Night, iPad, the largest text size, locked pages, scanner focus on screen, a real device.
 - Committed to `master` with Stage 4 at the owner's request, later the same day. Not pushed. Next: Stage 5 (HUD, Pause, Round Over).
 
+### 2026-11-12 — Plan 03 Stage 5: HUD, Pause, and Round Over (Claude Code)
+- **HUD** (`SceneTextOverlay.swift`): `ScoreChip` for Score and Best, Pause with a picture at the trailing edge, `ChipLabel` for the hint, banner, and Up and Down markers. `arrangeHUD()` puts Pause above the chips at accessibility text sizes and follows a text-size change without a rebuild. `hitTest` now passes every touch except one on a control to the flight area.
+- **Menus** (`GameMenuView.swift`, `MenuStackView.swift`): Pause and Round Over on a card; the round's score in the largest type; Resume and Try Again primary, Home secondary, each with a picture (`MenuAction.symbolName`, `buttonKind`). Labels on a card use the card's text colour.
+- **Design system:** `ScoreChip` and `ChipLabel` added.
+- **Not changed:** `GameSceneHUDDelegate`, spoken names, and the order of choices (Round Over is still Home, then Try Again; see Plan 03 Stage 5 for the open question).
+- **Tests:** four tests that looked for "Score 0" text labels now read the chips; `GameMenuTests` checks the card, the primary button, and the spoken score; new `PlayScreenPolishTests` (3). `ScreenSheetTests` also draws the HUD, Pause, and Round Over (without SpriteKit's own drawing). **157 unit tests, the 4 UI audit tests, and `StoreScreenshotTests` pass in one full run after the last code change.**
+- **Looked at:** pictures of the HUD, Pause, and Round Over in three themes at the default size and in Night Sky and Parchment at the largest; one real gameplay screenshot from the simulator (Night Sky, split-screen controls). **Not looked at:** Pause and Round Over over the real game on the simulator, iPad, the new-high-score banner, scanner focus on the menu buttons, a real device.
+- **Owner decision:** Round Over keeps Home before Try Again. Committed to `master` at the owner's request, later the same day. Not pushed. Next: Stage 6 (Guide).
+

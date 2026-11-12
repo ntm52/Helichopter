@@ -46,7 +46,7 @@ enum Layout {
 
 /// The type scale: SF Rounded, scaled by Dynamic Type up to the largest accessibility size.
 enum TypeStyle {
-    /// The "Helichopter" wordmark on Home.
+    /// The "Helichopter" wordmark on Home, and the score on Round Over.
     case wordmark
     /// Screen titles.
     case display
@@ -380,5 +380,93 @@ final class CardButton: UIButton {
     override func layoutSubviews() {
         super.layoutSubviews()
         layers.layout(in: bounds)
+    }
+}
+
+/// A small label above a large number on a card-coloured chip: Score and Best during
+/// play. VoiceOver reads the two as one, "Score 12".
+final class ScoreChip: UIView {
+    private let caption = UILabel()
+    private let number = UILabel()
+    private let name: String
+
+    var value: Int = 0 {
+        didSet {
+            number.text = "\(value)"
+            accessibilityLabel = "\(name) \(value)"
+        }
+    }
+
+    /// What the chip shows, as VoiceOver reads it.
+    var text: String { "\(name) \(value)" }
+
+    init(name: String, theme: UITheme, traits: UITraitCollection?) {
+        self.name = name
+        super.init(frame: .zero)
+        backgroundColor = theme.cardColor
+        layer.cornerRadius = Radius.control
+        layer.borderWidth = Stroke.outline
+        layer.borderColor = theme.inkColor.cgColor
+        isUserInteractionEnabled = false
+        isAccessibilityElement = true
+        accessibilityTraits = .staticText
+        caption.text = name
+        caption.font = TypeStyle.caption.font(compatibleWith: traits)
+        caption.textColor = theme.secondaryTextColor
+        number.font = TypeStyle.heading.font(compatibleWith: traits)
+        number.textColor = theme.accentTextColor
+        let column = UIStackView(arrangedSubviews: [caption, number])
+        column.axis = .vertical
+        column.alignment = .center
+        column.translatesAutoresizingMaskIntoConstraints = false
+        for label in [caption, number] {
+            label.adjustsFontForContentSizeCategory = true
+            label.textAlignment = .center
+        }
+        addSubview(column)
+        NSLayoutConstraint.activate([
+            column.topAnchor.constraint(equalTo: topAnchor, constant: Spacing.s),
+            column.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Spacing.s),
+            column.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Spacing.l),
+            column.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Spacing.l),
+            // Wide enough that the chip does not change size with every point.
+            widthAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight + Spacing.xl)
+        ])
+        value = 0
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+/// A line of text on a rounded card-coloured chip, with room around the text: the
+/// flight hint and the new-high-score banner during play.
+final class ChipLabel: UILabel {
+    private static let insets = UIEdgeInsets(top: Spacing.s, left: Spacing.l, bottom: Spacing.s, right: Spacing.l)
+
+    init(style: TypeStyle, theme: UITheme, traits: UITraitCollection?) {
+        super.init(frame: .zero)
+        font = style.font(compatibleWith: traits)
+        adjustsFontForContentSizeCategory = true
+        numberOfLines = 0
+        textAlignment = .center
+        textColor = theme.textColor
+        backgroundColor = theme.cardColor
+        layer.cornerRadius = Radius.control
+        layer.borderWidth = Stroke.outline
+        layer.borderColor = theme.inkColor.cgColor
+        layer.masksToBounds = true
+        isUserInteractionEnabled = false
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func drawText(in rect: CGRect) {
+        super.drawText(in: rect.inset(by: Self.insets))
+    }
+
+    override func textRect(forBounds bounds: CGRect, limitedToNumberOfLines lines: Int) -> CGRect {
+        let inner = super.textRect(forBounds: bounds.inset(by: Self.insets), limitedToNumberOfLines: lines)
+        return inner.inset(by: UIEdgeInsets(top: -Self.insets.top, left: -Self.insets.left,
+                                            bottom: -Self.insets.bottom, right: -Self.insets.right))
     }
 }

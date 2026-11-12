@@ -50,7 +50,8 @@ Owner request 2026-11-11: the app "appears very vibe-coded"; make the UI feel mo
 - [x] Stage 2: Home with a larger mascot, the leaning wordmark, Play as the large primary button, and icon tiles. Done 2026-11-11 (not committed).
 - [x] Stage 3: the launch screen's helicopter and sky sit exactly where Home shows them (`LaunchMatchesHomeTests`); new app icon drawn from the Classic helicopter (`Tools/icon-kit/make_icon.py`). Done 2026-11-12; the owner approved the icon.
 - [x] Stage 4: Settings and the Hangar are cards on a page with a real header, short descriptions, slider values, and one button look. Done 2026-11-12. 4b also done (owner said yes): Settings is a menu of six categories, each its own page, and choices are lists of buttons.
-- [ ] Stages 5–8 (**start at Stage 5, HUD, Pause, and Round Over**): play screens, guide, feedback, release.
+- [x] Stage 5: Score and Best chips with Pause at the trailing edge; Pause and Round Over on a card with one primary button. Done 2026-11-12. The owner chose to keep Home before Try Again on Round Over.
+- [ ] Stages 6–8 (**start at Stage 6, the guide**): guide, feedback, release.
 
 ## 4. Further improvements (suggested; pick by audience need)
 

@@ -623,10 +623,11 @@ struct GameLifecycleTests {
             let overlay = SceneTextOverlay(frame: view.bounds)
             view.addSubview(overlay)
             overlay.refresh(in: view)
-            @MainActor func labels(_ v: UIView) -> [UILabel] { (v as? UILabel).map { [$0] } ?? v.subviews.flatMap(labels) }
-            let scores = labels(overlay).filter { $0.text?.hasPrefix("Score") == true || $0.text?.hasPrefix("Best") == true }
-            #expect(scores.count == 2)
+            let scores = [overlay.scoreChip, overlay.bestScoreChip].compactMap { $0 }
+            #expect(scores.map(\.text) == ["Score 0", "Best \(UserDefaults.standard.integer(for: .bestScore))"])
             #expect(scores.allSatisfy { $0.isHidden })
+            // Pause stays, at the trailing edge.
+            #expect(overlay.pauseButton?.isHidden == false)
         }
     }
 

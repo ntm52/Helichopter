@@ -1,6 +1,6 @@
 # Plan 03 — UI polish: an open, finished-looking app
 
-**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, and 4b done 2026-11-12. **Next: Stage 5 (HUD, Pause, Round Over).**
+**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, 4b, and 5 done 2026-11-12. **Next: Stage 6 (Guide).**
 **Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
 **Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
 **Release:** the 2.2 skins are held and ship together with this plan in one release (owner decision 2026-11-11).
@@ -160,7 +160,15 @@ What was built:
 - Hangar: cards use theme surfaces, larger pictures, equal heights.
 - [x] **4b (larger, optional), done 2026-11-12:** split Settings into category pages (Difficulty, Comfort, Controls and Switches, Colours, Sound, Caregiver). This is the biggest gain in openness and cuts the scan length for switch users, but it changes navigation and many tests. Decide after 4 (decision 2).
 
-### Stage 5 — Play: HUD, Pause, Round Over
+### Stage 5 — Play: HUD, Pause, Round Over (done 2026-11-12)
+
+What was built:
+- **HUD.** Score and Best are `ScoreChip`s at the leading edge (a small name over a large number in the accent colour; one VoiceOver element, "Score 12"). Pause is a secondary button with a pause picture at the trailing edge, at its own width instead of filling the row. At accessibility text sizes Pause has its own row above the chips. The flight hint, the new-high-score banner, and the Up and Down markers are `ChipLabel`s (card colour, ink outline, padding). Only Pause takes touches; everything else passes to the flight area.
+- **Pause and Round Over.** `GameMenuView` sits on a card (`MenuStackView(onCard:)`, a `SurfaceView` behind the column) in the middle of the screen. Round Over shows the round's score in the largest type under a small "Score", then "Best 12"; VoiceOver still hears "Current Score: 4" and "Best Score: 10". Resume and Try Again are the primary buttons, Home is secondary, and each has a picture.
+- **Kept as it was:** `GameSceneHUDDelegate`, what the overlay is told, every spoken name, and the order of choices. **Round Over still lists Home before Try Again**, as the scene's scanning order does; the Stage 0 mock drew Try Again first. Swapping them changes what a switch user reaches first. **Owner decision 2026-11-12: keep Home first.**
+- **The stray full stop** after the score could not be found in the code ("Score \(score)" had none); the chips replace that label either way.
+- **Known:** at the largest text size the flight hint is tall enough to run under the Up and Down markers until it fades on the first flap. This is believed to predate this stage (the hint sat lower still before), but that was not checked.
+
 
 - Score and Best as two clear chips; Pause as a button with an icon, still large, at the trailing edge. Remove the stray full stop.
 - Pause and Round Over as a centred card with a title, the score shown large on Round Over, one primary button (Resume or Play Again) and secondary ones.

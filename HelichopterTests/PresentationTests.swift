@@ -211,13 +211,17 @@ struct PresentationTests {
                 #expect(pauses.count == 1)
                 // Score changes reach the HUD as events; no refresh is needed.
                 game.sceneAdapter?.score = 999999
-                let best = try #require(descendants(overlay, UILabel.self).first { $0.text == "Best 999999" })
-                #expect(!best.isHidden)
+                let best = try #require(overlay.bestScoreChip)
+                #expect(best.text == "Best 999999" && !best.isHidden)
+                // Even a six-figure score leaves Pause whole and on screen.
+                overlay.layoutIfNeeded()
+                let pauseFrame = try #require(overlay.pauseButton).convert(try #require(overlay.pauseButton).bounds, to: overlay)
+                #expect(pauseFrame.maxX <= overlay.bounds.width && pauseFrame.minX >= best.convert(best.bounds, to: overlay).maxX)
                 // Show Score is read when the HUD is built (Settings is never open mid-round).
                 gs.showScore = false
                 #expect(game.stateMachine.enter(PausedState.self))
                 #expect(game.stateMachine.enter(PlayingState.self))
-                #expect(descendants(overlay, UILabel.self).first { $0.text == "Best 999999" }?.isHidden == true)
+                #expect(overlay.bestScoreChip?.text == "Best 999999" && overlay.bestScoreChip?.isHidden == true)
                 gs.showScore = true
                 #expect(game.stateMachine.enter(PausedState.self))
                 #expect(game.stateMachine.enter(PlayingState.self))

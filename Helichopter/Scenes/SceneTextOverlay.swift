@@ -15,11 +15,13 @@ final class SceneTextOverlay: UIView {
     private var builtPhase: GamePhase?
     /// The Pause or Round Over menu, while one is showing.
     private(set) var gameMenu: GameMenuView?
-    private var scoreLabel: UILabel?
-    private var bestScoreLabel: UILabel?
+    private(set) var scoreChip: ScoreChip?
+    private(set) var bestScoreChip: ScoreChip?
     private var newHighScoreLabel: UILabel?
     private var flightHintLabel: UILabel?
     private weak var hudStack: UIStackView?
+    private weak var chipRow: UIStackView?
+    private(set) weak var pauseButton: ArcadeButton?
     /// One flight area, or Up and Down for schemes that split the screen.
     private var flightElements: [FlightAccessibilityElement] = []
     // Stack constraints survive removing the scroll view, so track them per rebuild.
@@ -28,7 +30,7 @@ final class SceneTextOverlay: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (overlay: SceneTextOverlay, _: UITraitCollection) in
-            overlay.hudStack?.axis = overlay.traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
+            overlay.arrangeHUD()
         }
     }
 
@@ -36,7 +38,8 @@ final class SceneTextOverlay: UIView {
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
-        return !menu && (hit === self || hit === scroll || hit === stack || hit is UIStackView || hit is UILabel) ? nil : hit
+        // During play only Pause takes touches; everything else is the flight area.
+        return !menu && !(hit is UIControl) ? nil : hit
     }
 
     /// Shows the HUD or game menu for the view's scene; hidden for any other screen.
@@ -60,8 +63,8 @@ final class SceneTextOverlay: UIView {
     private func clear() {
         subviews.forEach { $0.removeFromSuperview() }
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        scoreLabel = nil
-        bestScoreLabel = nil
+        scoreChip = nil
+        bestScoreChip = nil
         newHighScoreLabel = nil
         flightHintLabel = nil
         gameMenu = nil
@@ -105,48 +108,41 @@ final class SceneTextOverlay: UIView {
             stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor)
         ]
         NSLayoutConstraint.activate(layoutConstraints)
-        // Score, best, and Pause share the top row; the hint and banner sit below it,
-        // so the hint's fade cannot move or cover Pause.
+        // Score and Best are chips at the leading edge and Pause is at the trailing edge;
+        // the hint and banner sit below, so the hint's fade cannot move or cover Pause.
+        let score = ScoreChip(name: "Score", theme: theme, traits: traitCollection)
+        let best = ScoreChip(name: "Best", theme: theme, traits: traitCollection)
+        scoreChip = score
+        bestScoreChip = best
+        let chips = UIStackView(arrangedSubviews: [score, best])
+        chips.spacing = Spacing.s
+        chips.alignment = .fill
+        chipRow = chips
+        let pause = ArcadeButton(kind: .secondary, theme: theme, traits: traitCollection)
+        pause.setTitle("Pause", for: .normal)
+        pause.setIcon(systemName: "pause.fill")
+        pause.accessibilityHint = "Pauses the game"
+        pause.addTarget(self, action: #selector(pauseTapped), for: .touchUpInside)
+        pause.setContentCompressionResistancePriority(.required, for: .horizontal)
+        pauseButton = pause
         let hud = UIStackView()
-        hud.axis = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
         hudStack = hud
         hud.spacing = Spacing.m
-        hud.alignment = .fill
         stack.addArrangedSubview(hud)
-        func hudLabel(style: TypeStyle = .body) -> UILabel {
-            let label = UILabel()
-            label.font = style.font(compatibleWith: traitCollection)
-            label.adjustsFontForContentSizeCategory = true
-            label.numberOfLines = 0
-            label.textAlignment = .center
-            label.textColor = theme.titleTextColor
-            label.backgroundColor = theme.sceneBackgroundColor
-            label.isUserInteractionEnabled = false
-            return label
-        }
-        let score = hudLabel()
-        hud.addArrangedSubview(score)
-        scoreLabel = score
-        let best = hudLabel()
-        hud.addArrangedSubview(best)
-        bestScoreLabel = best
-        let hint = hudLabel()
+        arrangeHUD()
+        // hitTest lets touches outside Pause reach the flight surface.
+        scroll.isUserInteractionEnabled = true
+
+        let hint = ChipLabel(style: .body, theme: theme, traits: traitCollection)
         stack.addArrangedSubview(hint)
         flightHintLabel = hint
         // Static text; no animation, sound, or input capture, so flight is never interrupted.
-        let banner = hudLabel(style: .heading)
+        let banner = ChipLabel(style: .heading, theme: theme, traits: traitCollection)
+        banner.textColor = theme.accentTextColor
         banner.text = "New high score!"
         banner.isHidden = true
         stack.addArrangedSubview(banner)
         newHighScoreLabel = banner
-        let pause = ArcadeButton(kind: .secondary, theme: theme, traits: traitCollection)
-        pause.setTitle("Pause", for: .normal)
-        pause.accessibilityHint = "Pauses the game"
-        pause.addTarget(self, action: #selector(pauseTapped), for: .touchUpInside)
-        // hitTest lets touches outside this control reach the flight surface.
-        scroll.isUserInteractionEnabled = true
-        hud.addArrangedSubview(pause)
-        pause.setContentCompressionResistancePriority(.required, for: .horizontal)
         let scheme = GameSettings.shared.controlScheme
         if scheme.splitsTouchIntoUpAndDown { addUpDownGuide(theme: theme) }
         // Split schemes get Up and Down areas; the others keep one area on the lower half.
@@ -189,6 +185,26 @@ final class SceneTextOverlay: UIView {
         ScreenChangeAnnouncer.post(flightElements.first)
     }
 
+    /// Chips, a gap, then Pause on one row. At accessibility text sizes Pause has a row
+    /// of its own above the chips, so neither is squeezed.
+    private func arrangeHUD() {
+        guard let hud = hudStack, let chips = chipRow, let pause = pauseButton else { return }
+        hud.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        if traitCollection.preferredContentSizeCategory.isAccessibilityCategory {
+            hud.axis = .vertical
+            hud.alignment = .leading
+            [pause, chips].forEach { hud.addArrangedSubview($0) }
+        } else {
+            hud.axis = .horizontal
+            hud.alignment = .fill
+            // The gap takes the spare width, so Pause keeps its own size at the trailing edge.
+            let gap = UIView()
+            gap.isUserInteractionEnabled = false
+            gap.setContentHuggingPriority(.defaultLow - 1, for: .horizontal)
+            [chips, gap, pause].forEach { hud.addArrangedSubview($0) }
+        }
+    }
+
     /// A faint line across the middle with Up and Down beside it, for schemes where the
     /// top half moves up and the bottom half moves down. It never takes a touch.
     private func addUpDownGuide(theme: UITheme) {
@@ -207,14 +223,9 @@ final class SceneTextOverlay: UIView {
         // Beside the right edge, away from the helicopter on the left. The Up and Down
         // areas already speak these words, so VoiceOver skips the labels.
         for (text, above) in [("Up", true), ("Down", false)] {
-            let label = UILabel()
+            let label = ChipLabel(style: .label, theme: theme, traits: traitCollection)
             label.translatesAutoresizingMaskIntoConstraints = false
             label.text = text
-            label.font = TypeStyle.label.font(compatibleWith: traitCollection)
-            label.adjustsFontForContentSizeCategory = true
-            label.textColor = theme.titleTextColor
-            label.backgroundColor = theme.sceneBackgroundColor
-            label.isUserInteractionEnabled = false
             label.isAccessibilityElement = false
             addSubview(label)
             constraints += [
@@ -265,13 +276,13 @@ final class SceneTextOverlay: UIView {
 
 extension SceneTextOverlay: GameSceneHUDDelegate {
     func scoreDidChange(_ score: Int) {
-        scoreLabel?.text = "Score \(score)"
-        scoreLabel?.isHidden = !GameSettings.shared.showScore
+        scoreChip?.value = score
+        scoreChip?.isHidden = !GameSettings.shared.showScore
     }
 
     func bestScoreDidChange(_ best: Int) {
-        bestScoreLabel?.text = "Best \(best)"
-        bestScoreLabel?.isHidden = !GameSettings.shared.showScore
+        bestScoreChip?.value = best
+        bestScoreChip?.isHidden = !GameSettings.shared.showScore
     }
 
     func newHighScoreDidChange(_ isShowing: Bool) {

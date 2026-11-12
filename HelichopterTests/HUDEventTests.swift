@@ -111,31 +111,35 @@ struct HUDEventTests {
             let adapter = try #require(game.sceneAdapter)
             let heli = try #require(adapter.playerCharacter as? HelicopterNode)
             @MainActor func label(_ text: String) -> UILabel? { descendants(overlay, UILabel.self).first { $0.text == text } }
+            // A chip reads as one: "Score 2".
+            @MainActor func chip(_ text: String) -> ScoreChip? {
+                descendants(overlay, ScoreChip.self).first { $0.text == text && $0.accessibilityLabel == text }
+            }
             @MainActor func button(_ title: String) -> UIButton? { descendants(overlay, UIButton.self).first { $0.currentTitle == title } }
 
             let hintText = try #require(game.flightHintText)
             let hint = try #require(label(hintText))
             #expect(hint.alpha == 1)
-            #expect(label("Score 0")?.isHidden == false)
+            #expect(chip("Score 0")?.isHidden == false)
             heli.switchPrimaryBegan()
             heli.switchPrimaryEnded()
             #expect(hint.alpha == 0)
 
             adapter.scorePoint()
             adapter.scorePoint()
-            #expect(label("Score 2") != nil && label("Best 2") != nil)
+            #expect(chip("Score 2") != nil && chip("Best 2") != nil)
 
             // Interruptions and hold-to-pause have no button tap to trigger a rebuild.
             game.pauseForInterruption()
             #expect(button("Resume") != nil && button("Pause") == nil)
             try #require(button("Resume")).sendActions(for: .touchUpInside)
-            #expect(button("Pause") != nil && label("Score 2") != nil)
+            #expect(button("Pause") != nil && chip("Score 2") != nil)
             #expect(label(hintText)?.alpha == 0)
 
             #expect(game.stateMachine.enter(GameOverState.self))
             #expect(button("Try Again") != nil && button("Pause") == nil)
             try #require(button("Try Again")).sendActions(for: .touchUpInside)
-            #expect(button("Pause") != nil && label("Score 0") != nil && label("Best 2") != nil)
+            #expect(button("Pause") != nil && chip("Score 0") != nil && chip("Best 2") != nil)
             #expect(label(hintText)?.alpha == 1)
         }
     }
