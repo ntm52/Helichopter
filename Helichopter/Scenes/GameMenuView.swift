@@ -57,9 +57,9 @@ final class GameMenuView: MenuStackView {
         super.init(traits: traits)
         switch phase {
         case .paused:
-            addLabel("Paused", style: .title1, into: titleLabel)
+            addLabel("Paused", style: .display, into: titleLabel)
         case .roundOver:
-            addLabel(GameSettings.shared.calmMode ? "Well Done!" : "Round Over", style: .title1, into: titleLabel)
+            addLabel(GameSettings.shared.calmMode ? "Well Done!" : "Round Over", style: .display, into: titleLabel)
             if GameSettings.shared.showScore, let adapter = game.sceneAdapter {
                 addLabel("Best Score: \(UserDefaults.standard.integer(for: .bestScore))", style: .body)
                 addLabel("Current Score: \(adapter.roundScore)", style: .body)

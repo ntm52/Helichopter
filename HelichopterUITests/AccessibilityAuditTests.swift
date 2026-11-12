@@ -17,9 +17,22 @@ final class AccessibilityAuditTests: XCTestCase {
 
     /// Audits what is on screen now; any issue fails the test.
     private func audit(_ screen: String) throws {
+        // A screen change cross-fades for 0.3 s over a picture of the old screen. Audited
+        // mid-fade, the old screen's text is visible but not in the tree, which the audit
+        // reports as "Potentially inaccessible text" with no element.
+        Thread.sleep(forTimeInterval: 0.6)
         attachTree(screen)
         try XCTContext.runActivity(named: "Audit \(screen)") { _ in
-            try app.performAccessibilityAudit()
+            try app.performAccessibilityAudit { issue in
+                // The Home wordmark is the app's name drawn as a logo: at least 46 pt, and
+                // it grows with the text size only until it fills one line (Plan 03 Stage 2),
+                // so the name never breaks mid-word or pushes Play off the screen. Only
+                // this one check on this one label is excused.
+                if issue.auditType == .dynamicType, issue.element?.label == "Helichopter" { return true }
+                // Name the element in the log; the failure message alone does not.
+                print("AUDIT ISSUE on \(screen): \(issue.compactDescription) — \(issue.element?.debugDescription ?? "no element")")
+                return false
+            }
         }
     }
 

@@ -33,43 +33,32 @@ extension SettingsPanelView {
         let hs = UIStackView()
         hs.axis         = .vertical
         hs.distribution = .fillEqually
-        hs.spacing      = 10
+        hs.spacing      = Spacing.m
         hs.translatesAutoresizingMaskIntoConstraints = false
 
-        let presets: [(String, UIColor, () -> Void)] = [
-            ("Gentle",    UIColor(red: 0.20, green: 0.73, blue: 0.20, alpha: 1), { GameSettings.shared.applyGentle() }),
-            ("Standard",  UIColor(red: 0.20, green: 0.50, blue: 1.00, alpha: 1), { GameSettings.shared.applyStandard() }),
-            ("Challenge", UIColor(red: 0.90, green: 0.20, blue: 0.20, alpha: 1), { GameSettings.shared.applyChallenge() }),
+        let presets: [(String, () -> Void)] = [
+            ("Gentle",    { GameSettings.shared.applyGentle() }),
+            ("Standard",  { GameSettings.shared.applyStandard() }),
+            ("Challenge", { GameSettings.shared.applyChallenge() }),
         ]
-        for (name, color, action) in presets {
+        for (name, action) in presets {
             let t = ButtonTarget { [weak self] in
                 action()
                 self?.onThemeChanged?()
             }
             controlTargets.append(t)
-            let btn = DynamicTextButton(type: .system)
+            let btn = ArcadeButton(kind: .secondary, theme: theme, traits: fontTraits ?? traitCollection)
             btn.setTitle(name, for: .normal)
-            btn.titleLabel?.font = scaledFont(15, weight: .semibold)
-            btn.titleLabel?.adjustsFontForContentSizeCategory = true
-            btn.titleLabel?.numberOfLines = 0
-            btn.padding = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-            // Theme text, not white: white on the pale Parchment tint measured under 2:1.
-            btn.setTitleColor(style.text, for: .normal)
-            btn.backgroundColor    = color.withAlphaComponent(0.30)
-            btn.layer.cornerRadius = 10
-            btn.layer.borderWidth  = 1.5
-            btn.layer.borderColor  = color.withAlphaComponent(0.70).cgColor
-            btn.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
             btn.addTarget(t, action: #selector(ButtonTarget.tapped), for: .touchUpInside)
             hs.addArrangedSubview(btn)
         }
 
         row.addSubview(hs)
         NSLayoutConstraint.activate([
-            hs.topAnchor.constraint(equalTo: row.topAnchor, constant: 14),
-            hs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -14),
-            hs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            hs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            hs.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
+            hs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
+            hs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            hs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
         appendRow(row)
     }
@@ -80,8 +69,8 @@ extension SettingsPanelView {
         let row = UIView()
         row.backgroundColor = style.rowBg
 
-        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: style.text)
-        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: style.sub)
+        let titleL  = makeLabel(title,  style: .label, color: style.text)
+        let detailL = makeLabel(detail, style: .caption,  color: style.sub)
         detailL.numberOfLines = 0
 
         let slider = SettingsSlider()
@@ -96,16 +85,16 @@ extension SettingsPanelView {
         slider.minimumValue          = min
         slider.maximumValue          = max
         slider.value                 = value
-        slider.minimumTrackTintColor = style.accent
-        slider.maximumTrackTintColor = UIColor(white: 0.3, alpha: 1.0)
-        slider.thumbTintColor        = style.accent
+        slider.minimumTrackTintColor = style.accentFill
+        slider.maximumTrackTintColor = style.div
+        slider.thumbTintColor        = style.accentFill
 
         let t = SliderTarget(onChange)
         controlTargets.append(t)
         slider.addTarget(t, action: #selector(SliderTarget.changed(_:)), for: .valueChanged)
 
-        let loL = makeLabel(lo, size: 11, weight: .regular, color: style.sub)
-        let hiL = makeLabel(hi, size: 11, weight: .regular, color: style.sub)
+        let loL = makeLabel(lo, style: .caption, color: style.sub)
+        let hiL = makeLabel(hi, style: .caption, color: style.sub)
         hiL.textAlignment = .right
 
         let rangeRow = UIStackView(arrangedSubviews: [loL, hiL])
@@ -116,15 +105,15 @@ extension SettingsPanelView {
 
         let vs = UIStackView(arrangedSubviews: [titleL, detailL, slider, rangeRow])
         vs.axis    = .vertical
-        vs.spacing = 5
+        vs.spacing = Spacing.xs
         vs.translatesAutoresizingMaskIntoConstraints = false
 
         row.addSubview(vs)
         NSLayoutConstraint.activate([
-            vs.topAnchor.constraint(equalTo: row.topAnchor, constant: 14),
-            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -14),
-            vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 20),
-            vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -20),
+            vs.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
+            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
+            vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
         appendRow(row)
     }
@@ -134,13 +123,13 @@ extension SettingsPanelView {
         let row = UIView()
         row.backgroundColor = style.rowBg
 
-        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: style.text)
-        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: style.sub)
+        let titleL  = makeLabel(title,  style: .label, color: style.text)
+        let detailL = makeLabel(detail, style: .caption,  color: style.sub)
         detailL.numberOfLines = 0
 
         let lStack = UIStackView(arrangedSubviews: [titleL, detailL])
         lStack.axis    = .vertical
-        lStack.spacing = 2
+        lStack.spacing = Spacing.xs
         lStack.translatesAutoresizingMaskIntoConstraints = false
 
         let sw = SettingsSwitch()
@@ -151,7 +140,7 @@ extension SettingsPanelView {
         titleL.accessibilityElementsHidden = true
         detailL.accessibilityElementsHidden = true
         sw.isOn        = isOn
-        sw.onTintColor = style.accent
+        sw.onTintColor = style.accentFill
         sw.translatesAutoresizingMaskIntoConstraints = false
 
         let t = SwitchTarget(onChange)
@@ -161,13 +150,13 @@ extension SettingsPanelView {
         row.addSubview(lStack)
         row.addSubview(sw)
         NSLayoutConstraint.activate([
-            lStack.topAnchor.constraint(equalTo: row.topAnchor, constant: 14),
-            lStack.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -14),
-            lStack.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 20),
-            lStack.trailingAnchor.constraint(equalTo: sw.leadingAnchor, constant: -12),
+            lStack.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
+            lStack.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
+            lStack.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            lStack.trailingAnchor.constraint(equalTo: sw.leadingAnchor, constant: -Spacing.m),
 
             sw.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            sw.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -20),
+            sw.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
         appendRow(row)
     }
@@ -178,17 +167,17 @@ extension SettingsPanelView {
         let row = UIView()
         row.backgroundColor = style.rowBg
 
-        let titleL  = makeLabel(title,  size: 16, weight: .semibold, color: style.text)
-        let detailL = makeLabel(detail, size: 12, weight: .regular,  color: style.sub)
+        let titleL  = makeLabel(title,  style: .label, color: style.text)
+        let detailL = makeLabel(detail, style: .caption,  color: style.sub)
         detailL.numberOfLines = 0
 
         let seg = UISegmentedControl(items: items)
         seg.accessibilityLabel = title
         seg.selectedSegmentIndex     = selectedIndex
         seg.backgroundColor          = style.segBg
-        seg.selectedSegmentTintColor = style.accent
-        let segmentFont = scaledFont(16, weight: .semibold)
-        seg.setTitleTextAttributes([.foregroundColor: style.sub, .font: segmentFont], for: .normal)
+        seg.selectedSegmentTintColor = style.accentFill
+        let segmentFont = font(.label)
+        seg.setTitleTextAttributes([.foregroundColor: style.text, .font: segmentFont], for: .normal)
         seg.setTitleTextAttributes([
             .foregroundColor: style.selectedSegText,
             .font: segmentFont,
@@ -214,15 +203,15 @@ extension SettingsPanelView {
         ])
         let vs = UIStackView(arrangedSubviews: [titleL, detailL, segmentScroll])
         vs.axis    = .vertical
-        vs.spacing = 8
+        vs.spacing = Spacing.s
         vs.translatesAutoresizingMaskIntoConstraints = false
 
         row.addSubview(vs)
         NSLayoutConstraint.activate([
-            vs.topAnchor.constraint(equalTo: row.topAnchor, constant: 14),
-            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -14),
-            vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 20),
-            vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -20),
+            vs.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
+            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
+            vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
         appendRow(row)
     }
@@ -233,15 +222,15 @@ extension SettingsPanelView {
         let descL = makeLabel(
             "Adjusts helicopter and pipe colours to suit different colour vision needs. " +
             "Independent of the menu theme in the Hangar.",
-            size: 12, weight: .regular, color: style.sub)
+            style: .caption, color: style.sub)
         descL.numberOfLines = 0
         descL.translatesAutoresizingMaskIntoConstraints = false
         descRow.addSubview(descL)
         NSLayoutConstraint.activate([
-            descL.topAnchor.constraint(equalTo: descRow.topAnchor, constant: 10),
-            descL.bottomAnchor.constraint(equalTo: descRow.bottomAnchor, constant: -10),
-            descL.leadingAnchor.constraint(equalTo: descRow.leadingAnchor, constant: 20),
-            descL.trailingAnchor.constraint(equalTo: descRow.trailingAnchor, constant: -20),
+            descL.topAnchor.constraint(equalTo: descRow.topAnchor, constant: Spacing.m),
+            descL.bottomAnchor.constraint(equalTo: descRow.bottomAnchor, constant: -Spacing.m),
+            descL.leadingAnchor.constraint(equalTo: descRow.leadingAnchor, constant: Spacing.l),
+            descL.trailingAnchor.constraint(equalTo: descRow.trailingAnchor, constant: -Spacing.l),
         ])
         stack.addArrangedSubview(descRow)
         stack.addArrangedSubview(hairline())
@@ -255,7 +244,7 @@ extension SettingsPanelView {
 
         let hs = UIStackView()
         hs.axis    = .horizontal
-        hs.spacing = 12
+        hs.spacing = Spacing.m
         hs.translatesAutoresizingMaskIntoConstraints = false
         hScroll.addSubview(hs)
 
@@ -268,31 +257,28 @@ extension SettingsPanelView {
         }
 
         NSLayoutConstraint.activate([
-            hs.topAnchor.constraint(equalTo: hScroll.contentLayoutGuide.topAnchor, constant: 2),
-            hs.bottomAnchor.constraint(equalTo: hScroll.contentLayoutGuide.bottomAnchor, constant: -2),
-            hs.leadingAnchor.constraint(equalTo: hScroll.contentLayoutGuide.leadingAnchor, constant: 4),
-            hs.trailingAnchor.constraint(equalTo: hScroll.contentLayoutGuide.trailingAnchor, constant: -4),
-            hs.heightAnchor.constraint(equalTo: hScroll.frameLayoutGuide.heightAnchor, constant: -4),
+            hs.topAnchor.constraint(equalTo: hScroll.contentLayoutGuide.topAnchor, constant: Spacing.xs),
+            hs.bottomAnchor.constraint(equalTo: hScroll.contentLayoutGuide.bottomAnchor, constant: -Spacing.xs),
+            hs.leadingAnchor.constraint(equalTo: hScroll.contentLayoutGuide.leadingAnchor, constant: Spacing.xs),
+            hs.trailingAnchor.constraint(equalTo: hScroll.contentLayoutGuide.trailingAnchor, constant: -Spacing.xs),
+            hs.heightAnchor.constraint(equalTo: hScroll.frameLayoutGuide.heightAnchor, constant: -Spacing.xs),
         ])
 
         row.addSubview(hScroll)
         NSLayoutConstraint.activate([
-            hScroll.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            hScroll.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            hScroll.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            hScroll.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
-            hScroll.heightAnchor.constraint(equalToConstant: 50 + scaledFont(12, weight: .medium).lineHeight * 3),
+            hScroll.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.m),
+            hScroll.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.m),
+            hScroll.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            hScroll.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
+            hScroll.heightAnchor.constraint(equalToConstant: 50 + font(.caption).lineHeight * 3),
         ])
         appendRow(row)
     }
 
     private func makeSwatch(_ palette: ColorPalette, selected: Bool, index: Int) -> UIButton {
         let btn = UIButton(type: .custom)
-        btn.widthAnchor.constraint(equalToConstant: max(100, scaledFont(12, weight: .medium).pointSize * 8)).isActive = true
-        btn.layer.cornerRadius = 12
-        btn.layer.borderWidth  = selected ? 3.0 : 1.5
-        btn.layer.borderColor  = selected ? style.accent.cgColor : style.div.cgColor
-        btn.backgroundColor    = style.swatchBg
+        btn.widthAnchor.constraint(equalToConstant: max(100, font(.caption).pointSize * 8)).isActive = true
+        styleCard(btn, chosen: selected)
         btn.accessibilityLabel = palette.name
         if selected { btn.accessibilityTraits.insert(.selected) }
 
@@ -300,14 +286,14 @@ extension SettingsPanelView {
         let pipeDot = colorDot(palette.pipeColor,       size: 26)
         let dots = UIStackView(arrangedSubviews: [heliDot, pipeDot])
         dots.axis         = .horizontal
-        dots.spacing      = 6
+        dots.spacing      = Spacing.s
         dots.distribution = .fillEqually
         dots.isUserInteractionEnabled = false
 
         let nameL = UILabel()
         nameL.text          = palette.name
         nameL.textColor     = style.sub
-        nameL.font = scaledFont(12, weight: .medium)
+        nameL.font = font(.caption)
         nameL.adjustsFontForContentSizeCategory = true
         nameL.numberOfLines = 0
         nameL.textAlignment = .center
@@ -315,7 +301,7 @@ extension SettingsPanelView {
 
         let vs = UIStackView(arrangedSubviews: [dots, nameL])
         vs.axis      = .vertical
-        vs.spacing   = 4
+        vs.spacing   = Spacing.xs
         vs.alignment = .center
         vs.isUserInteractionEnabled = false
         vs.translatesAutoresizingMaskIntoConstraints = false
@@ -323,10 +309,10 @@ extension SettingsPanelView {
         btn.addSubview(vs)
         NSLayoutConstraint.activate([
             nameL.widthAnchor.constraint(lessThanOrEqualTo: vs.widthAnchor),
-            vs.topAnchor.constraint(equalTo: btn.topAnchor, constant: 8),
-            vs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -6),
-            vs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: 4),
-            vs.trailingAnchor.constraint(equalTo: btn.trailingAnchor, constant: -4),
+            vs.topAnchor.constraint(equalTo: btn.topAnchor, constant: Spacing.s),
+            vs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -Spacing.s),
+            vs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: Spacing.xs),
+            vs.trailingAnchor.constraint(equalTo: btn.trailingAnchor, constant: -Spacing.xs),
         ])
 
         let t = ButtonTarget { [weak self] in self?.selectPalette(atIndex: index) }
@@ -345,8 +331,7 @@ extension SettingsPanelView {
             let chosen = (i == index)
             if chosen { view.accessibilityTraits.insert(.selected) }
             else { view.accessibilityTraits.remove(.selected) }
-            view.layer.borderWidth = chosen ? 3.0 : 1.5
-            view.layer.borderColor = chosen ? style.accent.cgColor : style.div.cgColor
+            styleCard(view, chosen: chosen)
         }
     }
 

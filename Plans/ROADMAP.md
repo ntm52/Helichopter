@@ -36,7 +36,7 @@ Do a second pass of this list after Plan 01 Stage B, since every menu will have 
 - [ ] **Phase 1.** No purchases yet. **Steps 1–2 shipped in 2.1** (2026-10-30); step 3 ships in 2.2.
   - [x] Step 1 (2.1): Hangar screen on Home; Menu Theme moves there from Settings (Settings keeps a pointer button). Shared panel base extracted from `SettingsPanelView` first. Done 2026-10-12 (branch `hangar-step1`, merged into `master`, not pushed).
   - [x] Step 2 (2.1): skin catalog and selected-skin settings with only Classic; hard-coded art names removed; Reset Settings resets theme and skins. Done 2026-10-12 (branch `hangar-step2`). 2.1 release prep redone the same day: What's New, all screenshot sets, the `docs-support-2.1` branch (`dea8685`), `Tools/release_check.sh`.
-  - [ ] Step 3 (2.2): a free patterned pipe set and one free extra helicopter; contrast tests; ship 2.2. **Code and art done 2026-11-11** (branch `hangar-step3`, merged into `master`, not pushed: Striped Pipes, Two Tone Helicopter; version 2.2, build 6). **Next:** 2.2 release prep (What's New, all three screenshot sets, support page, `Tools/release_check.sh`) and the **Owner** device check with a switch and VoiceOver.
+  - [ ] Step 3 (2.2): a free patterned pipe set and one free extra helicopter; contrast tests; ship 2.2. **Code and art done 2026-11-11** (branch `hangar-step3`, merged into `master`, not pushed: Striped Pipes, Two Tone Helicopter; version 2.2, build 6). **Held 2026-11-11 (owner):** the skins ship together with the UI polish (section 3b), so release prep (What's New, all three screenshot sets, support page, `Tools/release_check.sh`) and the **Owner** device check wait for Plan 03 Stage 8.
 - [ ] **Phase 2:** StoreKit 2 one-time purchases, Restore, Ask to Buy, refunds. Includes App Store Connect business setup, EU trader status, and privacy text updates.
 - [ ] **Phase 3 (optional):** more skin sets; patterned pipes that also serve players who cannot rely on colour.
 
@@ -45,8 +45,10 @@ Do a second pass of this list after Plan 01 Stage B, since every menu will have 
 Owner request 2026-11-11: the app "appears very vibe-coded"; make the UI feel more open and more polished.
 
 - [x] Launch screen shows the Classic helicopter, not the hand-drawn green one. Done 2026-11-11 (not committed).
-- [ ] Stage 0: mock sheet and owner decisions (release order, Settings pages, app icon, icons, direction). **Start here.**
-- [ ] Stages 1–8: design tokens, Home, launch position and app icon, Settings and Hangar panels, play screens, guide, feedback, release.
+- [x] Stage 0: mock sheet and owner decisions. Done 2026-11-11: direction B "Bold arcade"; 2.2 is held and ships with the polish; Settings pages decided after Stage 4; app icon redrawn from Classic; icons beside labels. Details at the top of Plan 03.
+- [x] Stage 1: design tokens, theme surfaces, and the three button kinds (`Scenes/DesignSystem.swift`). Done 2026-11-11 (not committed).
+- [x] Stage 2: Home with a larger mascot, the leaning wordmark, Play as the large primary button, and icon tiles. Done 2026-11-11 (not committed).
+- [ ] Stages 3–8 (**start at Stage 3, launch position and app icon**): design tokens, Home, launch position and app icon, Settings and Hangar panels, play screens, guide, feedback, release.
 
 ## 4. Further improvements (suggested; pick by audience need)
 

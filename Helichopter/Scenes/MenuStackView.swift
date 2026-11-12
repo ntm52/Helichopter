@@ -39,6 +39,7 @@ class MenuStackView: UIView {
     let scroll = UIScrollView()
     let stack = UIStackView()
     private(set) var buttons: [MenuButton] = []
+    private var tileRows: [UIStackView] = []
     let theme = GameSettings.shared.selectedTheme
     private let traits: UITraitCollection
 
@@ -51,20 +52,24 @@ class MenuStackView: UIView {
         scroll.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.spacing = 16
+        stack.spacing = Spacing.l
         addSubview(scroll)
         scroll.addSubview(stack)
         // Centred when the menu fits; scrolls from the top when it doesn't.
         let hug = stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor)
         hug.priority = .defaultLow
+        // As wide as the screen allows, up to the content width.
+        let fill = stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor)
+        fill.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
-            scroll.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 12),
-            scroll.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -12),
-            scroll.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 16),
-            scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
-            stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
+            scroll.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: Spacing.m),
+            scroll.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.m),
+            scroll.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: Spacing.l),
+            scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -Spacing.l),
+            scroll.contentLayoutGuide.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
+            stack.centerXAnchor.constraint(equalTo: scroll.contentLayoutGuide.centerXAnchor),
+            stack.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth),
+            fill,
             scroll.contentLayoutGuide.heightAnchor.constraint(greaterThanOrEqualTo: scroll.frameLayoutGuide.heightAnchor),
             stack.centerYAnchor.constraint(equalTo: scroll.contentLayoutGuide.centerYAnchor),
             stack.topAnchor.constraint(greaterThanOrEqualTo: scroll.contentLayoutGuide.topAnchor),
@@ -72,35 +77,73 @@ class MenuStackView: UIView {
             hug
         ])
         accessibilityElements = [scroll]
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (menu: MenuStackView, _: UITraitCollection) in
+            menu.tileRows.forEach { menu.arrange($0, compatibleWith: menu.traitCollection) }
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     @discardableResult
-    func addLabel(_ text: String, style: UIFont.TextStyle, alignment: NSTextAlignment = .center,
+    func addLabel(_ text: String, style: TypeStyle, alignment: NSTextAlignment = .center,
                   into label: UILabel = UILabel()) -> UILabel {
         label.text = text
-        label.font = .preferredFont(forTextStyle: style, compatibleWith: traits)
+        label.font = style.font(compatibleWith: traits)
         label.adjustsFontForContentSizeCategory = true
         label.numberOfLines = 0
         label.textAlignment = alignment
         label.textColor = theme.titleTextColor
         label.setContentCompressionResistancePriority(.required, for: .vertical)
-        if style == .title1 { label.accessibilityTraits = .header }
+        if style == .display { label.accessibilityTraits = .header }
         stack.addArrangedSubview(label)
         return label
     }
 
     @discardableResult
-    func addButton(for choice: MenuChoice) -> MenuButton {
-        let button = MenuButton(item: choice, theme: theme, traits: traits)
+    func addButton(for choice: MenuChoice, kind: ButtonKind = .secondary, size: ButtonSize = .regular,
+                   icon: String? = nil) -> MenuButton {
+        let button = makeButton(for: choice, kind: kind, size: size)
+        if let icon = icon { button.setIcon(systemName: icon) }
+        stack.addArrangedSubview(button)
+        return button
+    }
+
+    /// A row of equal tiles, each with its icon above its title. At accessibility text
+    /// sizes the row becomes a column of full-width buttons with the icon before the title.
+    @discardableResult
+    func addTileRow(for choices: [(choice: MenuChoice, icon: String)]) -> [MenuButton] {
+        let row = UIStackView()
+        row.distribution = .fillEqually
+        row.alignment = .fill
+        let tiles = choices.map { entry -> MenuButton in
+            let button = makeButton(for: entry.choice, kind: .secondary, size: .regular)
+            button.setIcon(systemName: entry.icon)
+            row.addArrangedSubview(button)
+            return button
+        }
+        stack.addArrangedSubview(row)
+        tileRows.append(row)
+        arrange(row, compatibleWith: traits)
+        return tiles
+    }
+
+    private func arrange(_ row: UIStackView, compatibleWith traits: UITraitCollection) {
+        let column = traits.preferredContentSizeCategory.isAccessibilityCategory
+        row.axis = column ? .vertical : .horizontal
+        row.spacing = column ? Spacing.l : Spacing.m
+        for case let button as ArcadeButton in row.arrangedSubviews {
+            button.iconPlacement = column ? .leading : .top
+        }
+    }
+
+    private func makeButton(for choice: MenuChoice, kind: ButtonKind, size: ButtonSize) -> MenuButton {
+        let button = MenuButton(item: choice, kind: kind, size: size, theme: theme, traits: traits)
         button.addTarget(self, action: #selector(activate(_:)), for: .touchUpInside)
         button.onFocus = { [weak self, weak button] in
             guard let self = self, let button = button else { return }
             self.layoutIfNeeded()
-            self.scroll.scrollRectToVisible(button.convert(button.bounds.insetBy(dx: -6, dy: -6), to: self.scroll), animated: false)
+            self.scroll.scrollRectToVisible(button.convert(button.bounds.insetBy(dx: -Spacing.s, dy: -Spacing.s), to: self.scroll), animated: false)
         }
-        stack.addArrangedSubview(button)
         buttons.append(button)
         return button
     }
@@ -109,6 +152,7 @@ class MenuStackView: UIView {
     func removeAll() {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         buttons = []
+        tileRows = []
         scroll.setContentOffset(.zero, animated: false)
     }
 
@@ -118,35 +162,28 @@ class MenuStackView: UIView {
     }
 }
 
-/// A menu button that shows its choice's scanner focus as a border.
-final class MenuButton: DynamicTextButton {
+/// A menu button that shows its choice's scanner focus as a border and a brighter face.
+final class MenuButton: ArcadeButton {
     let item: MenuChoice
     var onFocus: (() -> Void)?
 
-    init(item: MenuChoice, theme: UITheme, traits: UITraitCollection) {
+    init(item: MenuChoice, kind: ButtonKind = .secondary, size: ButtonSize = .regular,
+         theme: UITheme, traits: UITraitCollection) {
         self.item = item
-        super.init(frame: .zero)
+        super.init(kind: kind, size: size, theme: theme, traits: traits)
         setTitle(item.title, for: .normal)
         accessibilityHint = item.hint
-        titleLabel?.font = .preferredFont(forTextStyle: .headline, compatibleWith: traits)
-        titleLabel?.adjustsFontForContentSizeCategory = true
-        titleLabel?.numberOfLines = 0
-        titleLabel?.textAlignment = .center
-        setTitleColor(theme.buttonTextColor, for: .normal)
-        backgroundColor = theme.buttonTintColor
-        padding = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
-        layer.cornerRadius = 12
-        layer.borderColor = theme.titleTextColor.cgColor
-        heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         // The newest button showing a choice takes over its focus updates.
         item.onFocusChange = { [weak self] focused in self?.showFocus(focused) }
-        layer.borderWidth = item.isFocused ? 4 : 0
+        layer.borderWidth = item.isFocused ? Stroke.focus : 0
+        showsFocus = item.isFocused
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     private func showFocus(_ focused: Bool) {
-        layer.borderWidth = focused ? 4 : 0
+        layer.borderWidth = focused ? Stroke.focus : 0
+        showsFocus = focused
         if focused { onFocus?() }
     }
 }

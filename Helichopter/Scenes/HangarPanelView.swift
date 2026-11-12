@@ -77,15 +77,15 @@ final class HangarPanelView: ScrollingPanelView {
         cards.axis = usesSingleColumn ? .vertical : .horizontal
         cards.distribution = usesSingleColumn ? .fill : .fillEqually
         cards.alignment = .fill
-        cards.spacing = 12
+        cards.spacing = Spacing.m
         cards.translatesAutoresizingMaskIntoConstraints = false
 
         row.addSubview(cards)
         NSLayoutConstraint.activate([
-            cards.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            cards.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            cards.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            cards.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            cards.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.m),
+            cards.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.m),
+            cards.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            cards.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
         appendRow(row)
         return row
@@ -93,10 +93,7 @@ final class HangarPanelView: ScrollingPanelView {
 
     private func makeThemeCard(_ theme: UITheme, selected: Bool) -> UIButton {
         let btn = UIButton(type: .custom)
-        btn.layer.cornerRadius = 12
-        btn.layer.borderWidth  = selected ? 3.0 : 1.5
-        btn.layer.borderColor  = selected ? style.accent.cgColor : style.div.cgColor
-        btn.backgroundColor    = style.swatchBg
+        styleCard(btn, chosen: selected)
         btn.accessibilityLabel = theme.name
         btn.accessibilityHint  = "Menu theme"
         // The button state too, so UI automation and Switch Control see the choice.
@@ -106,43 +103,43 @@ final class HangarPanelView: ScrollingPanelView {
         // A small picture of the theme: its background, title text, and a button chip.
         let preview = UIView()
         preview.backgroundColor = theme.sceneBackgroundColor
-        preview.layer.cornerRadius = 8
-        preview.layer.borderWidth = 1
+        preview.layer.cornerRadius = Radius.inner
+        preview.layer.borderWidth = Stroke.divider
         preview.layer.borderColor = style.div.cgColor
 
-        let previewTitle = previewLabel("Helichopter", size: 15, weight: .bold, color: theme.titleTextColor)
-        let chipText = previewLabel("Play", size: 13, weight: .semibold, color: theme.buttonTextColor)
+        let previewTitle = previewLabel("Helichopter", style: .label, color: theme.titleTextColor)
+        let chipText = previewLabel("Play", style: .caption, color: theme.onAccentColor)
         let chip = UIView()
-        chip.backgroundColor = theme.buttonTintColor
-        chip.layer.cornerRadius = 6
+        chip.backgroundColor = theme.accentColor
+        chip.layer.cornerRadius = Radius.inner / 2
         chip.addSubview(chipText)
         NSLayoutConstraint.activate([
-            chipText.topAnchor.constraint(equalTo: chip.topAnchor, constant: 4),
-            chipText.bottomAnchor.constraint(equalTo: chip.bottomAnchor, constant: -4),
-            chipText.leadingAnchor.constraint(equalTo: chip.leadingAnchor, constant: 14),
-            chipText.trailingAnchor.constraint(equalTo: chip.trailingAnchor, constant: -14),
+            chipText.topAnchor.constraint(equalTo: chip.topAnchor, constant: Spacing.xs),
+            chipText.bottomAnchor.constraint(equalTo: chip.bottomAnchor, constant: -Spacing.xs),
+            chipText.leadingAnchor.constraint(equalTo: chip.leadingAnchor, constant: Spacing.l),
+            chipText.trailingAnchor.constraint(equalTo: chip.trailingAnchor, constant: -Spacing.l),
         ])
         let previewStack = UIStackView(arrangedSubviews: [previewTitle, chip])
         previewStack.axis = .vertical
         previewStack.alignment = .center
-        previewStack.spacing = 6
+        previewStack.spacing = Spacing.s
         previewStack.translatesAutoresizingMaskIntoConstraints = false
         preview.addSubview(previewStack)
         NSLayoutConstraint.activate([
-            previewStack.topAnchor.constraint(equalTo: preview.topAnchor, constant: 10),
-            previewStack.bottomAnchor.constraint(equalTo: preview.bottomAnchor, constant: -10),
-            previewStack.leadingAnchor.constraint(equalTo: preview.leadingAnchor, constant: 4),
-            previewStack.trailingAnchor.constraint(equalTo: preview.trailingAnchor, constant: -4),
+            previewStack.topAnchor.constraint(equalTo: preview.topAnchor, constant: Spacing.m),
+            previewStack.bottomAnchor.constraint(equalTo: preview.bottomAnchor, constant: -Spacing.m),
+            previewStack.leadingAnchor.constraint(equalTo: preview.leadingAnchor, constant: Spacing.xs),
+            previewStack.trailingAnchor.constraint(equalTo: preview.trailingAnchor, constant: -Spacing.xs),
             previewTitle.widthAnchor.constraint(lessThanOrEqualTo: previewStack.widthAnchor),
         ])
 
-        let nameL = makeLabel(theme.name, size: 15, weight: .semibold, color: style.text)
+        let nameL = makeLabel(theme.name, style: .label, color: style.text)
         nameL.textAlignment = .center
         preview.setContentHuggingPriority(.required, for: .vertical)
         var parts: [UIView] = [preview, nameL]
         if selected {
             // Shown in words too, not only by the thicker border.
-            let chosenL = makeLabel("Chosen", size: 12, weight: .medium, color: style.sub)
+            let chosenL = makeLabel("Chosen", style: .caption, color: style.sub)
             chosenL.textAlignment = .center
             parts.append(chosenL)
         }
@@ -153,15 +150,15 @@ final class HangarPanelView: ScrollingPanelView {
 
         let vs = UIStackView(arrangedSubviews: parts)
         vs.axis = .vertical
-        vs.spacing = 6
+        vs.spacing = Spacing.s
         vs.translatesAutoresizingMaskIntoConstraints = false
         vs.isUserInteractionEnabled = false
         btn.addSubview(vs)
         NSLayoutConstraint.activate([
-            vs.topAnchor.constraint(equalTo: btn.topAnchor, constant: 8),
-            vs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -8),
-            vs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: 8),
-            vs.trailingAnchor.constraint(equalTo: btn.trailingAnchor, constant: -8),
+            vs.topAnchor.constraint(equalTo: btn.topAnchor, constant: Spacing.s),
+            vs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -Spacing.s),
+            vs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: Spacing.s),
+            vs.trailingAnchor.constraint(equalTo: btn.trailingAnchor, constant: -Spacing.s),
         ])
 
         let t = ButtonTarget { [weak self] in self?.chooseTheme(theme) }
@@ -171,11 +168,11 @@ final class HangarPanelView: ScrollingPanelView {
     }
 
     /// Preview text scales with the player's text size but shrinks to fit its card.
-    private func previewLabel(_ text: String, size: CGFloat, weight: UIFont.Weight, color: UIColor) -> UILabel {
+    private func previewLabel(_ text: String, style: TypeStyle, color: UIColor) -> UILabel {
         let label = UILabel()
         label.text = text
         label.textColor = color
-        label.font = scaledFont(size, weight: weight)
+        label.font = font(style)
         label.adjustsFontForContentSizeCategory = true
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.5
@@ -197,10 +194,7 @@ final class HangarPanelView: ScrollingPanelView {
     private func makeSkinCard(_ skin: Cosmetic) -> UIButton {
         let equipped = GameSettings.shared.selectedSkin(of: skin.kind) == skin
         let btn = UIButton(type: .custom)
-        btn.layer.cornerRadius = 12
-        btn.layer.borderWidth  = equipped ? 3.0 : 1.5
-        btn.layer.borderColor  = equipped ? style.accent.cgColor : style.div.cgColor
-        btn.backgroundColor    = style.swatchBg
+        styleCard(btn, chosen: equipped)
         btn.accessibilityLabel = skin.name
         btn.accessibilityHint  = skin.spokenDescription
         btn.isSelected = equipped
@@ -217,34 +211,34 @@ final class HangarPanelView: ScrollingPanelView {
             picture.heightAnchor.constraint(equalToConstant: 64),
         ])
 
-        let nameL = makeLabel(skin.name, size: 16, weight: .semibold, color: style.text)
+        let nameL = makeLabel(skin.name, style: .label, color: style.text)
         var labels: [UIView] = [nameL]
         if equipped {
-            labels.append(makeLabel("Equipped", size: 12, weight: .medium, color: style.sub))
+            labels.append(makeLabel("Equipped", style: .caption, color: style.sub))
         }
         let text = UIStackView(arrangedSubviews: labels)
         text.axis = .vertical
-        text.spacing = 2
+        text.spacing = Spacing.xs
 
         let hs = UIStackView(arrangedSubviews: [picture, text])
         // The picture sits above the name, so a name gets the card's full width and
         // never breaks inside a word when two cards share a row.
         hs.axis = .vertical
         hs.alignment = .leading
-        hs.spacing = 10
+        hs.spacing = Spacing.m
         hs.translatesAutoresizingMaskIntoConstraints = false
         hs.isUserInteractionEnabled = false
         btn.addSubview(hs)
         // Pinned to the top, so names line up across a row whether or not a card says
         // "Equipped"; the weak bottom pin gives a card on its own row its height.
-        let hugBottom = hs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -10)
+        let hugBottom = hs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -Spacing.m)
         hugBottom.priority = .defaultLow
         NSLayoutConstraint.activate([
-            hs.topAnchor.constraint(equalTo: btn.topAnchor, constant: 10),
-            hs.bottomAnchor.constraint(lessThanOrEqualTo: btn.bottomAnchor, constant: -10),
+            hs.topAnchor.constraint(equalTo: btn.topAnchor, constant: Spacing.m),
+            hs.bottomAnchor.constraint(lessThanOrEqualTo: btn.bottomAnchor, constant: -Spacing.m),
             hugBottom,
-            hs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: 12),
-            hs.trailingAnchor.constraint(lessThanOrEqualTo: btn.trailingAnchor, constant: -12),
+            hs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: Spacing.m),
+            hs.trailingAnchor.constraint(lessThanOrEqualTo: btn.trailingAnchor, constant: -Spacing.m),
         ])
 
         let t = ButtonTarget { [weak self] in self?.chooseSkin(skin) }
@@ -273,13 +267,13 @@ final class HangarPanelView: ScrollingPanelView {
     private func noteRow(_ text: String) {
         let row = UIView()
         row.backgroundColor = style.rowBg
-        let label = makeLabel(text, size: 15, weight: .medium, color: style.text)
+        let label = makeLabel(text, style: .body, color: style.text)
         row.addSubview(label)
         NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            label.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 20),
-            label.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -20),
+            label.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.m),
+            label.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.m),
+            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            label.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
         appendRow(row)
     }

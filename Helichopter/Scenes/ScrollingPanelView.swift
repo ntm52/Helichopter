@@ -16,43 +16,29 @@ final class ButtonTarget: NSObject {
 /// so panels follow the player's chosen theme.
 struct SettingsStyle {
     let bg: UIColor               // panel background
-    let accent: UIColor           // section headers, back button, slider/switch track
+    let accent: UIColor           // accent-coloured text: section headings, quiet buttons
+    let accentFill: UIColor       // slider and switch tracks, the chosen segment, chosen cards
     let text: UIColor             // primary label text
     let sub: UIColor              // secondary / detail text
     let rowBg: UIColor            // individual row backgrounds
-    let div: UIColor              // hairline separators
+    let div: UIColor              // dividers and outlines
     let segBg: UIColor            // segmented control tray background
     let selectedSegText: UIColor  // text on the highlighted segment chip
-    let swatchBg: UIColor         // palette swatch card background
+    let swatchBg: UIColor         // cards that sit on a row
+    let focus: UIColor            // the scanner's focus ring
 
     init(theme: UITheme) {
-        let light = Self.isLightColor(theme.sceneBackgroundColor)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        theme.sceneBackgroundColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-
-        bg     = theme.sceneBackgroundColor.withAlphaComponent(0.97)
-        accent = theme.titleTextColor
-        text   = light ? theme.titleTextColor : .white
-        sub    = light ? theme.titleTextColor.withAlphaComponent(0.75) : UIColor(white: 0.65, alpha: 1.0)
-        // For dark themes: nudge the row bg slightly brighter while preserving hue.
-        // For light themes: shade it slightly darker so rows read off the panel bg.
-        rowBg  = light
-            ? UIColor(red: r * 0.93, green: g * 0.93, blue: b * 0.93, alpha: 1.0)
-            : UIColor(red: min(1, r + 0.08), green: min(1, g + 0.08), blue: min(1, b + 0.08), alpha: 1.0)
-        div    = light ? UIColor(white: 0.75, alpha: 1.0) : UIColor(white: 0.22, alpha: 1.0)
-        segBg  = light ? UIColor(white: 0.82, alpha: 1.0) : UIColor(white: 0.20, alpha: 1.0)
-        // Selected segment text must contrast against `accent` (the tint color on the chip).
-        // Light themes use a dark accent (navy) → white text reads well on it.
-        // Dark themes use a light accent (sky-blue/cyan) → black text reads well on it.
-        selectedSegText = light ? .white : .black
-        swatchBg = light ? UIColor(white: 0.88, alpha: 1.0) : UIColor(white: 0.10, alpha: 1.0)
-    }
-
-    // Returns true when the relative luminance of `color` exceeds 0.5 (i.e. it reads as a light color).
-    private static func isLightColor(_ color: UIColor) -> Bool {
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        color.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5
+        bg = theme.sceneBackgroundColor.withAlphaComponent(0.97)
+        accent = theme.accentTextColor
+        accentFill = theme.accentColor
+        text = theme.textColor
+        sub = theme.secondaryTextColor
+        rowBg = theme.cardColor
+        div = theme.inkColor
+        segBg = theme.raisedColor
+        selectedSegText = theme.onAccentColor
+        swatchBg = theme.raisedColor
+        focus = theme.focusColor
     }
 }
 
@@ -99,6 +85,7 @@ class ScrollingPanelView: UIView {
     class var title: String { "" }
 
     let fontTraits: UITraitCollection?
+    let theme: UITheme
     let style: SettingsStyle
 
     var onBack: (() -> Void)?
@@ -120,6 +107,7 @@ class ScrollingPanelView: UIView {
 
     required init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil) {
         self.fontTraits = fontTraits
+        self.theme = theme
         style = SettingsStyle(theme: theme)
         super.init(frame: frame)
         buildUI()
@@ -188,7 +176,7 @@ class ScrollingPanelView: UIView {
                 var ancestor = control.superview
                 while let view = ancestor {
                     if let scroll = view as? UIScrollView {
-                        scroll.scrollRectToVisible(control.convert(control.bounds.insetBy(dx: -6, dy: -6), to: scroll), animated: false)
+                        scroll.scrollRectToVisible(control.convert(control.bounds.insetBy(dx: -Spacing.s, dy: -Spacing.s), to: scroll), animated: false)
                     }
                     ancestor = view.superview
                 }
@@ -216,7 +204,7 @@ class ScrollingPanelView: UIView {
 
     private func updateFocusRing() {
         guard let control = focusedControl, switchScanner.isActive else { return }
-        focusRing.frame = control.convert(control.bounds, to: self).insetBy(dx: -4, dy: -4)
+        focusRing.frame = control.convert(control.bounds, to: self).insetBy(dx: -Stroke.focus, dy: -Stroke.focus)
         bringSubviewToFront(focusRing)
     }
 
@@ -233,18 +221,17 @@ class ScrollingPanelView: UIView {
     private func buildUI() {
         backgroundColor = style.bg
 
-        let backBtn  = plainButton("◀  Back", color: style.accent, target: self,
-                                   action: #selector(backTapped))
+        let backBtn  = plainButton("◀  Back", target: self, action: #selector(backTapped))
         backBtn.accessibilityLabel = "Back"
         backBtn.accessibilityHint = "Goes to the home screen"
-        let titleLbl = makeLabel(Self.title, size: 26, weight: .bold, color: style.text)
+        let titleLbl = makeLabel(Self.title, style: .display, color: style.text)
         titleLbl.accessibilityTraits = .header
         titleLbl.textAlignment = .center
         let header = UIStackView(arrangedSubviews: [backBtn, titleLbl])
         header.axis = .vertical
-        header.spacing = 4
+        header.spacing = Spacing.xs
         header.isLayoutMarginsRelativeArrangement = true
-        header.layoutMargins = UIEdgeInsets(top: 4, left: 16, bottom: 8, right: 16)
+        header.layoutMargins = UIEdgeInsets(top: Spacing.xs, left: Spacing.l, bottom: Spacing.s, right: Spacing.l)
         header.translatesAutoresizingMaskIntoConstraints = false
         addSubview(header)
 
@@ -261,6 +248,9 @@ class ScrollingPanelView: UIView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
+        // As wide as the screen allows, up to the content width.
+        let fill = stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
+        fill.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             header.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             header.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -276,19 +266,20 @@ class ScrollingPanelView: UIView {
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor),
 
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 8),
-            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -32),
-            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: Spacing.s),
+            scrollView.contentLayoutGuide.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            stack.centerXAnchor.constraint(equalTo: scrollView.contentLayoutGuide.centerXAnchor),
+            stack.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -Spacing.xxl),
+            fill,
         ])
 
         buildSections()
         focusRing.isUserInteractionEnabled = false
         focusRing.accessibilityElementsHidden = true
-        focusRing.layer.borderWidth = 3
-        focusRing.layer.borderColor = style.accent.cgColor
-        focusRing.layer.cornerRadius = 8
+        focusRing.layer.borderWidth = Stroke.focus
+        focusRing.layer.borderColor = style.focus.cgColor
+        focusRing.layer.cornerRadius = Radius.control
         focusRing.isHidden = true
         addSubview(focusRing)
     }
@@ -302,21 +293,20 @@ extension ScrollingPanelView {
 
     func sectionHeader(_ title: String) {
         let spacer = UIView()
-        spacer.heightAnchor.constraint(equalToConstant: 18).isActive = true
+        spacer.heightAnchor.constraint(equalToConstant: Spacing.xl).isActive = true
         stack.addArrangedSubview(spacer)
 
-        let lbl = makeLabel(title.uppercased(), size: 12, weight: .bold, color: style.accent)
-        // VoiceOver's heading rotor jumps between sections; all-caps text can be spelled out.
-        lbl.accessibilityLabel = title
+        let lbl = makeLabel(title, style: .heading, color: style.accent)
+        // VoiceOver's heading rotor jumps between sections.
         lbl.accessibilityTraits = .header
 
         let wrap = UIView()
         wrap.addSubview(lbl)
         NSLayoutConstraint.activate([
-            lbl.topAnchor.constraint(equalTo: wrap.topAnchor, constant: 2),
-            lbl.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -2),
-            lbl.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: 20),
-            lbl.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -20),
+            lbl.topAnchor.constraint(equalTo: wrap.topAnchor, constant: Spacing.xs),
+            lbl.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -Spacing.xs),
+            lbl.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: Spacing.l),
+            lbl.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -Spacing.l),
         ])
         stack.addArrangedSubview(wrap)
         stack.addArrangedSubview(hairline())
@@ -332,41 +322,42 @@ extension ScrollingPanelView {
         }
     }
 
-    func scaledFont(_ size: CGFloat, weight: UIFont.Weight) -> UIFont {
-        UIFontMetrics(forTextStyle: size < 15 ? .caption1 : (size >= 22 ? .title2 : .body)).scaledFont(
-            for: .systemFont(ofSize: size, weight: weight), compatibleWith: fontTraits ?? traitCollection)
+    func font(_ style: TypeStyle) -> UIFont {
+        style.font(compatibleWith: fontTraits ?? traitCollection)
     }
 
-    func makeLabel(_ labelText: String, size: CGFloat,
-                   weight: UIFont.Weight, color: UIColor) -> UILabel {
+    func makeLabel(_ labelText: String, style: TypeStyle, color: UIColor) -> UILabel {
         let l = WrappingPanelLabel()
         l.setContentCompressionResistancePriority(.required, for: .vertical)
         l.text      = labelText
         l.textColor = color
         l.adjustsFontForContentSizeCategory = true
-        l.font = scaledFont(size, weight: weight)
+        l.font = font(style)
         l.numberOfLines = 0
         l.translatesAutoresizingMaskIntoConstraints = false
         return l
     }
 
-    func plainButton(_ title: String, color: UIColor,
-                     target: Any, action: Selector) -> UIButton {
-        let btn = DynamicTextButton(type: .system)
+    /// A quiet (text-only) button.
+    func plainButton(_ title: String, target: Any, action: Selector) -> UIButton {
+        let btn = ArcadeButton(kind: .quiet, theme: theme, traits: fontTraits ?? traitCollection)
         btn.setTitle(title, for: .normal)
-        btn.titleLabel?.font = scaledFont(17, weight: .semibold)
-        btn.titleLabel?.adjustsFontForContentSizeCategory = true
-        btn.titleLabel?.numberOfLines = 0
-        btn.padding = UIEdgeInsets(top: 12, left: 8, bottom: 12, right: 8)
-        btn.setTitleColor(color, for: .normal)
         btn.addTarget(target, action: action, for: .touchUpInside)
         return btn
+    }
+
+    /// The shared look of a card that can be chosen: a theme, a look, or a palette.
+    func styleCard(_ card: UIView, chosen: Bool) {
+        card.backgroundColor = style.swatchBg
+        card.layer.cornerRadius = Radius.card
+        card.layer.borderWidth = chosen ? Stroke.focus : Stroke.outline
+        card.layer.borderColor = (chosen ? style.accentFill : style.div).cgColor
     }
 
     func hairline() -> UIView {
         let v = UIView()
         v.backgroundColor = style.div
-        v.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
+        v.heightAnchor.constraint(equalToConstant: Stroke.divider).isActive = true
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }

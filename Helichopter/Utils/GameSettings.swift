@@ -82,17 +82,35 @@ extension GameSettings {
 
 // MARK: - UI Theme system
 
-/// A full color scheme for menus and the title screen, validated to WCAG 2.1 AA.
-/// All foreground/background pairs carry a contrast ratio ≥ 4.5:1.
+/// A full colour scheme for menus and scene backgrounds, validated to WCAG 2.1 AA.
+/// `ThemeSurfaceContrastTests` checks every text-on-surface pair at 4.5:1 or better.
+/// Nothing in the UI uses a colour that is not one of these.
 struct UITheme {
     let id: String
     let name: String
+    /// The page: menu backdrops, panel backgrounds, and the gameplay scene.
     let sceneBackgroundColor: UIColor
-    /// Button background colour.
-    let buttonTintColor: UIColor
-    /// Text on top of buttonTintColor — verified ≥ 4.5:1 contrast.
-    let buttonTextColor: UIColor
-    /// Large/title labels sitting on sceneBackgroundColor — verified ≥ 4.5:1 contrast.
+    /// Rows, cards, and secondary buttons, one level above the page.
+    let cardColor: UIColor
+    /// Cards that sit on a card, and control trays.
+    let raisedColor: UIColor
+    /// Outlines, dividers, and the solid lower edge of buttons.
+    let inkColor: UIColor
+    /// Main text on the page, a card, or a raised card.
+    let textColor: UIColor
+    /// Descriptions and other quiet text on the same surfaces.
+    let secondaryTextColor: UIColor
+    /// Fill of the one primary button on a screen, and of chosen controls.
+    let accentColor: UIColor
+    /// Text on `accentColor`.
+    let onAccentColor: UIColor
+    /// Accent-coloured text (headings, values, quiet buttons) on any surface.
+    let accentTextColor: UIColor
+    /// Scanner focus: the border, and the face of a focused button.
+    let focusColor: UIColor
+    /// Text on `focusColor`.
+    let onFocusColor: UIColor
+    /// Titles and HUD text sitting directly on `sceneBackgroundColor`.
     let titleTextColor: UIColor
     /// When non-nil, the theme has a plain backdrop: gameplay hides the starfield so
     /// `sceneBackgroundColor` shows, and menus draw no sky image.
@@ -105,43 +123,74 @@ struct UITheme {
     let helicopterTintColor: UIColor?
 }
 
+private extension UIColor {
+    /// A colour from a hex value such as `0x1E3A6E`.
+    convenience init(hex: UInt32) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+
 extension GameSettings {
 
     // MARK: - UI Themes
+    // Plan 03, direction "Bold arcade": each theme has a warm or bright accent for the
+    // main action, and a dark ink for outlines.
 
-    /// Dark navy background, dark-blue buttons, white button text, sky-blue title.
-    /// Button text on button bg: 11.3:1  |  Title on bg: 8.2:1
+    /// Dark navy page, blue cards, amber accent, sky-blue titles and focus.
     static let themeNightSky = UITheme(
         id: "nightSky", name: "Night Sky",
         sceneBackgroundColor:      UIColor(red: 0.047, green: 0.063, blue: 0.129, alpha: 1),
-        buttonTintColor:           UIColor(red: 0.118, green: 0.227, blue: 0.431, alpha: 1),
-        buttonTextColor:           .white,
+        cardColor:                 UIColor(hex: 0x1E3A6E),
+        raisedColor:               UIColor(hex: 0x27488A),
+        inkColor:                  UIColor(hex: 0x050814),
+        textColor:                 .white,
+        secondaryTextColor:        UIColor(hex: 0xCFDCF7),
+        accentColor:               UIColor(hex: 0xFFC83D),
+        onAccentColor:             UIColor(hex: 0x1A1405),
+        accentTextColor:           UIColor(hex: 0xFFC83D),
+        focusColor:                UIColor(red: 0.416, green: 0.675, blue: 1.000, alpha: 1),
+        onFocusColor:              UIColor(hex: 0x050814),
         titleTextColor:            UIColor(red: 0.416, green: 0.675, blue: 1.000, alpha: 1),
         backgroundSpriteTintColor: nil,
         helicopterTintColor:       nil
     )
 
-    /// Warm cream background (sky image replaced with solid cream), steel-blue buttons,
-    /// white button text, dark-navy title.
-    /// Button text on button bg: 7.3:1  |  Title on cream bg: 11.8:1
+    /// Warm cream page (sky image replaced with solid cream), white cards, navy ink and
+    /// text, and the helicopter's red as the accent.
     /// Helicopter: warm red #CC2626 (L≈0.061) vs cream bg (L≈0.840) → contrast ≈ 8.0:1
     static let themeParchment = UITheme(
         id: "parchment", name: "Parchment",
         sceneBackgroundColor:      UIColor(red: 0.949, green: 0.925, blue: 0.847, alpha: 1),
-        buttonTintColor:           UIColor(red: 0.169, green: 0.333, blue: 0.596, alpha: 1),
-        buttonTextColor:           .white,
+        cardColor:                 .white,
+        raisedColor:               UIColor(hex: 0xF7F2E4),
+        inkColor:                  UIColor(hex: 0x1A2A57),
+        textColor:                 UIColor(hex: 0x1A2A57),
+        secondaryTextColor:        UIColor(hex: 0x3F4A6E),
+        accentColor:               UIColor(hex: 0xCC2626),
+        onAccentColor:             .white,
+        accentTextColor:           UIColor(hex: 0xA81C1C),
+        focusColor:                UIColor(hex: 0x1A2A57),
+        onFocusColor:              .white,
         titleTextColor:            UIColor(red: 0.102, green: 0.165, blue: 0.341, alpha: 1),
         backgroundSpriteTintColor: UIColor(red: 0.949, green: 0.925, blue: 0.847, alpha: 1),
         helicopterTintColor:       UIColor(red: 0.800, green: 0.149, blue: 0.149, alpha: 1)
     )
 
-    /// Deep teal-black background, dark-teal buttons, near-white cyan text, bright-cyan title.
-    /// Button text on button bg: 13.3:1  |  Title on bg: 10.7:1
+    /// Deep teal-black page, dark-teal cards, pink accent, bright-cyan titles and focus.
     static let themeNeonNight = UITheme(
         id: "neonNight", name: "Neon Night",
         sceneBackgroundColor:      UIColor(red: 0.020, green: 0.055, blue: 0.063, alpha: 1),
-        buttonTintColor:           UIColor(red: 0.039, green: 0.169, blue: 0.212, alpha: 1),
-        buttonTextColor:           UIColor(red: 0.878, green: 0.969, blue: 1.000, alpha: 1),
+        cardColor:                 UIColor(hex: 0x0A2B36),
+        raisedColor:               UIColor(hex: 0x114051),
+        inkColor:                  UIColor(hex: 0x010506),
+        textColor:                 UIColor(hex: 0xE0F7FF),
+        secondaryTextColor:        UIColor(hex: 0xA9C9D2),
+        accentColor:               UIColor(hex: 0xFF8ADF),
+        onAccentColor:             UIColor(hex: 0x1A0514),
+        accentTextColor:           UIColor(hex: 0xFF8ADF),
+        focusColor:                UIColor(red: 0.251, green: 0.820, blue: 0.914, alpha: 1),
+        onFocusColor:              UIColor(hex: 0x010506),
         titleTextColor:            UIColor(red: 0.251, green: 0.820, blue: 0.914, alpha: 1),
         backgroundSpriteTintColor: nil,
         helicopterTintColor:       nil

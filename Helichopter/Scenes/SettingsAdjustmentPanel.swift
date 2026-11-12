@@ -20,37 +20,37 @@ extension SettingsPanelView {
             panel.topAnchor.constraint(equalTo: topAnchor), panel.bottomAnchor.constraint(equalTo: bottomAnchor),
             panel.leadingAnchor.constraint(equalTo: leadingAnchor), panel.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
-        let title = makeLabel(control.accessibilityLabel ?? "Adjust", size: 22, weight: .bold, color: style.text)
+        let title = makeLabel(control.accessibilityLabel ?? "Adjust", style: .heading, color: style.text)
         title.numberOfLines = 0
         let choices = UIStackView(arrangedSubviews: [title])
         choices.axis = .vertical
-        choices.spacing = 16
+        choices.spacing = Spacing.l
         choices.translatesAutoresizingMaskIntoConstraints = false
         let scroll = UIScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(scroll)
         scroll.addSubview(choices)
         NSLayoutConstraint.activate([
-            scroll.topAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.topAnchor, constant: 20),
-            scroll.bottomAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            scroll.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 20),
-            scroll.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -20),
-            choices.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 8),
-            choices.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -8),
-            choices.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: 8),
-            choices.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -8),
-            choices.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -16)
+            scroll.topAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.topAnchor, constant: Spacing.l),
+            scroll.bottomAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.l),
+            scroll.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: Spacing.l),
+            scroll.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -Spacing.l),
+            choices.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: Spacing.s),
+            choices.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -Spacing.s),
+            choices.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: Spacing.s),
+            choices.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor, constant: -Spacing.s),
+            choices.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor, constant: -Spacing.l)
         ])
         func addChoice(_ name: String, action: @escaping () -> Void) {
             let target = ButtonTarget(action)
             adjustmentTargets.append(target)
-            let button = plainButton(name, color: style.accent, target: target, action: #selector(ButtonTarget.tapped))
+            let button = plainButton(name, target: target, action: #selector(ButtonTarget.tapped))
             button.titleLabel?.numberOfLines = 0
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
             choices.addArrangedSubview(button)
         }
         if let slider = control as? UISlider {
-            let value = makeLabel("", size: 20, weight: .medium, color: style.text)
+            let value = makeLabel("", style: .heading, color: style.text)
             func updateValue() {
                 value.text = "Value: \(slider.spokenValue)"
                 for case let button as UIButton in choices.arrangedSubviews {
@@ -83,7 +83,7 @@ extension SettingsPanelView {
             }
         }
         if control.accessibilityLabel == "Reset Settings" {
-            let explanation = makeLabel("Restore Standard difficulty, default controls, audio, the menu theme, and the Classic helicopter and pipes. Saved scores and guide completion are kept.", size: 20, weight: .regular, color: style.text)
+            let explanation = makeLabel("Restore Standard difficulty, default controls, audio, the menu theme, and the Classic helicopter and pipes. Saved scores and guide completion are kept.", style: .heading, color: style.text)
             explanation.numberOfLines = 0
             choices.addArrangedSubview(explanation)
             addChoice("Cancel") { [weak self] in self?.closeAdjustment() }
@@ -96,7 +96,7 @@ extension SettingsPanelView {
             let info = ["Privacy Policy": AppLinks.privacySummary,
                         "Acknowledgements": AppLinks.acknowledgements][control.accessibilityLabel ?? ""]
             if let info = info {
-                let body = makeLabel(info, size: 17, weight: .regular, color: style.text)
+                let body = makeLabel(info, style: .body, color: style.text)
                 choices.addArrangedSubview(body)
             }
             if control.accessibilityLabel == "Privacy Policy" {

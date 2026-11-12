@@ -132,14 +132,14 @@ final class SettingsPanelView: ScrollingPanelView {
 
         // The theme is chosen in the Hangar; this points players who look for it here.
         sectionHeader("Menu Theme")
-        let hangar = plainButton(Self.hangarPointerTitle, color: style.accent, target: self,
+        let hangar = plainButton(Self.hangarPointerTitle, target: self,
                                  action: #selector(openHangar))
         hangar.accessibilityLabel = Self.hangarPointerTitle
         hangar.accessibilityHint = "Opens the Hangar"
         // Voice Control users can say the short name.
         hangar.accessibilityUserInputLabels = ["Menu Theme", Self.hangarPointerTitle]
         hangar.titleLabel?.numberOfLines = 0
-        hangar.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        hangar.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
         stack.addArrangedSubview(hangar)
 
         sectionHeader("Colour Accessibility")
@@ -158,11 +158,11 @@ final class SettingsPanelView: ScrollingPanelView {
         }
 
         sectionHeader("Reset")
-        let reset = plainButton("Reset Settings", color: style.accent, target: self,
+        let reset = plainButton("Reset Settings", target: self,
                                 action: #selector(showAdjustment(from:)))
         reset.accessibilityLabel = "Reset Settings"
         reset.titleLabel?.numberOfLines = 0
-        reset.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        reset.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
         stack.addArrangedSubview(reset)
 
         if gs.isSettingsLocked {
@@ -180,9 +180,9 @@ final class SettingsPanelView: ScrollingPanelView {
         // Informational only, so it stays available when Settings is locked.
         sectionHeader("About")
         for title in ["Privacy Policy", "Acknowledgements"] {
-            let button = plainButton(title, color: style.accent, target: self, action: #selector(showAdjustment(from:)))
+            let button = plainButton(title, target: self, action: #selector(showAdjustment(from:)))
             button.accessibilityLabel = title
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
             stack.addArrangedSubview(button)
         }
     }

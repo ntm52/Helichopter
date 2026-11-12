@@ -1,9 +1,27 @@
 # Plan 03 — UI polish: an open, finished-looking app
 
-**Status:** Written 2026-11-11. Not started, except the launch screen art (done 2026-11-11, see Stage 3).
+**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Launch screen art done (see Stage 3). **Next: Stage 3 (launch position and app icon).**
 **Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
 **Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
-**Release:** see "Decisions needed" 1. Recommended: ship the 2.2 skins first, then this as 2.3.
+**Release:** the 2.2 skins are held and ship together with this plan in one release (owner decision 2026-11-11).
+
+## Owner decisions (Stage 0, 2026-11-11)
+
+Chosen from the mock sheet (private artifact: https://claude.ai/artifact/V4UZAyXFZnbXs4R8tUen5r; it shows directions A "Soft cards" and B "Bold arcade").
+
+1. **Direction: B, Bold arcade.** Where this differs from section 3, this wins:
+   - Controls and cards have a 3 pt outline in an "ink" colour and a solid 6 pt lower edge in the same ink (no blur), so they look pressable. Radii 18 (controls) and 20 (cards).
+   - Weights are heavy: 800 for buttons and row names, 900 for the wordmark, titles, section headings, and Play.
+   - The primary button uses a warm second colour, not the theme blue: amber `#FFC83D` with near-black text on Night Sky; the helicopter red `#CC2626` with white text on Parchment. Neon Night's primary was not drawn; choose it in Stage 1 and check contrast.
+   - Mock surfaces. Night Sky: page `#0C1021`, card `#1E3A6E`, raised `#27488A`, ink `#050814`, accent text amber. Parchment: page `#F2ECD8`, card white, ink and text `#1A2A57`, accent text `#A81C1C`. Treat these as starting values; the Stage 1 contrast test decides.
+   - Section headings and values (slider percentages, the score) use the accent text colour. The wordmark is tilted about 3 degrees with a solid offset shadow.
+   - Home: Play is much larger (about 92 pt tall); Hangar, Settings, and How to Play are a row of three tiles with the icon above the label, falling back to one column of full-width buttons at accessibility text sizes. Scan order is unchanged.
+   - HUD: Score and Best are chips with a small label above a large number; Pause has an icon. At accessibility sizes Pause sits on its own row above the chips.
+   - Round Over: a centred card with the title, the score very large, Best, then Try Again (primary) and Home.
+2. **Release order:** hold 2.2 and ship the skins and the polish together.
+3. **Settings as category pages (4b):** decide after seeing Stage 4.
+4. **App icon:** redraw it from the Classic helicopter.
+5. **Icons beside labels:** yes.
 
 ---
 
@@ -75,20 +93,37 @@ These come from `HELICHOPTER_PROJECT.md` and `CLAUDE.md`. Polish that breaks one
 
 Each stage leaves `master` releasable with the full suite green. Do them in order; 1 is the foundation for the rest.
 
-### Stage 0 — Agree the look (short; owner decides)
+### Stage 0 — Agree the look (done 2026-11-11)
 
 - Build a mock sheet before touching app code: Home, Settings, Hangar, and Play in the proposed style, in Night Sky and Parchment, at default and largest text size. Static images or an HTML page are enough.
 - Offer two directions if the first is not clearly right (for example "soft cards" and "bold arcade").
 - The owner picks one and answers "Decisions needed". Record the choice at the top of this file.
 
-### Stage 1 — Design tokens (no visible redesign yet)
+### Stage 1 — Design tokens (done 2026-11-11)
+
+What was built, and what later stages should know:
+- `Scenes/DesignSystem.swift`: `Spacing`, `Radius`, `Stroke`, `Layout`, `TypeStyle` (display, heading, body, label, caption; SF Rounded through `UIFontMetrics`), `ButtonKind`, and `ArcadeButton` (primary, secondary, quiet). `MenuButton` is an `ArcadeButton`; `addButton(for:kind:)` takes the kind, and every caller still uses secondary, so **no screen has a primary button yet** (Stages 2 and 5 choose them).
+- `UITheme` now holds page, card, raised, ink, text, secondary text, accent, on-accent, accent text, focus, and on-focus colours. `buttonTintColor` and `buttonTextColor` are gone. Neon Night's accent is pink `#FF8ADF`.
+- Scanner focus on a menu button is still the 4 pt border the tests pin, and the face also turns to the theme's focus colour with contrasting text, because a border alone is hard to see on a button that already has an outline.
+- Layouts were not redesigned, but the look changed: rounded heavy type, section headings in the heading style (no longer small capitals), outlined buttons with a lower edge, theme-coloured cards, presets as secondary buttons (their green, blue, and red are gone), and content capped at 560 pt wide.
+- Left for later stages: the "◀  Back" header (4), Home layout and icons (2), HUD chips (5), pressed states beyond a dimmed title (7). A few sizes that are not spacing remain in views (picture sizes, palette dots).
+
+Original scope:
 
 - New `Scenes/DesignSystem.swift`: spacing, radii, the type scale (`scaledFont` gains the rounded design), and the three button kinds as small `UIButton` subclasses built on the existing `DynamicTextButton` and `MenuButton` (focus border by callback stays).
 - `UITheme` gains the surface levels and accent. `SettingsStyle` reads them instead of deriving its own.
 - Replace per-view numbers and colours with tokens across `MenuStackView`, `ScrollingPanelView`, `SettingsRows`, `SettingsAdjustmentPanel`, `HangarPanelView`, `SceneTextOverlay`, `GameMenuView`.
 - Tests: a contrast test for every text-on-surface pair in every theme; `DynamicTypeTests` still pass.
 
-### Stage 2 — Home
+### Stage 2 — Home (done 2026-11-11)
+
+What was built:
+- Mascot 170 pt tall (110 at accessibility text sizes). **Stage 3 must match the launch screen to this size and position.**
+- The wordmark: `TypeStyle.wordmark` (46 pt black rounded) in the theme's text colour with a solid accent shadow, leaning 3 degrees on a holder view. `fitWordmark()` limits its size to one line of the screen, so it grows with Dynamic Type only until it fills the width. The UI audit's Dynamic Type check is excused for this one label (see `AccessibilityAuditTests.audit`); **the owner should confirm this is acceptable.**
+- Play is the one primary button, large (`ButtonSize.large`, at least 86 pt plus the edge), with a play icon. Hangar, Settings, and How to Play are a row of tiles with the icon above the title (`MenuStackView.addTileRow`); at accessibility sizes they are a column with the icon before the title. `ArcadeButton.setIcon(systemName:placement:)` is available to later stages.
+- Not done: moving the content into the upper two-thirds. With the larger mascot and Play the column fills most of the screen, so it is still centred.
+
+Original scope:
 
 - Larger animated mascot, a bold rounded wordmark, Play as the one primary button, then Hangar, Settings, and How to Play as secondary buttons with icons. Content sits in the upper two-thirds with even spacing rather than bunched in the middle.
 - Scanner order and labels unchanged (Play, Hangar, Settings, How to Play).
@@ -145,12 +180,14 @@ Each stage leaves `master` releasable with the full suite green. Do them in orde
 | Polish shrinks targets or adds reading | Rule 4 and "Fewer words"; check at the largest text size every stage. |
 | Tests pin exact labels, order, and some frames | Keep labels and order; update only layout assertions, one stage at a time. |
 | `StoreScreenshotTests` frames shots from the Settings layout | Re-tune it in Stage 4; re-capture in Stage 8. |
-| A full redesign delays the finished 2.2 skins | Decision 1: ship 2.2 first. |
+| A full redesign delays the finished 2.2 skins | Accepted by the owner (decision 2): they ship together. |
 | Taste: the result still feels generic | Stage 0 mock sheet and owner sign-off before code. |
 
 ---
 
 ## 7. Decisions needed from the owner
+
+All answered 2026-11-11; see "Owner decisions" at the top. The original questions:
 
 1. **Release order.** Recommended: finish 2.2 release prep and ship the skins, then do this plan as 2.3. Alternative: hold 2.2 and ship both together.
 2. **Settings as category pages (Stage 4b):** yes, no, or decide after seeing Stage 4.

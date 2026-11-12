@@ -94,8 +94,8 @@ final class GuideViewController: MenuViewController {
         menu.removeAll()
 
         let content = pages[page]
-        headingLabel = menu.addLabel(content.heading, style: .title1, alignment: .natural)
-        menu.addLabel("Step \(page + 1) of \(pages.count)", style: .subheadline, alignment: .natural)
+        headingLabel = menu.addLabel(content.heading, style: .display, alignment: .natural)
+        menu.addLabel("Step \(page + 1) of \(pages.count)", style: .caption, alignment: .natural)
         menu.addLabel(content.body, style: .body, alignment: .natural)
 
         let isLast = page == pages.count - 1

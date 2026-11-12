@@ -87,17 +87,17 @@ final class SceneTextOverlay: UIView {
         scroll.translatesAutoresizingMaskIntoConstraints = false
         stack.translatesAutoresizingMaskIntoConstraints = false
         stack.axis = .vertical
-        stack.spacing = 8
+        stack.spacing = Spacing.s
         scroll.isUserInteractionEnabled = false
         addSubview(scroll)
         scroll.addSubview(stack)
         NSLayoutConstraint.deactivate(layoutConstraints)
         // The gameplay HUD stays pinned to the top, clear of the flight area.
         layoutConstraints = [
-            scroll.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 12),
-            scroll.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -12),
-            scroll.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 16),
-            scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            scroll.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: Spacing.m),
+            scroll.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.m),
+            scroll.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: Spacing.l),
+            scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -Spacing.l),
             stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
             stack.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
@@ -110,12 +110,12 @@ final class SceneTextOverlay: UIView {
         let hud = UIStackView()
         hud.axis = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
         hudStack = hud
-        hud.spacing = 12
+        hud.spacing = Spacing.m
         hud.alignment = .fill
         stack.addArrangedSubview(hud)
-        func hudLabel(style: UIFont.TextStyle = .body) -> UILabel {
+        func hudLabel(style: TypeStyle = .body) -> UILabel {
             let label = UILabel()
-            label.font = .preferredFont(forTextStyle: style, compatibleWith: traitCollection)
+            label.font = style.font(compatibleWith: traitCollection)
             label.adjustsFontForContentSizeCategory = true
             label.numberOfLines = 0
             label.textAlignment = .center
@@ -134,23 +134,14 @@ final class SceneTextOverlay: UIView {
         stack.addArrangedSubview(hint)
         flightHintLabel = hint
         // Static text; no animation, sound, or input capture, so flight is never interrupted.
-        let banner = hudLabel(style: .title2)
+        let banner = hudLabel(style: .heading)
         banner.text = "New high score!"
         banner.isHidden = true
         stack.addArrangedSubview(banner)
         newHighScoreLabel = banner
-        let pause = DynamicTextButton()
-        pause.titleLabel?.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-        pause.titleLabel?.adjustsFontForContentSizeCategory = true
-        pause.titleLabel?.numberOfLines = 0
-        pause.titleLabel?.textAlignment = .center
+        let pause = ArcadeButton(kind: .secondary, theme: theme, traits: traitCollection)
         pause.setTitle("Pause", for: .normal)
         pause.accessibilityHint = "Pauses the game"
-        pause.setTitleColor(theme.buttonTextColor, for: .normal)
-        pause.backgroundColor = theme.buttonTintColor
-        pause.padding = UIEdgeInsets(top: 14, left: 12, bottom: 14, right: 12)
-        pause.layer.cornerRadius = 12
-        pause.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         pause.addTarget(self, action: #selector(pauseTapped), for: .touchUpInside)
         // hitTest lets touches outside this control reach the flight surface.
         scroll.isUserInteractionEnabled = true
@@ -211,7 +202,7 @@ final class SceneTextOverlay: UIView {
             line.leadingAnchor.constraint(equalTo: leadingAnchor),
             line.trailingAnchor.constraint(equalTo: trailingAnchor),
             line.centerYAnchor.constraint(equalTo: centerYAnchor),
-            line.heightAnchor.constraint(equalToConstant: 2)
+            line.heightAnchor.constraint(equalToConstant: Stroke.outline)
         ]
         // Beside the right edge, away from the helicopter on the left. The Up and Down
         // areas already speak these words, so VoiceOver skips the labels.
@@ -219,7 +210,7 @@ final class SceneTextOverlay: UIView {
             let label = UILabel()
             label.translatesAutoresizingMaskIntoConstraints = false
             label.text = text
-            label.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
+            label.font = TypeStyle.label.font(compatibleWith: traitCollection)
             label.adjustsFontForContentSizeCategory = true
             label.textColor = theme.titleTextColor
             label.backgroundColor = theme.sceneBackgroundColor
@@ -227,9 +218,9 @@ final class SceneTextOverlay: UIView {
             label.isAccessibilityElement = false
             addSubview(label)
             constraints += [
-                label.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -16),
-                above ? label.bottomAnchor.constraint(equalTo: line.topAnchor, constant: -6)
-                      : label.topAnchor.constraint(equalTo: line.bottomAnchor, constant: 6)
+                label.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -Spacing.l),
+                above ? label.bottomAnchor.constraint(equalTo: line.topAnchor, constant: -Spacing.s)
+                      : label.topAnchor.constraint(equalTo: line.bottomAnchor, constant: Spacing.s)
             ]
         }
         NSLayoutConstraint.activate(constraints)
