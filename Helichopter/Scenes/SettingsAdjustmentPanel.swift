@@ -1,9 +1,8 @@
 import UIKit
 
 // MARK: - Adjustment panel
-// A full-panel page of plain choices, so a switch user can change a slider or a
-// segmented control, confirm Reset, or read Privacy and Acknowledgements, one press
-// at a time. It covers the settings list and owns the scanner until it closes.
+// A full-panel page of plain choices, so a switch user can change a slider, confirm
+// Reset, or read a long explanation, Privacy, or Acknowledgements, one press at a time. It covers the settings list and owns the scanner until it closes.
 
 extension SettingsPanelView {
 
@@ -20,7 +19,8 @@ extension SettingsPanelView {
             panel.topAnchor.constraint(equalTo: topAnchor), panel.bottomAnchor.constraint(equalTo: bottomAnchor),
             panel.leadingAnchor.constraint(equalTo: leadingAnchor), panel.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
-        let title = makeLabel(control.accessibilityLabel ?? "Adjust", style: .heading, color: style.text)
+        let title = makeLabel(control.accessibilityLabel ?? "Adjust", style: .display, color: style.text)
+        title.accessibilityTraits = .header
         title.numberOfLines = 0
         let choices = UIStackView(arrangedSubviews: [title])
         choices.axis = .vertical
@@ -44,13 +44,16 @@ extension SettingsPanelView {
         func addChoice(_ name: String, action: @escaping () -> Void) {
             let target = ButtonTarget(action)
             adjustmentTargets.append(target)
-            let button = plainButton(name, target: target, action: #selector(ButtonTarget.tapped))
-            button.titleLabel?.numberOfLines = 0
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
+            let button = panelButton(name, target: target, action: #selector(ButtonTarget.tapped))
             choices.addArrangedSubview(button)
         }
+        // The long explanation of a setting, on its slider's page.
+        let name = control.accessibilityLabel ?? ""
+        if control is UISlider, let more = infoPages[name] {
+            choices.addArrangedSubview(makeLabel(more, style: .body, color: style.text))
+        }
         if let slider = control as? UISlider {
-            let value = makeLabel("", style: .heading, color: style.text)
+            let value = makeLabel("", style: .heading, color: style.accent)
             func updateValue() {
                 value.text = "Value: \(slider.spokenValue)"
                 for case let button as UIButton in choices.arrangedSubviews {
@@ -71,19 +74,9 @@ extension SettingsPanelView {
                 }
             }
             updateValue()
-        } else if let segment = control as? UISegmentedControl {
-            for index in 0..<segment.numberOfSegments where segment.isEnabledForSegment(at: index) {
-                addChoice(segment.titleForSegment(at: index) ?? "Option \(index + 1)") { [weak self, weak segment] in
-                    self?.closeAdjustment()
-                    segment?.selectedSegmentIndex = index
-                    segment?.sendActions(for: .valueChanged)
-                    // Scan mode may just have changed; apply it immediately.
-                    if self?.switchScanner.isActive == true { self?.startScanning(focusing: control.accessibilityLabel) }
-                }
-            }
         }
         if control.accessibilityLabel == "Reset Settings" {
-            let explanation = makeLabel("Restore Standard difficulty, default controls, audio, the menu theme, and the Classic helicopter and pipes. Saved scores and guide completion are kept.", style: .heading, color: style.text)
+            let explanation = makeLabel("Restore Standard difficulty, default controls, audio, the menu theme, and the Classic helicopter and pipes. Saved scores and guide completion are kept.", style: .body, color: style.text)
             explanation.numberOfLines = 0
             choices.addArrangedSubview(explanation)
             addChoice("Cancel") { [weak self] in self?.closeAdjustment() }
@@ -94,7 +87,8 @@ extension SettingsPanelView {
             }
         } else {
             let info = ["Privacy Policy": AppLinks.privacySummary,
-                        "Acknowledgements": AppLinks.acknowledgements][control.accessibilityLabel ?? ""]
+                        "Acknowledgements": AppLinks.acknowledgements][name]
+                ?? (control is UIButton ? infoPages[name] : nil)
             if let info = info {
                 let body = makeLabel(info, style: .body, color: style.text)
                 choices.addArrangedSubview(body)

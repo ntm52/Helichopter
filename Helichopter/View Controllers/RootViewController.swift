@@ -96,7 +96,10 @@ enum Screen {
     case home
     case guide
     case hangar
+    /// The Settings menu of categories.
     case settings
+    /// One category's page of settings.
+    case settingsCategory(SettingsCategory)
     case scene(SKScene)
 
     var scene: SKScene? {
@@ -259,7 +262,10 @@ class RootViewController: UIViewController {
         case .home: incoming = HomeViewController()
         case .guide: incoming = GuideViewController()
         case .hangar: incoming = HangarViewController()
-        case .settings: incoming = SettingsViewController()
+        // Coming back from a category, the menu starts on that category's button.
+        case .settings:
+            incoming = SettingsViewController(returningFrom: (menuScreen as? SettingsViewController)?.page.category)
+        case .settingsCategory(let category): incoming = SettingsViewController(page: .category(category))
         case .scene: incoming = nil
         }
         let showsSomething = skView.scene != nil || menuScreen != nil

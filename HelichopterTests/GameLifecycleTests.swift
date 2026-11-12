@@ -782,11 +782,12 @@ struct GameLifecycleTests {
         }
     }
 
-    /// The Settings screen as the root controller installs it, without a window.
-    private func settingsScreen() -> SettingsViewController {
-        GameSettings.shared.isSettingsLocked = false
+    /// A Settings screen (the menu, or a category's page) as the root controller installs
+    /// it, without a window.
+    private func settingsScreen(_ page: SettingsPage = .menu, locked: Bool = false) -> SettingsViewController {
+        GameSettings.shared.isSettingsLocked = locked
         GameSettings.shared.scanScheme = .twoSwitch
-        let screen = SettingsViewController()
+        let screen = SettingsViewController(page: page)
         screen.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
         screen.screenDidAppear()
         return screen
@@ -928,17 +929,36 @@ struct GameLifecycleTests {
         }
     }
 
+    /// Every page's controls, in scanning order: Back first, then the page top to bottom.
     @Test func settingsSwitchReachesControlsAndBackWithoutLegacyScanner() throws {
         try withSettings {
-            let scene = settingsScreen()
+            let pages: [(SettingsPage, [String])] = [
+                (.menu, SettingsCategory.allCases.map(\.title) + ["Reset Settings", "Privacy Policy", "Acknowledgements"]),
+                (.category(.difficulty), ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size", "Background Scroll"]),
+                (.category(.comfort), ["No-Fail Mode", "Calm Mode", "Helicopter Outline", "Hide Game While Paused", "Show Score"]),
+                (.category(.controls), ["Auto-Scan Menus", "Timed", "Step with Switch 2", "Scan Dwell Time",
+                                        "Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches",
+                                        "VoiceOver Direct Touch", "More about VoiceOver Direct Touch",
+                                        "Pause by Holding Switch", "More about Pause by Holding Switch", "Hold Switch to Pause"]),
+                (.category(.colours), GameSettings.allPalettes.map { $0.name } + [SettingsPanelView.hangarPointerTitle]),
+                (.category(.sound), ["Sound Effects", "Music"]),
+                (.category(.caregiver), ["Lock Settings"])
+            ]
+            for (page, expected) in pages {
+                let screen = settingsScreen(page)
+                defer { screen.screenWillDisappear() }
+                screen.switchPrimaryBegan()
+                // A switch says "Calm Mode, Off" and a slider "Gap Size, 37%. Select to adjust."
+                let spoken = try #require(screen.panel).switchScanner.items.map { $0.accessibilityScanLabel }
+                #expect(spoken.count == expected.count + 1, "\(page): \(spoken)")
+                for (said, name) in zip(spoken, ["Back"] + expected) {
+                    #expect(said == name || said.hasPrefix(name + ","), "\(page): \(said) should be \(name)")
+                }
+            }
+
+            let scene = settingsScreen(.category(.comfort))
             defer { scene.screenWillDisappear() }
             let overlay = try #require(scene.panel)
-            let expected = ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size",
-                            "Background Scroll", "No-Fail Mode", "Calm Mode", "Show Score", "Auto-Scan Menus",
-                            "Menu Scan Mode", "Scan Dwell Time", "In-Game Control", "VoiceOver Direct Touch", "Pause by Holding Switch", "Hold Switch to Pause",
-                            "Sound Effects", "Music", "Lock Settings"] + GameSettings.allPalettes.map { $0.name }
-            for label in expected { try focusSetting(label, in: scene) }
-            #expect(overlay.scrollPosition.y > 0)
             try focusSetting("No-Fail Mode", in: scene)
             let previous = GameSettings.shared.noFailMode
             scene.switchPrimaryBegan()
@@ -953,10 +973,50 @@ struct GameLifecycleTests {
         }
     }
 
+    /// The menu opens a category, a category goes back to the menu, and the menu then
+    /// starts on the category the player left.
+    @Test func settingsMenuOpensCategoriesAndReturnsToThem() throws {
+        try withSettings {
+            let menu = settingsScreen()
+            defer { menu.screenWillDisappear() }
+            var shown: Screen?
+            menu.navigate = { shown = $0 }
+            try focusSetting("Sound", in: menu)
+            menu.switchPrimaryBegan()
+            guard case .settingsCategory(.sound) = shown else {
+                Issue.record("Sound should open its page, not \(String(describing: shown))")
+                return
+            }
+            guard case .home = menu.backDestination else {
+                Issue.record("The menu's Back goes Home")
+                return
+            }
+
+            let page = settingsScreen(.category(.sound))
+            defer { page.screenWillDisappear() }
+            #expect(page.panel.title == "Sound")
+            page.navigate = { shown = $0 }
+            try focusSetting("Back", in: page)
+            page.switchPrimaryBegan()
+            guard case .settings = shown else {
+                Issue.record("A category's Back goes to the Settings menu")
+                return
+            }
+
+            GameSettings.shared.scanningEnabled = true
+            let returned = SettingsViewController(returningFrom: .sound)
+            returned.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            returned.screenDidAppear()
+            defer { returned.screenWillDisappear() }
+            #expect(returned.panel.focusedSetting == "Sound")
+            #expect((returned.announcement as? UIControl)?.accessibilityLabel == "Sound")
+        }
+    }
+
     @Test func settingsSwitchAdjustsSliderBothWaysAndReturnsToRow() throws {
         try withSettings {
             GameSettings.shared.backgroundScrollSpeed = 100
-            let scene = settingsScreen()
+            let scene = settingsScreen(.category(.difficulty))
             defer { scene.screenWillDisappear() }
             try focusSetting("Background Scroll", in: scene)
             let overlay = try #require(scene.panel)
@@ -978,7 +1038,7 @@ struct GameLifecycleTests {
 
     @Test func settingsSwitchPreservesFocusAcrossPresetAndLockRebuilds() throws {
         try withSettings {
-            let scene = settingsScreen()
+            let scene = settingsScreen(.category(.difficulty))
             defer { scene.screenWillDisappear() }
             try focusSetting("Gentle", in: scene)
             let oldOverlay = try #require(scene.panel)
@@ -986,36 +1046,58 @@ struct GameLifecycleTests {
             #expect(scene.panel !== oldOverlay)
             #expect(!oldOverlay.switchScanner.isActive)
             #expect(scene.panel?.focusedSetting == "Gentle")
+            #expect(scene.panel?.page == .category(.difficulty))
             #expect(GameSettings.shared.gapMin == GameSettings.gentlePreset.gapMin)
-            try focusSetting("Lock Settings", in: scene)
-            scene.switchPrimaryBegan()
+
+            let caregiver = settingsScreen(.category(.caregiver))
+            defer { caregiver.screenWillDisappear() }
+            try focusSetting("Lock Settings", in: caregiver)
+            caregiver.switchPrimaryBegan()
             #expect(GameSettings.shared.isSettingsLocked)
-            // Back, Lock Settings, Privacy Policy, Acknowledgements.
-            #expect(scene.panel?.switchScanner.items.count == 4)
-            #expect(scene.panel?.focusedSetting == "Lock Settings")
-            scene.switchPrimaryBegan()
+            // Back and Lock Settings.
+            #expect(caregiver.panel?.switchScanner.items.count == 2)
+            #expect(caregiver.panel?.focusedSetting == "Lock Settings")
+
+            // While locked, a category shows its settings but only Back can be reached.
+            let lockedPage = settingsScreen(.category(.difficulty), locked: true)
+            defer { lockedPage.screenWillDisappear() }
+            lockedPage.switchPrimaryBegan()
+            #expect(lockedPage.panel?.switchScanner.items.map { $0.accessibilityScanLabel } == ["Back"])
+            // The menu still opens every category, with Reset dimmed.
+            let lockedMenu = settingsScreen(.menu, locked: true)
+            defer { lockedMenu.screenWillDisappear() }
+            lockedMenu.switchPrimaryBegan()
+            #expect(lockedMenu.panel?.switchScanner.items.map { $0.accessibilityScanLabel }
+                    == ["Back"] + SettingsCategory.allCases.map(\.title) + ["Privacy Policy", "Acknowledgements"])
+
+            caregiver.switchPrimaryBegan()
             #expect(!GameSettings.shared.isSettingsLocked)
-            #expect((scene.panel?.switchScanner.items.count ?? 0) > 2)
         }
     }
 
     @Test func settingsSwitchSelectsPaletteAndChangesScanMode() throws {
         try withSettings {
-            let scene = settingsScreen()
-            defer { scene.screenWillDisappear() }
+            let colours = settingsScreen(.category(.colours))
+            defer { colours.screenWillDisappear() }
             let palette = try #require(GameSettings.allPalettes.last)
-            try focusSetting(palette.name, in: scene)
-            scene.switchPrimaryBegan()
+            try focusSetting(palette.name, in: colours)
+            colours.switchPrimaryBegan()
             #expect(GameSettings.shared.selectedPaletteID == palette.id)
-            try focusSetting("Menu Scan Mode", in: scene)
+
+            // A choice takes one press, and the scanner stays on it.
+            let scene = settingsScreen(.category(.controls))
+            defer { scene.screenWillDisappear() }
+            try focusSetting("Timed", in: scene)
             scene.switchPrimaryBegan()
-            scene.switchPrimaryBegan() // Timed.
             #expect(GameSettings.shared.scanScheme == .autoScan)
-            #expect(scene.panel?.focusedSetting == "Menu Scan Mode")
-            scene.switchPrimaryBegan()
+            #expect(scene.panel?.focusedSetting == "Timed")
+            let choices = try #require(scene.panel?.choiceGroups["Menu Scan Mode"])
+            #expect(choices.map(\.isChosen) == [true, false])
+            #expect(choices.map { $0.accessibilityTraits.contains(.selected) } == [true, false])
             scene.switchSecondaryBegan()
             scene.switchPrimaryBegan() // Step with Switch 2.
             #expect(GameSettings.shared.scanScheme == .twoSwitch)
+            #expect(choices.map(\.isChosen) == [false, true])
         }
     }
 
@@ -1036,7 +1118,7 @@ struct GameLifecycleTests {
         }
         gs.scanningEnabled = false
         gs.backgroundScrollSpeed = 100
-        let scene = settingsScreen()
+        let scene = settingsScreen(.category(.difficulty))
         defer { scene.screenWillDisappear() }
         gs.scanScheme = .autoScan
         gs.scanDwellTime = 0.5
@@ -1080,26 +1162,35 @@ struct GameLifecycleTests {
     @Test func settingsAdjustmentLayoutsOnSmallPhoneAndLandscapeTablet() throws {
         try withSettings {
             for size in [CGSize(width: 320, height: 568), CGSize(width: 1024, height: 768)] {
-                let scene = settingsScreen()
+                // The list of flight controls: each choice is a button on the page.
+                let controls = settingsScreen(.category(.controls))
+                defer { controls.screenWillDisappear() }
+                controls.view.frame.size = size
+                let list = try #require(controls.panel)
+                list.frame = controls.view.bounds
+                try focusSetting("Up/Down Switches", in: controls)
+                list.layoutIfNeeded()
+                let renderer = UIGraphicsImageRenderer(bounds: list.bounds)
+                Attachment.record(try #require(renderer.image { list.layer.render(in: $0.cgContext) }.pngData()),
+                                  named: "Settings-choices-\(Int(size.width)).png")
+                for button in try #require(list.choiceGroups["In-Game Control"]) {
+                    let frame = button.convert(button.bounds, to: list)
+                    #expect(frame.minX >= 0 && frame.maxX <= size.width + 0.5)
+                    #expect(frame.height >= Layout.minButtonHeight)
+                }
+                controls.switchPrimaryBegan()
+                #expect(GameSettings.shared.controlScheme == ControlScheme(rawValue: 3))
+                #expect(!list.isAdjusting)
+
+                let scene = settingsScreen(.category(.difficulty))
                 defer { scene.screenWillDisappear() }
                 scene.view.frame.size = size
                 let overlay = try #require(scene.panel)
                 overlay.frame = scene.view.bounds
-                try focusSetting("In-Game Control", in: scene)
-                overlay.layoutIfNeeded()
-                let renderer = UIGraphicsImageRenderer(bounds: overlay.bounds)
-                Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
-                                  named: "Settings-focus-\(Int(size.width)).png")
-                scene.switchPrimaryBegan()
-                overlay.layoutIfNeeded()
-                Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
-                                  named: "Settings-choices-\(Int(size.width)).png")
-                #expect(overlay.switchScanner.items.count == 5) // Four schemes and Done.
-                for _ in 0..<4 { scene.switchSecondaryBegan() }
-                scene.switchPrimaryBegan() // Done.
                 try focusSetting("Background Scroll", in: scene)
                 scene.switchPrimaryBegan()
                 overlay.layoutIfNeeded()
+                #expect(overlay.switchScanner.items.count == 3) // Decrease, Increase, Done.
                 Attachment.record(try #require(renderer.image { overlay.layer.render(in: $0.cgContext) }.pngData()),
                                   named: "Settings-slider-\(Int(size.width)).png")
             }

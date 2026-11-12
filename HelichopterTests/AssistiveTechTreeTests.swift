@@ -14,8 +14,6 @@ struct AssistiveTechTreeTests {
     /// each is one element, named by its text unless the app set a label.
     private func elements(in object: NSObject) -> [NSObject] {
         if let view = object as? UIView, view.isHidden || view.alpha == 0 || view.accessibilityElementsHidden { return [] }
-        // VoiceOver visits segments; UIKit builds them, so treat the control as one stop here.
-        if object is UISegmentedControl { return [object] }
         if object.isAccessibilityElement || object is UIControl || ((object as? UILabel)?.text ?? "") != "" { return [object] }
         let children = (object.accessibilityElements as? [NSObject]) ?? (object as? UIView)?.subviews ?? []
         return children.flatMap { elements(in: $0) }
@@ -25,15 +23,18 @@ struct AssistiveTechTreeTests {
         element.accessibilityLabel ?? (element as? UIButton)?.currentTitle ?? (element as? UILabel)?.text ?? ""
     }
 
+    /// The menu, then each category's page.
+    private static let pages: [SettingsPage] = [.menu] + SettingsCategory.allCases.map { .category($0) }
+
     private func isActionable(_ element: NSObject) -> Bool {
         element is UIControl || element.accessibilityTraits.contains(.button)
     }
 
     /// Settings controls hold their actions weakly, so the panel must stay alive.
-    private func makeSettings(locked: Bool = false) -> (SettingsPanelView, UIWindow) {
+    private func makeSettings(_ page: SettingsPage = .menu, locked: Bool = false) -> (SettingsPanelView, UIWindow) {
         GameSettings.shared.isSettingsLocked = locked
         let size = CGSize(width: 390, height: 844)
-        let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size), theme: GameSettings.shared.selectedTheme)
+        let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size), theme: GameSettings.shared.selectedTheme, page: page)
         let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
         let host = UIViewController()
         host.view = panel
@@ -46,14 +47,24 @@ struct AssistiveTechTreeTests {
     @Test func settingsReadsEachSettingOnceWithRealHeadings() throws {
         let savedLock = GameSettings.shared.isSettingsLocked
         defer { GameSettings.shared.isSettingsLocked = savedLock }
-        let (panel, window) = makeSettings()
-        defer { window.isHidden = true }
-        let read = elements(in: panel)
+        var read: [NSObject] = []
+        var alive: [(SettingsPanelView, UIWindow)] = []
+        defer { alive.forEach { $0.1.isHidden = true } }
+        for page in Self.pages {
+            let made = makeSettings(page)
+            alive.append(made)
+            let elements = elements(in: made.0)
+            let back = try #require(elements.first)
+            #expect(spoken(back) == "Back", "Back must not read its arrow symbol")
+            // Back, then the page's title as a heading.
+            #expect(elements.dropFirst().first?.accessibilityTraits.contains(.header) == true)
+            #expect(spoken(try #require(elements.dropFirst().first)) == page.category?.title ?? "Settings")
+            read += elements
+        }
         let labels = read.map(spoken)
 
-        let back = try #require(read.first)
-        #expect(spoken(back) == "Back", "Back must not read its arrow symbol")
-        for name in ["Gap Size", "Pipe Speed", "No-Fail Mode", "Calm Mode", "Show Score", "Scan Dwell Time", "Lock Settings"] {
+        for name in ["Gap Size", "Pipe Speed", "No-Fail Mode", "Calm Mode", "Show Score", "Scan Dwell Time", "Lock Settings",
+                     "Sound Effects", "Tap to Flap", "Step with Switch 2"] {
             #expect(labels.filter { $0 == name }.count == 1, "\(name) is read \(labels.filter { $0 == name }.count) times")
         }
         // Slider ends and setting descriptions are spoken by the control, not separately.
@@ -62,16 +73,27 @@ struct AssistiveTechTreeTests {
         #expect(gap.accessibilityHint?.contains("Narrow to Wide") == true)
 
         let headings = read.filter { $0.accessibilityTraits.contains(.header) }.map(spoken)
-        #expect(headings.contains("Settings"))
-        for section in ["Difficulty Preset", "Gameplay", "Comfort", "Switch Access", "Colour Accessibility", "Caregiver", "About"] {
+        for section in ["Settings", "Difficulty Preset", "Gameplay", "Motion", "Menu Scanning", "Flying", "Pausing",
+                        "Colour Accessibility", "Menu Theme", "Reset", "About",
+                        // The name of a list of choices is the heading for its buttons.
+                        "Menu Scan Mode", "In-Game Control"] {
             #expect(headings.contains(section), "\(section) is not a heading")
         }
+        // Each choice says which list it belongs to, and the chosen one is marked selected.
+        let choices = read.compactMap { $0 as? ChoiceButton }
+        #expect(choices.map(spoken) == ["Timed", "Step with Switch 2", "Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches"])
+        #expect(choices.map(\.accessibilityHint) == ["Menu Scan Mode", "Menu Scan Mode"] + Array(repeating: "In-Game Control", count: 4))
+        #expect(choices.filter { $0.accessibilityTraits.contains(.selected) }.count == 2)
+        // A category says what is inside it.
+        let categories = read.compactMap { $0 as? CardButton }
+        #expect(categories.map(spoken) == SettingsCategory.allCases.map(\.title))
+        #expect(categories.map(\.accessibilityHint) == SettingsCategory.allCases.map(\.detail))
     }
 
     @Test func sliderActivationOpensLargeButtons() throws {
         let savedLock = GameSettings.shared.isSettingsLocked
         defer { GameSettings.shared.isSettingsLocked = savedLock }
-        let (panel, window) = makeSettings()
+        let (panel, window) = makeSettings(.category(.difficulty))
         defer { window.isHidden = true }
         let gap = try #require(elements(in: panel).first { spoken($0) == "Gap Size" } as? UISlider)
         let before = gap.value
@@ -85,39 +107,48 @@ struct AssistiveTechTreeTests {
         #expect(names.contains("Increase. Value: \(gap.spokenValue)") && gap.spokenValue.hasSuffix("%"))
         #expect(!gap.spokenValue.contains("e+"))
         panel.closeAdjustment()
-        let dwell = try #require(elements(in: panel).first { spoken($0) == "Scan Dwell Time" } as? UISlider)
-        #expect(dwell.accessibilityValue == String(format: "%.1f seconds", dwell.value))
         #expect(!panel.isAdjusting)
+        let (controls, controlsWindow) = makeSettings(.category(.controls))
+        defer { controlsWindow.isHidden = true }
+        let dwell = try #require(elements(in: controls).first { spoken($0) == "Scan Dwell Time" } as? UISlider)
+        #expect(dwell.accessibilityValue == String(format: "%.1f seconds", dwell.value))
     }
 
     /// Voice Control shows numbers instead of names when two choices share a name, so
-    /// every Settings control and segment must be uniquely named.
+    /// every control on a Settings page must be uniquely named.
     @Test func settingsChoicesHaveUniqueNames() throws {
         let savedLock = GameSettings.shared.isSettingsLocked
         defer { GameSettings.shared.isSettingsLocked = savedLock }
-        let (panel, window) = makeSettings()
-        defer { window.isHidden = true }
-        var names: [String] = []
-        for element in elements(in: panel) {
-            if let segments = element as? UISegmentedControl {
-                names += (0..<segments.numberOfSegments).compactMap { segments.titleForSegment(at: $0) }
-            } else if isActionable(element) {
-                names.append(spoken(element))
-            }
+        var all: [String] = []
+        for page in Self.pages {
+            let (panel, window) = makeSettings(page)
+            defer { window.isHidden = true }
+            let names = elements(in: panel).filter(isActionable).map(spoken)
+            let repeated = Dictionary(grouping: names, by: { $0 }).filter { $0.value.count > 1 }.keys
+            #expect(repeated.isEmpty, "\(page) shares names: \(repeated.sorted())")
+            all += names
         }
-        let repeated = Dictionary(grouping: names, by: { $0 }).filter { $0.value.count > 1 }.keys
-        #expect(repeated.isEmpty, "Shared names: \(repeated.sorted())")
-        #expect(names.contains("Step with Switch 2") && names.contains("Up/Down Switches"))
+        #expect(all.contains("Step with Switch 2") && all.contains("Up/Down Switches"))
     }
 
     @Test func lockedSettingsAreDimmed() throws {
         let savedLock = GameSettings.shared.isSettingsLocked
         defer { GameSettings.shared.isSettingsLocked = savedLock }
-        let (panel, window) = makeSettings(locked: true)
-        defer { window.isHidden = true }
-        let controls = elements(in: panel).compactMap { $0 as? UIControl }
-        let open = Set(controls.filter(\.isEnabled).compactMap { $0.accessibilityLabel })
-        #expect(open == ["Back", "Lock Settings", "Privacy Policy", "Acknowledgements"])
+        func open(_ page: SettingsPage) -> Set<String> {
+            let (panel, window) = makeSettings(page, locked: true)
+            defer { window.isHidden = true }
+            let controls = elements(in: panel).compactMap { $0 as? UIControl }
+            return Set(controls.filter(\.isEnabled).compactMap { $0.accessibilityLabel })
+        }
+        // Every category still opens, so a player can see what is set; Reset is dimmed.
+        #expect(open(.menu) == Set(["Back", "Privacy Policy", "Acknowledgements"] + SettingsCategory.allCases.map(\.title)))
+        for category in SettingsCategory.allCases where category != .caregiver {
+            #expect(open(.category(category)) == ["Back"], "\(category)")
+            let (panel, window) = makeSettings(.category(category), locked: true)
+            defer { window.isHidden = true }
+            #expect(elements(in: panel).map(spoken).contains(SettingsPanelView.lockedMessage), "\(category) says why it is dimmed")
+        }
+        #expect(open(.category(.caregiver)) == ["Back", "Lock Settings"])
     }
 
     @Test func everyControlHasASpeakableName() throws {
@@ -125,9 +156,15 @@ struct AssistiveTechTreeTests {
         defer { GameSettings.shared.isSettingsLocked = savedLock }
         let home = HomeViewController()
         let guide = GuideViewController()
-        let (settings, window) = makeSettings()
-        defer { window.isHidden = true }
-        for (screen, root) in [("Home", home.view!), ("Guide", guide.view!), ("Settings", settings)] {
+        var windows: [UIWindow] = []
+        defer { windows.forEach { $0.isHidden = true } }
+        var screens: [(String, UIView)] = [("Home", home.view!), ("Guide", guide.view!)]
+        for page in Self.pages {
+            let (settings, window) = makeSettings(page)
+            windows.append(window)
+            screens.append(("Settings \(page)", settings))
+        }
+        for (screen, root) in screens {
             root.layoutIfNeeded()
             let actionable = elements(in: root).filter(isActionable)
             #expect(!actionable.isEmpty)

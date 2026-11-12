@@ -42,77 +42,7 @@ final class StoreScreenshotTests: XCTestCase {
         add(shot)
     }
 
-    /// Scrolls Settings until `element`'s top sits at `fraction` of the screen height.
-    private func scroll(_ element: XCUIElement, toTopAt fraction: CGFloat) {
-        scroll(element, toY: fraction * app.frame.height)
-    }
-
-    /// Scrolls Settings until `element`'s top sits `points` below the Settings title, so
-    /// the framing matches on phones whose title bars differ in height.
-    private func scroll(_ element: XCUIElement, belowTitleBy points: CGFloat) {
-        scroll(element, toY: app.staticTexts["Settings"].frame.maxY + points)
-    }
-
-    /// Slow drags 6 points from the left edge avoid coasting and start left of every
-    /// slider track (2% of an iPad's width is already on one).
-    /// Settings exposes only rows near the visible area, so an element at the edge can
-    /// drop out of the tree for a moment; each pass waits for it again.
-    private func scroll(_ element: XCUIElement, toY target: CGFloat) {
-        let height = app.frame.height
-        // Each drag loses its first few points to the scroll view's touch slop (about 10
-        // on a phone, 15 on an iPad); learn it from each long drag and add it back.
-        var slop: CGFloat = 10
-        var lastDrag: CGFloat?
-        var lastY: CGFloat?
-        var stuck = 0
-        for _ in 0..<12 {
-            guard element.waitForExistence(timeout: 3) else {
-                // Gone from the tree for now: nudge the same way (or down the page) and look again.
-                drag(by: (lastDrag ?? height / 2) / 2, height: height)
-                lastDrag = nil
-                continue
-            }
-            let y = element.frame.minY
-            // Two long drags in a row that moved nothing mean the page has reached its end
-            // (one alone can be a stale reading).
-            if let drag = lastDrag, let before = lastY, abs(drag) > 60, abs(before - y) < 2 {
-                stuck += 1
-                if stuck == 2 { return }
-            } else {
-                stuck = 0
-            }
-            if let drag = lastDrag, let before = lastY, abs(drag) > 60,
-               abs(before - y) > 30, abs(before - y) < abs(drag) {
-                slop = abs(drag) - abs(before - y)
-            }
-            let offset = y - target
-            if abs(offset) < 4 { return }
-            let distance = offset + (offset > 0 ? slop : -slop)
-            lastDrag = drag(by: distance, height: height, avoiding: element.frame)
-            lastY = y
-        }
-        // Close enough still frames the shot; only a real miss fails.
-        if abs(element.frame.minY - target) > 20 { XCTFail("Could not scroll \(element) into place") }
-    }
-
-    /// Drags the page up by `distance` points (down if negative), at most 60% of the
-    /// screen at a time, and returns how far it dragged. The drag starts off `avoiding`,
-    /// because a full-width button under the finger takes the touch instead of the page.
-    @discardableResult
-    private func drag(by distance: CGFloat, height: CGFloat, avoiding: CGRect = .null) -> CGFloat {
-        let step = max(-0.6, min(0.6, distance / height))
-        let starts: [CGFloat] = step > 0 ? [0.85, 0.95, 0.75] : [0.3, 0.2, 0.35]
-        let startY = starts.first { !avoiding.insetBy(dx: 0, dy: -8).contains(CGPoint(x: 6, y: $0 * height)) } ?? starts[0]
-        let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: startY))
-            .withOffset(CGVector(dx: 6, dy: 0))
-        let end = start.withOffset(CGVector(dx: 0, dy: -step * height))
-        start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.3)
-        return step * height
-    }
-
     func testCaptureStoreScreenshots() throws {
-        let isPad = UIDevice.current.userInterfaceIdiom == .pad
-
         // Gameplay: Auto Hover holds the helicopter steady while pipes pass. Its screen
         // is split into Fly up and Fly down areas.
         launch(controlScheme: 2)
@@ -136,33 +66,26 @@ final class StoreScreenshotTests: XCTestCase {
         XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 5))
         Thread.sleep(forTimeInterval: 1)
         app.buttons["Settings"].tap()
-        XCTAssertTrue(app.staticTexts["Difficulty Preset"].waitForExistence(timeout: 5))
-        if isPad {
-            capture("4-difficulty-and-comfort")
-            scroll(app.staticTexts["Switch Access"], toTopAt: 0.17)
-            capture("5-switch-access-controls-colours")
-        } else {
-            scroll(app.staticTexts["Comfort"], toTopAt: 0.255)
-            capture("4-comfort-and-switch-access")
-            // From 2.1 the pause toggles push the palettes off screen, so they get their own shot.
-            // Row titles can drop out of the UI-test tree mid-scroll; the slider above
-            // In-Game Control does not. Its frame is the whole row, so tuck the row
-            // under the title bar.
-            let dwell = app.sliders["Scan Dwell Time"]
-            XCTAssertTrue(dwell.waitForExistence(timeout: 5))
-            scroll(dwell, belowTitleBy: 8 - dwell.frame.height)
-            capture("5-controls-and-pausing")
-            // The Hangar also has a Menu Theme heading, so use the Settings-only button.
-            scroll(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Menu Theme:'")).firstMatch,
-                   belowTitleBy: 55)
-            capture("6-colours")
-            // Back at the top, where the page rests.
-            scroll(app.staticTexts["Difficulty Preset"], belowTitleBy: 36)
-            capture("7-difficulty")
+        // Settings is a menu of categories; each page rests at its top, so nothing scrolls.
+        XCTAssertTrue(app.buttons["Reset Settings"].waitForExistence(timeout: 5))
+        capture("4-settings")
+        let pages: [(category: String, control: XCUIElement, name: String)] = [
+            ("Difficulty", app.buttons["Gentle"], "5-difficulty"),
+            ("Comfort", app.switches["Calm Mode"], "6-comfort"),
+            ("Controls and Switches", app.buttons["Tap to Flap"], "7-controls-and-switches"),
+            ("Colours", app.buttons["Default"], "8-colours")
+        ]
+        for page in pages {
+            app.buttons[page.category].tap()
+            XCTAssertTrue(page.control.waitForExistence(timeout: 5), "\(page.category) did not open")
+            capture(page.name)
+            app.buttons["Back"].tap()
+            XCTAssertTrue(app.buttons["Reset Settings"].waitForExistence(timeout: 5))
+            Thread.sleep(forTimeInterval: 1)
         }
         app.terminate()
 
         launch(guide: true)
-        capture(isPad ? "6-how-to-play" : "8-how-to-play")
+        capture("9-how-to-play")
     }
 }

@@ -52,8 +52,10 @@ private func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
                            blue: fb * fa + bb * (1 - fa), alpha: 1)
         }
         for theme in GameSettings.allThemes {
-            let panel = SettingsPanelView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), theme: theme)
-            panel.layoutIfNeeded()
+            // The menu and every category's page.
+            let pages: [SettingsPage] = [.menu] + SettingsCategory.allCases.map { .category($0) }
+            let panels = pages.map { SettingsPanelView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), theme: theme, page: $0) }
+            panels.forEach { $0.layoutIfNeeded() }
             func background(of view: UIView) -> UIColor {
                 var chain: [UIView] = []
                 var next: UIView? = view
@@ -63,16 +65,8 @@ private func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
                 }
             }
             var checked = 0
-            var pending: [UIView] = [panel]
+            var pending: [UIView] = panels
             while let view = pending.popLast() {
-                if let seg = view as? UISegmentedControl {
-                    let tray = background(of: seg)
-                    let normal = seg.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor
-                    let segmentRatio = normal.map { contrastRatio(composite($0, over: tray), tray) } ?? 0
-                    #expect(segmentRatio >= 4.5, Comment(rawValue: "\(theme.name) segment \(segmentRatio)"))
-                    checked += 1
-                    continue
-                }
                 if let label = view as? UILabel, !label.isHidden, !(label.text ?? "").isEmpty {
                     let behind = background(of: label.superview ?? label)
                     let ratio = contrastRatio(composite(label.textColor, over: behind), behind)
@@ -82,7 +76,7 @@ private func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
                 }
                 pending += view.subviews
             }
-            #expect(checked > 20)
+            #expect(checked > 60)
         }
     }
 }

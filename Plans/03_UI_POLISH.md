@@ -1,6 +1,6 @@
 # Plan 03 — UI polish: an open, finished-looking app
 
-**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stage 3 done 2026-11-12. **Next: Stage 4 (Settings and Hangar panels).**
+**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, and 4b done 2026-11-12. **Next: Stage 5 (HUD, Pause, Round Over).**
 **Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
 **Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
 **Release:** the 2.2 skins are held and ship together with this plan in one release (owner decision 2026-11-11).
@@ -19,7 +19,7 @@ Chosen from the mock sheet (private artifact: https://claude.ai/artifact/V4UZAyX
    - HUD: Score and Best are chips with a small label above a large number; Pause has an icon. At accessibility sizes Pause sits on its own row above the chips.
    - Round Over: a centred card with the title, the score very large, Best, then Try Again (primary) and Home.
 2. **Release order:** hold 2.2 and ship the skins and the polish together.
-3. **Settings as category pages (4b):** decide after seeing Stage 4.
+3. **Settings as category pages (4b):** decide after seeing Stage 4. **Decided 2026-11-12: yes**, with Reset and About staying on the Settings menu. Built the same day; see Stage 4.
 4. **App icon:** redraw it from the Classic helicopter.
 5. **Icons beside labels:** yes.
 
@@ -134,14 +134,31 @@ Original scope:
 - [x] Place and size the launch helicopter to match the Home mascot from Stage 2, so launch flows into Home without a jump. Done 2026-11-12: the helicopter is 170 pt and sits 155 pt above the centre of the safe area (144.67 pt on full-screen iPad), which is where Home's centred column puts the mascot at the default text size. The launch sky is now the top of Home's sky, drawn from the top at the screen's width, so the stars do not move either. A launch storyboard cannot read Home's layout, so these numbers are copied by hand; `LaunchMatchesHomeTests` fails when Home moves and the storyboard has not followed. **Later stages that change Home's height must update the storyboard.** Does not match, and cannot: a first launch (it opens the guide), a text size other than the default, a theme other than Night Sky, a helicopter other than Classic, and an iPad window narrower than full screen (about 10 pt off).
 - [x] App icon redrawn from the Classic helicopter art (decision 3). Done 2026-11-12: `Tools/icon-kit/make_icon.py` draws it (the Classic body with one bold rotor blade, leaning nose-up over an amber moon on the Night Sky navy) and writes all 19 sizes; recorded in `ASSET_RIGHTS.md`. App Store Connect takes the icon from the uploaded build, so nothing is uploaded by hand. **Owner approved the icon 2026-11-12.**
 
-### Stage 4 — Settings and Hangar panels
+### Stage 4 — Settings and Hangar panels (done 2026-11-12, except 4b)
+
+What was built:
+- **Page and cards.** `ScrollingPanelView` is a page with 16 pt margins. `sectionHeader` starts a section; `appendRow` puts rows on that section's card (`SurfaceView` in `DesignSystem.swift`: card colour, 3 pt ink outline, 6 pt lower edge, 1 pt dividers between rows); `appendToPage` puts a button or a row of cards straight on the page.
+- **Header.** Back is a secondary button with a chevron picture, titled and spoken "Back", before the title; at accessibility text sizes the title goes below it. It lines up with the 560 pt column on iPad.
+- **Fewer words.** Rows show one short line. Two switches (VoiceOver Direct Touch, Pause by Holding Switch) have a "More about this" text button that opens a page with the full text; VoiceOver still hears the full text as the switch's hint, and Voice Control can say "More about this" or "More about Pause by Holding Switch". This adds two stops to the scan. Long text for a slider or a list of choices is on its page of larger buttons instead, which adds no stops.
+- **One button look.** Presets, the Hangar pointer, Reset, Privacy Policy, Acknowledgements, and every choice on an adjustment page are secondary `ArcadeButton`s. The only text-only buttons left are the two "More about this".
+- **Values.** Each slider shows its value in the accent colour beside its name ("37%", "2.0 s"); below the name at accessibility sizes.
+- **Choices.** Replaced by lists in 4b (below).
+- **Hangar.** Cards are `CardButton`s on the page: card colour, ink outline and lower edge, accent outline when chosen, "Chosen" or "Equipped" in the accent colour. Themes are a column of full-width cards with the preview before the name (three across broke "Parchment" inside the word). Look pictures are 112 pt (were 64), centred, cards equal in height.
+- **Checking by eye.** `ScreenSheetTests` (skipped unless `TEST_RUNNER_SCREEN_SHEET=<folder>` is set) draws Home, Settings, and the Hangar in three themes, at the default and largest text sizes, at phone and iPad widths.
+- **4b, built 2026-11-12 (owner said yes).** Settings is a menu of six category cards (Difficulty, Comfort, Controls and Switches, Colours, Sound, Caregiver; each with a picture, its name, what is inside, and a chevron), then Reset Settings, Privacy Policy, and Acknowledgements. Each category is its own screen (`Screen.settingsCategory`, shown by `RootViewController.present` like any other): Back returns to the menu, and the menu then starts the scanner and VoiceOver on the category just left. Controls and Switches has three sections (Menu Scanning, Flying, Pausing) in the old order. Comfort, Sound, and Caregiver are one card with no section heading.
+  - **Choices are lists.** Menu Scan Mode and In-Game Control are one button per choice (`ChoiceButton`: a ring, or a filled tick when chosen, plus the selected trait). One press chooses; nothing scrolls sideways; the old page of choices and every `UISegmentedControl` are gone. This adds stops on that page (two and four, where each list was one), in exchange for no second page.
+  - **Lock.** With Lock Settings on, every category still opens. Its controls are dimmed and unreachable, with a note saying where to unlock. On the menu only Reset is dimmed. The lock itself is on the Caregiver page.
+  - **Scan length.** The menu is 10 stops. The longest page is Controls and Switches at 14; Difficulty is 8; the rest are 2 to 7. Before, one page had about 30.
+  - **The guide** now says "Settings → Controls and Switches" and "Settings → Difficulty". **Stage 8 must update** `docs/support.html` and the review notes in `Release/APP_STORE_COPY.md`, which still say "Settings → Switch Access", and choose the store screenshots: `StoreScreenshotTests` now captures the menu and four pages (`4-settings` to `8-colours`, then `9-how-to-play`) with no scrolling.
+- **Left over.** At the largest text size on a phone, "Generous", "Acknowledgements", and the Hangar pointer still break inside a word (they are wider than the screen). Scanner focus on the new cards was not looked at on screen.
+
 
 - Rows become inset rounded cards grouped by section, with margins at the screen edges. Headings use the heading style.
 - A real header: Back at the leading edge with a chevron symbol (spoken label still "Back"), title beside or below it.
 - One short description line per row; long text moves behind "More about this".
 - Presets, segmented choices, Reset, and the Hangar pointer use the shared button kinds.
 - Hangar: cards use theme surfaces, larger pictures, equal heights.
-- **4b (larger, optional):** split Settings into category pages (Difficulty, Comfort, Controls and Switches, Colours, Sound, Caregiver). This is the biggest gain in openness and cuts the scan length for switch users, but it changes navigation and many tests. Decide after 4 (decision 2).
+- [x] **4b (larger, optional), done 2026-11-12:** split Settings into category pages (Difficulty, Comfort, Controls and Switches, Colours, Sound, Caregiver). This is the biggest gain in openness and cuts the scan length for switch users, but it changes navigation and many tests. Decide after 4 (decision 2).
 
 ### Stage 5 — Play: HUD, Pause, Round Over
 

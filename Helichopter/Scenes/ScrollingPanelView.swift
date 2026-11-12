@@ -17,13 +17,11 @@ final class ButtonTarget: NSObject {
 struct SettingsStyle {
     let bg: UIColor               // panel background
     let accent: UIColor           // accent-coloured text: section headings, quiet buttons
-    let accentFill: UIColor       // slider and switch tracks, the chosen segment, chosen cards
+    let accentFill: UIColor       // slider and switch tracks, chosen cards
     let text: UIColor             // primary label text
     let sub: UIColor              // secondary / detail text
     let rowBg: UIColor            // individual row backgrounds
     let div: UIColor              // dividers and outlines
-    let segBg: UIColor            // segmented control tray background
-    let selectedSegText: UIColor  // text on the highlighted segment chip
     let swatchBg: UIColor         // cards that sit on a row
     let focus: UIColor            // the scanner's focus ring
 
@@ -35,8 +33,6 @@ struct SettingsStyle {
         sub = theme.secondaryTextColor
         rowBg = theme.cardColor
         div = theme.inkColor
-        segBg = theme.raisedColor
-        selectedSegText = theme.onAccentColor
         swatchBg = theme.raisedColor
         focus = theme.focusColor
     }
@@ -63,10 +59,6 @@ private final class PanelScanItem: FocusScannable {
         let label = control.accessibilityLabel ?? (control as? UIButton)?.currentTitle ?? ""
         if let toggle = control as? UISwitch { return "\(label), \(toggle.isOn ? "On" : "Off")" }
         if let slider = control as? UISlider { return "\(label), \(slider.spokenValue). Select to adjust." }
-        if let segment = control as? UISegmentedControl {
-            let value = segment.titleForSegment(at: segment.selectedSegmentIndex) ?? ""
-            return "\(label), \(value). Select to choose."
-        }
         return label
     }
 
@@ -81,8 +73,12 @@ private final class PanelScanItem: FocusScannable {
 
 class ScrollingPanelView: UIView {
 
-    /// The heading under Back.
+    /// The heading beside Back, for a panel that always has the same one.
     class var title: String { "" }
+    /// The heading beside Back.
+    var title: String { Self.title }
+    /// What VoiceOver says Back does.
+    var backHint: String { "Goes to the home screen" }
 
     let fontTraits: UITraitCollection?
     let theme: UITheme
@@ -101,7 +97,12 @@ class ScrollingPanelView: UIView {
     var controlTargets: [NSObject] = []
 
     private let scrollView = UIScrollView()
+    /// The page: section headings, cards, and buttons, top to bottom.
     let stack = UIStackView()
+    /// Back and the title.
+    private(set) var header: UIStackView!
+    /// The card that `appendRow` is filling; a section heading or a page button ends it.
+    private var openCard: SurfaceView?
 
     // MARK: - Initialization
 
@@ -148,6 +149,11 @@ class ScrollingPanelView: UIView {
     }
 
     func stopScanning() { switchScanner.stop() }
+
+    /// The control with this spoken name, if the panel has one.
+    func control(labelled label: String) -> UIControl? {
+        controls(in: self).first { ($0.accessibilityLabel ?? ($0 as? UIButton)?.currentTitle) == label }
+    }
 
     func primaryActivate() {
         if !switchScanner.isActive { startScanning() }
@@ -221,22 +227,28 @@ class ScrollingPanelView: UIView {
     private func buildUI() {
         backgroundColor = style.bg
 
-        let backBtn  = plainButton("◀  Back", target: self, action: #selector(backTapped))
+        let traits = fontTraits ?? traitCollection
+        let backBtn = panelButton("Back", icon: "chevron.left", target: self, action: #selector(backTapped))
         backBtn.accessibilityLabel = "Back"
-        backBtn.accessibilityHint = "Goes to the home screen"
-        let titleLbl = makeLabel(Self.title, style: .display, color: style.text)
+        backBtn.accessibilityHint = backHint
+        backBtn.setContentHuggingPriority(.required, for: .horizontal)
+        backBtn.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let titleLbl = makeLabel(title, style: .display, color: style.text)
         titleLbl.accessibilityTraits = .header
-        titleLbl.textAlignment = .center
+        // Back sits before the title; at accessibility text sizes the title goes below it.
+        let stacked = traits.preferredContentSizeCategory.isAccessibilityCategory
         let header = UIStackView(arrangedSubviews: [backBtn, titleLbl])
-        header.axis = .vertical
-        header.spacing = Spacing.xs
+        header.axis = stacked ? .vertical : .horizontal
+        header.alignment = stacked ? .leading : .center
+        header.spacing = stacked ? Spacing.s : Spacing.l
         header.isLayoutMarginsRelativeArrangement = true
-        header.layoutMargins = UIEdgeInsets(top: Spacing.xs, left: Spacing.l, bottom: Spacing.s, right: Spacing.l)
+        header.layoutMargins = UIEdgeInsets(top: Spacing.s, left: Spacing.l, bottom: Spacing.m, right: Spacing.l)
         header.translatesAutoresizingMaskIntoConstraints = false
         addSubview(header)
+        self.header = header
 
         let headerDiv = hairline()
-        header.addSubview(headerDiv)
+        addSubview(headerDiv)
 
         scrollView.alwaysBounceVertical        = true
         scrollView.showsVerticalScrollIndicator = true
@@ -244,29 +256,35 @@ class ScrollingPanelView: UIView {
         addSubview(scrollView)
 
         stack.axis    = .vertical
-        stack.spacing = 0
+        stack.spacing = Spacing.l
+        // Cards and buttons keep a margin from the screen edges.
+        stack.isLayoutMarginsRelativeArrangement = true
+        stack.layoutMargins = UIEdgeInsets(top: 0, left: Spacing.l, bottom: 0, right: Spacing.l)
         stack.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stack)
 
         // As wide as the screen allows, up to the content width.
         let fill = stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor)
         fill.priority = UILayoutPriority(999)
+        // The header lines up with the column of cards below it.
+        let headerFill = header.widthAnchor.constraint(equalTo: widthAnchor)
+        headerFill.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             header.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            header.leadingAnchor.constraint(equalTo: leadingAnchor),
-            header.trailingAnchor.constraint(equalTo: trailingAnchor),
-            header.heightAnchor.constraint(greaterThanOrEqualToConstant: 52),
+            header.centerXAnchor.constraint(equalTo: centerXAnchor),
+            header.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth),
+            headerFill,
 
             headerDiv.bottomAnchor.constraint(equalTo: header.bottomAnchor),
-            headerDiv.leadingAnchor.constraint(equalTo: header.leadingAnchor),
-            headerDiv.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            headerDiv.leadingAnchor.constraint(equalTo: leadingAnchor),
+            headerDiv.trailingAnchor.constraint(equalTo: trailingAnchor),
 
             scrollView.topAnchor.constraint(equalTo: header.bottomAnchor),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor),
 
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: Spacing.s),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: Spacing.l),
             scrollView.contentLayoutGuide.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
             stack.centerXAnchor.constraint(equalTo: scrollView.contentLayoutGuide.centerXAnchor),
             stack.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth),
@@ -291,25 +309,15 @@ class ScrollingPanelView: UIView {
 
 extension ScrollingPanelView {
 
+    /// Starts a section: a heading, then whatever is added until the next heading.
     func sectionHeader(_ title: String) {
-        let spacer = UIView()
-        spacer.heightAnchor.constraint(equalToConstant: Spacing.xl).isActive = true
-        stack.addArrangedSubview(spacer)
-
+        openCard = nil
+        if let last = stack.arrangedSubviews.last { stack.setCustomSpacing(Spacing.xl, after: last) }
         let lbl = makeLabel(title, style: .heading, color: style.accent)
         // VoiceOver's heading rotor jumps between sections.
         lbl.accessibilityTraits = .header
-
-        let wrap = UIView()
-        wrap.addSubview(lbl)
-        NSLayoutConstraint.activate([
-            lbl.topAnchor.constraint(equalTo: wrap.topAnchor, constant: Spacing.xs),
-            lbl.bottomAnchor.constraint(equalTo: wrap.bottomAnchor, constant: -Spacing.xs),
-            lbl.leadingAnchor.constraint(equalTo: wrap.leadingAnchor, constant: Spacing.l),
-            lbl.trailingAnchor.constraint(equalTo: wrap.trailingAnchor, constant: -Spacing.l),
-        ])
-        stack.addArrangedSubview(wrap)
-        stack.addArrangedSubview(hairline())
+        stack.addArrangedSubview(lbl)
+        stack.setCustomSpacing(Spacing.s, after: lbl)
     }
 
     /// Disables every control in `rows` and dims them: VoiceOver says "dimmed" and
@@ -338,20 +346,36 @@ extension ScrollingPanelView {
         return l
     }
 
-    /// A quiet (text-only) button.
-    func plainButton(_ title: String, target: Any, action: Selector) -> UIButton {
-        let btn = ArcadeButton(kind: .quiet, theme: theme, traits: fontTraits ?? traitCollection)
+    /// A secondary button, with an optional SF Symbol before its title.
+    func panelButton(_ title: String, icon: String? = nil, kind: ButtonKind = .secondary,
+                     target: Any, action: Selector) -> ArcadeButton {
+        let btn = ArcadeButton(kind: kind, theme: theme, traits: fontTraits ?? traitCollection)
         btn.setTitle(title, for: .normal)
+        if let icon = icon { btn.setIcon(systemName: icon) }
         btn.addTarget(target, action: action, for: .touchUpInside)
         return btn
     }
 
-    /// The shared look of a card that can be chosen: a theme, a look, or a palette.
+    /// The look of a small card that sits on a section card and can be chosen: a palette.
     func styleCard(_ card: UIView, chosen: Bool) {
         card.backgroundColor = style.swatchBg
-        card.layer.cornerRadius = Radius.card
+        card.layer.cornerRadius = Radius.inner
         card.layer.borderWidth = chosen ? Stroke.focus : Stroke.outline
         card.layer.borderColor = (chosen ? style.accentFill : style.div).cgColor
+    }
+
+    /// A row of plain text on a card, such as "Locked by a caregiver".
+    func noteRow(_ text: String) {
+        let row = UIView()
+        let label = makeLabel(text, style: .body, color: style.text)
+        row.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.m),
+            label.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.m),
+            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            label.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
+        ])
+        appendRow(row)
     }
 
     func hairline() -> UIView {
@@ -362,9 +386,28 @@ extension ScrollingPanelView {
         return v
     }
 
+    /// Adds a row to the section's card, starting the card if this is its first row.
     func appendRow(_ row: UIView) {
-        stack.addArrangedSubview(row)
-        stack.addArrangedSubview(hairline())
+        let card: SurfaceView
+        if let open = openCard {
+            card = open
+            card.content.addArrangedSubview(hairline())
+        } else {
+            card = SurfaceView(theme: theme)
+            stack.addArrangedSubview(card)
+            openCard = card
+        }
+        card.content.addArrangedSubview(row)
+    }
+
+    /// Ends the section's card, so the next row starts a new one.
+    func endCard() { openCard = nil }
+
+    /// Adds something that stands on the page by itself, outside any card: a button or
+    /// a row of cards.
+    func appendToPage(_ view: UIView) {
+        openCard = nil
+        stack.addArrangedSubview(view)
     }
 }
 
@@ -388,7 +431,19 @@ private final class WrappingPanelLabel: UILabel {
 class PanelScreenViewController<Panel: ScrollingPanelView>: ScreenViewController {
     private(set) var panel: Panel!
 
-    override var announcement: Any? { panel }
+    /// VoiceOver lands on the control named by `focusOnAppear`, or on the panel.
+    override var announcement: Any? { focusOnAppear.flatMap { panel.control(labelled: $0) } ?? panel }
+
+    /// Where Back goes.
+    var backDestination: Screen { .home }
+
+    /// The control the scanner and VoiceOver start on, by its spoken name; nil for the first.
+    var focusOnAppear: String? { nil }
+
+    /// Makes the panel. Subclasses whose panel needs more than a theme override this.
+    func createPanel(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection) -> Panel {
+        Panel(frame: frame, theme: theme, fontTraits: fontTraits)
+    }
 
     override func loadView() {
         let view = UIView()
@@ -398,15 +453,15 @@ class PanelScreenViewController<Panel: ScrollingPanelView>: ScreenViewController
     }
 
     private func makePanel(fontTraits: UITraitCollection) -> Panel {
-        let panel = Panel(frame: view.bounds, theme: GameSettings.shared.selectedTheme,
-                          fontTraits: fontTraits)
+        let panel = createPanel(frame: view.bounds, theme: GameSettings.shared.selectedTheme,
+                                fontTraits: fontTraits)
         // Only this panel is read, never the empty SpriteKit view underneath.
         panel.accessibilityViewIsModal = true
         panel.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         panel.onBack = { [weak self] in
             guard let self = self, !self.isChangingScreen else { return }
             self.panel.stopScanning()
-            self.navigate(.home)
+            self.navigate(self.backDestination)
         }
         panel.onThemeChanged = { [weak self] in self?.rebuildPanel() }
         configure(panel)
@@ -453,7 +508,7 @@ class PanelScreenViewController<Panel: ScrollingPanelView>: ScreenViewController
     }
 
     override func screenDidAppear() {
-        if GameSettings.shared.scanningEnabled { panel.startScanning() }
+        if GameSettings.shared.scanningEnabled { panel.startScanning(focusing: focusOnAppear) }
         super.screenDidAppear()
     }
 

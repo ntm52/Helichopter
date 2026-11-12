@@ -16,58 +16,65 @@ final class SwitchTarget: NSObject {
     @objc func changed(_ sender: UISwitch) { f(sender.isOn) }
 }
 
-final class SegTarget: NSObject {
-    private let f: (Int) -> Void
-    init(_ f: @escaping (Int) -> Void) { self.f = f }
-    @objc func changed(_ sender: UISegmentedControl) { f(sender.selectedSegmentIndex) }
-}
-
 // MARK: - Row builders
 
 extension SettingsPanelView {
 
     func presetButtons() {
-        let row = UIView()
-        row.backgroundColor = style.rowBg
-
-        let hs = UIStackView()
-        hs.axis         = .vertical
-        hs.distribution = .fillEqually
-        hs.spacing      = Spacing.m
-        hs.translatesAutoresizingMaskIntoConstraints = false
-
         let presets: [(String, () -> Void)] = [
             ("Gentle",    { GameSettings.shared.applyGentle() }),
             ("Standard",  { GameSettings.shared.applyStandard() }),
             ("Challenge", { GameSettings.shared.applyChallenge() }),
         ]
-        for (name, action) in presets {
+        let buttons = presets.map { name, action -> UIView in
             let t = ButtonTarget { [weak self] in
                 action()
                 self?.onThemeChanged?()
             }
             controlTargets.append(t)
-            let btn = ArcadeButton(kind: .secondary, theme: theme, traits: fontTraits ?? traitCollection)
-            btn.setTitle(name, for: .normal)
-            btn.addTarget(t, action: #selector(ButtonTarget.tapped), for: .touchUpInside)
-            hs.addArrangedSubview(btn)
+            return panelButton(name, target: t, action: #selector(ButtonTarget.tapped))
         }
-
-        row.addSubview(hs)
-        NSLayoutConstraint.activate([
-            hs.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
-            hs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
-            hs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
-            hs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
-        ])
-        appendRow(row)
+        let column = UIStackView(arrangedSubviews: buttons)
+        column.axis = .vertical
+        column.spacing = Spacing.m
+        appendToPage(column)
     }
 
-    func sliderRow(_ title: String, detail: String, lo: String, hi: String,
+    /// The row's name, then anything after it (a slider's value), on one line.
+    private func titleLine(_ title: UILabel, trailing: UIView) -> UIStackView {
+        trailing.setContentHuggingPriority(.required, for: .horizontal)
+        trailing.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let line = UIStackView(arrangedSubviews: [title, trailing])
+        // At accessibility text sizes the name needs the whole width, so the value goes below.
+        if (fontTraits ?? traitCollection).preferredContentSizeCategory.isAccessibilityCategory {
+            line.axis = .vertical
+            line.alignment = .leading
+        } else {
+            line.alignment = .firstBaseline
+            line.spacing = Spacing.m
+        }
+        return line
+    }
+
+    /// A text button that opens a page with the long explanation of a setting.
+    private func moreButton(about title: String, text: String) -> UIButton {
+        let name = "More about \(title)"
+        infoPages[name] = text
+        let button = panelButton("More about this", icon: "info.circle", kind: .quiet,
+                                 target: self, action: #selector(openInfoPage(_:)))
+        button.accessibilityLabel = name
+        // Voice Control users can say what they see.
+        button.accessibilityUserInputLabels = ["More about this", name]
+        return button
+    }
+
+    @objc private func openInfoPage(_ sender: UIButton) { showAdjustment(for: sender) }
+
+    /// `more` is a longer explanation, shown on the slider's adjustment page.
+    func sliderRow(_ title: String, detail: String, more: String? = nil, lo: String, hi: String,
                    min: Float, max: Float, value: Float, seconds: Bool = false,
                    onChange: @escaping (Float) -> Void) {
         let row = UIView()
-        row.backgroundColor = style.rowBg
 
         let titleL  = makeLabel(title,  style: .label, color: style.text)
         let detailL = makeLabel(detail, style: .caption,  color: style.sub)
@@ -77,7 +84,8 @@ extension SettingsPanelView {
         slider.accessibilityRow = row
         slider.speaksSeconds = seconds
         slider.accessibilityLabel = title
-        slider.accessibilityHint = "\(detail). \(lo) to \(hi). Double-tap for larger buttons."
+        slider.accessibilityHint = "\(more ?? detail). \(lo) to \(hi). Double-tap for larger buttons."
+        if let more = more { infoPages[title] = more }
         slider.onActivate = { [weak self, weak slider] in
             guard let self = self, let slider = slider, !self.isAdjusting else { return }
             self.showAdjustment(for: slider)
@@ -89,7 +97,13 @@ extension SettingsPanelView {
         slider.maximumTrackTintColor = style.div
         slider.thumbTintColor        = style.accentFill
 
-        let t = SliderTarget(onChange)
+        // The value in the accent colour, beside the name.
+        let valueL = makeLabel(slider.shortValue, style: .label, color: style.accent)
+        valueL.textAlignment = .right
+        let t = SliderTarget { [weak slider, weak valueL] v in
+            onChange(v)
+            valueL?.text = slider?.shortValue
+        }
         controlTargets.append(t)
         slider.addTarget(t, action: #selector(SliderTarget.changed(_:)), for: .valueChanged)
 
@@ -99,13 +113,14 @@ extension SettingsPanelView {
 
         let rangeRow = UIStackView(arrangedSubviews: [loL, hiL])
         // The slider speaks its own name, purpose, and range once.
-        [titleL, detailL, rangeRow].forEach { $0.accessibilityElementsHidden = true }
+        [titleL, valueL, detailL, rangeRow].forEach { $0.accessibilityElementsHidden = true }
         rangeRow.axis         = .horizontal
         rangeRow.distribution = .equalSpacing
 
-        let vs = UIStackView(arrangedSubviews: [titleL, detailL, slider, rangeRow])
+        let vs = UIStackView(arrangedSubviews: [titleLine(titleL, trailing: valueL), detailL, slider, rangeRow])
         vs.axis    = .vertical
         vs.spacing = Spacing.xs
+        vs.setCustomSpacing(Spacing.s, after: detailL)
         vs.translatesAutoresizingMaskIntoConstraints = false
 
         row.addSubview(vs)
@@ -118,10 +133,14 @@ extension SettingsPanelView {
         appendRow(row)
     }
 
-    func toggleRow(_ title: String, detail: String, isOn: Bool,
+    /// `more` is a longer explanation. VoiceOver reads it as the switch's hint; on screen
+    /// it sits behind a "More about this" button, so the row shows one short line.
+    /// `hint` is what VoiceOver reads when it should differ from the short `detail`.
+    func toggleRow(_ title: String, detail: String, hint: String? = nil, more: String? = nil, isOn: Bool,
                    onChange: @escaping (Bool) -> Void) {
         let row = UIView()
-        row.backgroundColor = style.rowBg
+        // The part of the row the switch speaks for: its name, description, and itself.
+        let main = UIView()
 
         let titleL  = makeLabel(title,  style: .label, color: style.text)
         let detailL = makeLabel(detail, style: .caption,  color: style.sub)
@@ -133,9 +152,9 @@ extension SettingsPanelView {
         lStack.translatesAutoresizingMaskIntoConstraints = false
 
         let sw = SettingsSwitch()
-        sw.accessibilityRow = row
+        sw.accessibilityRow = more == nil ? row : main
         sw.accessibilityLabel = title
-        sw.accessibilityHint = detail
+        sw.accessibilityHint = more ?? hint ?? detail
         // The switch speaks its own name and purpose once.
         titleL.accessibilityElementsHidden = true
         detailL.accessibilityElementsHidden = true
@@ -147,96 +166,145 @@ extension SettingsPanelView {
         controlTargets.append(t)
         sw.addTarget(t, action: #selector(SwitchTarget.changed(_:)), for: .valueChanged)
 
-        row.addSubview(lStack)
-        row.addSubview(sw)
+        main.addSubview(lStack)
+        main.addSubview(sw)
         NSLayoutConstraint.activate([
-            lStack.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
-            lStack.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
-            lStack.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            lStack.topAnchor.constraint(equalTo: main.topAnchor),
+            lStack.bottomAnchor.constraint(equalTo: main.bottomAnchor),
+            lStack.leadingAnchor.constraint(equalTo: main.leadingAnchor),
             lStack.trailingAnchor.constraint(equalTo: sw.leadingAnchor, constant: -Spacing.m),
 
-            sw.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            sw.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
+            sw.centerYAnchor.constraint(equalTo: main.centerYAnchor),
+            sw.trailingAnchor.constraint(equalTo: main.trailingAnchor),
+            main.heightAnchor.constraint(greaterThanOrEqualTo: sw.heightAnchor),
         ])
-        appendRow(row)
-    }
-
-    func segmentedRow(_ title: String, detail: String,
-                      items: [String], selectedIndex: Int,
-                      onChange: @escaping (Int) -> Void) {
-        let row = UIView()
-        row.backgroundColor = style.rowBg
-
-        let titleL  = makeLabel(title,  style: .label, color: style.text)
-        let detailL = makeLabel(detail, style: .caption,  color: style.sub)
-        detailL.numberOfLines = 0
-
-        let seg = UISegmentedControl(items: items)
-        seg.accessibilityLabel = title
-        seg.selectedSegmentIndex     = selectedIndex
-        seg.backgroundColor          = style.segBg
-        seg.selectedSegmentTintColor = style.accentFill
-        let segmentFont = font(.label)
-        seg.setTitleTextAttributes([.foregroundColor: style.text, .font: segmentFont], for: .normal)
-        seg.setTitleTextAttributes([
-            .foregroundColor: style.selectedSegText,
-            .font: segmentFont,
-        ], for: .selected)
-
-        let t = SegTarget(onChange)
-        controlTargets.append(t)
-        seg.addTarget(t, action: #selector(SegTarget.changed(_:)), for: .valueChanged)
-
-        let segmentScroll = UIScrollView()
-        segmentScroll.showsHorizontalScrollIndicator = true
-        segmentScroll.addSubview(seg)
-        seg.translatesAutoresizingMaskIntoConstraints = false
-        let itemWidth = items.map { ($0 as NSString).size(withAttributes: [.font: segmentFont]).width + 32 }.max() ?? 80
-        NSLayoutConstraint.activate([
-            seg.leadingAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.leadingAnchor),
-            seg.trailingAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.trailingAnchor),
-            seg.topAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.topAnchor),
-            seg.bottomAnchor.constraint(equalTo: segmentScroll.contentLayoutGuide.bottomAnchor),
-            seg.widthAnchor.constraint(equalToConstant: itemWidth * CGFloat(items.count)),
-            seg.heightAnchor.constraint(equalTo: segmentScroll.frameLayoutGuide.heightAnchor),
-            segmentScroll.heightAnchor.constraint(equalToConstant: Swift.max(44, segmentFont.lineHeight + 24))
-        ])
-        let vs = UIStackView(arrangedSubviews: [titleL, detailL, segmentScroll])
-        vs.axis    = .vertical
-        vs.spacing = Spacing.s
+        let vs = UIStackView(arrangedSubviews: [main])
+        vs.axis = .vertical
+        vs.spacing = Spacing.xs
         vs.translatesAutoresizingMaskIntoConstraints = false
-
+        if let more = more {
+            // At the leading edge, under the description it expands on.
+            let line = UIStackView(arrangedSubviews: [moreButton(about: title, text: more), UIView()])
+            vs.addArrangedSubview(line)
+        }
         row.addSubview(vs)
+        // A "More about this" button brings its own space below it.
+        let bottom = more == nil ? Spacing.l : Spacing.xs
         NSLayoutConstraint.activate([
             vs.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
-            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
+            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -bottom),
             vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
             vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
         appendRow(row)
     }
 
+    /// A short list of choices, one button each, with the chosen one marked. Choosing
+    /// takes one press; nothing scrolls sideways.
+    func choiceRow(_ title: String, detail: String, items: [String], selectedIndex: Int,
+                   onChange: @escaping (Int) -> Void) {
+        let row = UIView()
+        let titleL  = makeLabel(title,  style: .label, color: style.text)
+        let detailL = makeLabel(detail, style: .caption,  color: style.sub)
+        // VoiceOver reads the name as a heading for the choices under it.
+        titleL.accessibilityTraits = .header
+
+        var buttons: [ChoiceButton] = []
+        for (index, item) in items.enumerated() {
+            let button = ChoiceButton(name: makeLabel(item, style: .label, color: style.text), theme: theme)
+            button.isChosen = index == selectedIndex
+            button.accessibilityHint = title
+            let t = ButtonTarget { [weak self, weak button] in
+                onChange(index)
+                buttons.forEach { $0.isChosen = $0 === button }
+                // Scan mode may just have changed; apply it at once, staying on this choice.
+                if self?.switchScanner.isActive == true { self?.startScanning(focusing: item) }
+            }
+            controlTargets.append(t)
+            button.addTarget(t, action: #selector(ButtonTarget.tapped), for: .touchUpInside)
+            buttons.append(button)
+        }
+        choiceGroups[title] = buttons
+
+        let vs = UIStackView(arrangedSubviews: [titleL, detailL] + buttons)
+        vs.axis    = .vertical
+        vs.spacing = Spacing.xs
+        vs.setCustomSpacing(Spacing.s, after: detailL)
+        vs.translatesAutoresizingMaskIntoConstraints = false
+
+        row.addSubview(vs)
+        NSLayoutConstraint.activate([
+            vs.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
+            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.s),
+            vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
+            vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
+        ])
+        appendRow(row)
+    }
+
+    /// A category on the Settings menu: its picture, name, what is inside, and a chevron.
+    func categoryCard(_ category: SettingsCategory) -> UIButton {
+        let card = CardButton(theme: theme)
+        card.accessibilityLabel = category.title
+        card.accessibilityHint = category.detail
+
+        let symbols = UIImage.SymbolConfiguration(font: font(.heading))
+        let icon = UIImageView(image: UIImage(systemName: category.symbolName, withConfiguration: symbols))
+        icon.tintColor = style.accent
+        icon.contentMode = .center
+        icon.setContentHuggingPriority(.required, for: .horizontal)
+        icon.setContentCompressionResistancePriority(.required, for: .horizontal)
+        // Icons differ in width; a fixed column keeps the names in line.
+        icon.widthAnchor.constraint(equalToConstant: font(.heading).lineHeight * 1.4).isActive = true
+
+        let text = UIStackView(arrangedSubviews: [makeLabel(category.title, style: .label, color: style.text),
+                                                  makeLabel(category.detail, style: .caption, color: style.sub)])
+        text.axis = .vertical
+        text.spacing = Spacing.xs
+
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right",
+                                                 withConfiguration: UIImage.SymbolConfiguration(font: font(.label))))
+        chevron.tintColor = style.sub
+        chevron.setContentHuggingPriority(.required, for: .horizontal)
+        chevron.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let line = UIStackView(arrangedSubviews: [icon, text, chevron])
+        line.alignment = .center
+        line.spacing = Spacing.m
+        line.isUserInteractionEnabled = false
+        line.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(line)
+        NSLayoutConstraint.activate([
+            line.topAnchor.constraint(equalTo: card.topAnchor, constant: Spacing.l),
+            line.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -Spacing.l - CardButton.bottomInset),
+            line.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: Spacing.l),
+            line.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -Spacing.l),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight + Stroke.edge),
+        ])
+
+        let t = ButtonTarget { [weak self] in self?.onOpenCategory?(category) }
+        controlTargets.append(t)
+        card.addTarget(t, action: #selector(ButtonTarget.tapped), for: .touchUpInside)
+        return card
+    }
+
     func paletteRow() {
         let descRow = UIView()
-        descRow.backgroundColor = style.rowBg
         let descL = makeLabel(
-            "Adjusts helicopter and pipe colours to suit different colour vision needs. " +
-            "Independent of the menu theme in the Hangar.",
+            "Helicopter and pipe colours for different colour vision. The menu theme is separate.",
             style: .caption, color: style.sub)
         descL.numberOfLines = 0
         descL.translatesAutoresizingMaskIntoConstraints = false
         descRow.addSubview(descL)
         NSLayoutConstraint.activate([
-            descL.topAnchor.constraint(equalTo: descRow.topAnchor, constant: Spacing.m),
+            descL.topAnchor.constraint(equalTo: descRow.topAnchor, constant: Spacing.l),
             descL.bottomAnchor.constraint(equalTo: descRow.bottomAnchor, constant: -Spacing.m),
             descL.leadingAnchor.constraint(equalTo: descRow.leadingAnchor, constant: Spacing.l),
             descL.trailingAnchor.constraint(equalTo: descRow.trailingAnchor, constant: -Spacing.l),
         ])
-        stack.addArrangedSubview(descRow)
-        stack.addArrangedSubview(hairline())
+        appendRow(descRow)
 
         let row = UIView()
-        row.backgroundColor = style.rowBg
 
         let hScroll = UIScrollView()
         hScroll.showsHorizontalScrollIndicator = false
@@ -292,7 +360,7 @@ extension SettingsPanelView {
 
         let nameL = UILabel()
         nameL.text          = palette.name
-        nameL.textColor     = style.sub
+        nameL.textColor     = style.text
         nameL.font = font(.caption)
         nameL.adjustsFontForContentSizeCategory = true
         nameL.numberOfLines = 0
@@ -348,7 +416,59 @@ extension SettingsPanelView {
     }
 }
 
+/// One choice in a list: a mark that is filled when chosen, then the name. The chosen
+/// state shows by the mark's shape as well as its colour, and as the selected trait.
+final class ChoiceButton: UIButton {
+    private let mark = UIImageView()
+    private let theme: UITheme
+    private let symbols: UIImage.SymbolConfiguration
+
+    var isChosen = false {
+        didSet {
+            isSelected = isChosen
+            if isChosen { accessibilityTraits.insert(.selected) } else { accessibilityTraits.remove(.selected) }
+            mark.image = UIImage(systemName: isChosen ? "checkmark.circle.fill" : "circle", withConfiguration: symbols)
+            mark.tintColor = isChosen ? theme.accentTextColor : theme.secondaryTextColor
+        }
+    }
+
+    /// `name` is the choice's label, already in the panel's font and colour.
+    init(name: UILabel, theme: UITheme) {
+        self.theme = theme
+        symbols = UIImage.SymbolConfiguration(font: name.font, scale: .large)
+        super.init(frame: .zero)
+        accessibilityLabel = name.text
+        mark.setContentHuggingPriority(.required, for: .horizontal)
+        mark.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let line = UIStackView(arrangedSubviews: [mark, name])
+        line.alignment = .center
+        line.spacing = Spacing.m
+        line.isUserInteractionEnabled = false
+        line.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(line)
+        NSLayoutConstraint.activate([
+            line.topAnchor.constraint(equalTo: topAnchor, constant: Spacing.s),
+            line.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Spacing.s),
+            line.leadingAnchor.constraint(equalTo: leadingAnchor),
+            line.trailingAnchor.constraint(equalTo: trailingAnchor),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight),
+        ])
+        isChosen = false
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var isHighlighted: Bool {
+        didSet { alpha = isHighlighted ? 0.6 : 1 }
+    }
+}
+
 extension UISlider {
+    /// The value as shown beside a setting's name: "37%" or "1.5 s".
+    var shortValue: String {
+        (self as? SettingsSlider)?.speaksSeconds == true ? String(format: "%.1f s", value) : spokenValue
+    }
+
     /// The value as players hear and see it: "37%" of the range, or "1.5 seconds".
     var spokenValue: String {
         if (self as? SettingsSlider)?.speaksSeconds == true { return String(format: "%.1f seconds", value) }

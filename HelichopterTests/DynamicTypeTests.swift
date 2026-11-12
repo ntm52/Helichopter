@@ -19,45 +19,43 @@ struct DynamicTypeTests {
     }
 
     @Test func settingsTextScalesAndControlsRemainReachable() throws {
+        let pages: [SettingsPage] = [.menu] + SettingsCategory.allCases.map { .category($0) }
         for size in [CGSize(width: 320, height: 568), CGSize(width: 1024, height: 768)] {
-            let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
-            let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size),
-                                            theme: GameSettings.shared.selectedTheme, fontTraits: traits)
-            let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
-            let host = UIViewController()
-            host.view = panel
-            window.rootViewController = host
-            window.makeKeyAndVisible()
-            defer { window.isHidden = true }
-            panel.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
-            panel.updateTraitsIfNeeded()
-            panel.layoutIfNeeded()
-            panel.layoutIfNeeded()
-            let labels = descendants(panel, UILabel.self)
-            // UIKit owns segmented-control internals; their font is explicitly scaled
-            // by Settings and is not an automatically adjusting UILabel.
-            for label in labels where !(label.text ?? "").isEmpty {
-                var ancestor = label.superview
-                var inSegment = false
-                while let current = ancestor {
-                    if current is UISegmentedControl { inSegment = true }
-                    ancestor = current.superview
+            for page in pages {
+                let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+                let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size),
+                                              theme: GameSettings.shared.selectedTheme, fontTraits: traits, page: page)
+                let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
+                let host = UIViewController()
+                host.view = panel
+                window.rootViewController = host
+                window.makeKeyAndVisible()
+                defer { window.isHidden = true }
+                panel.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+                panel.updateTraitsIfNeeded()
+                panel.layoutIfNeeded()
+                panel.layoutIfNeeded()
+                let labels = descendants(panel, UILabel.self)
+                for label in labels where !(label.text ?? "").isEmpty {
+                    #expect(label.adjustsFontForContentSizeCategory, "\(page): unscaled label: \(label.text ?? "")")
                 }
-                if !inSegment {
-                    #expect(label.adjustsFontForContentSizeCategory, "Unscaled label: \(label.text ?? "")")
+                let title = try #require(labels.first { $0.text == (page.category?.title ?? "Settings") })
+                #expect(title.font.pointSize > 26)
+                for label in labels where label.superview is UIStackView && label.bounds.width > 0 {
+                    let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
+                    #expect(label.bounds.height + 2 >= needed.height, "\(page): clipped: \(label.text ?? "")")
                 }
+                guard page == .category(.controls) else { continue }
+                // A list of choices is buttons on the page, each inside the screen.
+                panel.startScanning(focusing: "Step with Switch 2")
+                #expect(panel.focusedSetting == "Step with Switch 2")
+                for button in try #require(panel.choiceGroups["In-Game Control"]) {
+                    let frame = button.convert(button.bounds, to: panel)
+                    #expect(frame.minX >= 0 && frame.maxX <= size.width + 0.5 && frame.height >= Layout.minButtonHeight)
+                }
+                try capture(panel, name: "Dynamic-settings-choices-\(Int(size.width))")
+                panel.stopScanning()
             }
-            let title = try #require(labels.first { $0.text == "Settings" })
-            #expect(title.font.pointSize > 26)
-            for label in labels where label.superview is UIStackView && label.bounds.width > 0 {
-                let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
-                #expect(label.bounds.height + 2 >= needed.height, "Clipped: \(label.text ?? "")")
-            }
-            panel.startScanning(focusing: "Menu Scan Mode")
-            panel.primaryActivate()
-            #expect(panel.switchScanner.items.count == 3) // Timed, Step with Switch 2, Done.
-            try capture(panel, name: "Dynamic-settings-choices-\(Int(size.width))")
-            panel.stopScanning()
         }
     }
 

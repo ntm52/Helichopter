@@ -143,8 +143,9 @@ struct WindowSizeTests {
     }
 
     @Test func settingsPanelFitsEveryWindowSize() throws {
-        for size in Self.sizes {
-            let screen = SettingsViewController()
+        let pages: [SettingsPage] = [.menu] + SettingsCategory.allCases.map { .category($0) }
+        for size in Self.sizes { for page in pages {
+            let screen = SettingsViewController(page: page)
             screen.view.frame = CGRect(origin: .zero, size: size)
             let panel = try #require(screen.panel)
             panel.layoutIfNeeded()
@@ -157,6 +158,6 @@ struct WindowSizeTests {
                 #expect(frame.minX >= -0.5 && frame.maxX <= size.width + 0.5,
                         "Settings at \(size): \(control.accessibilityLabel ?? "\(type(of: control))") off screen")
             }
-        }
+        } }
     }
 }

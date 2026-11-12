@@ -1,17 +1,96 @@
 import UIKit
 
+// MARK: - Pages
+
+/// The groups Settings is split into. Each has its own page, opened from the menu.
+enum SettingsCategory: CaseIterable {
+    case difficulty, comfort, controls, colours, sound, caregiver
+
+    var title: String {
+        switch self {
+        case .difficulty: return "Difficulty"
+        case .comfort: return "Comfort"
+        case .controls: return "Controls and Switches"
+        case .colours: return "Colours"
+        case .sound: return "Sound"
+        case .caregiver: return "Caregiver"
+        }
+    }
+
+    /// What is on the page, shown under the title and read as the hint.
+    var detail: String {
+        switch self {
+        case .difficulty: return "Presets, gap size, pipe speed, and hitbox"
+        case .comfort: return "No-Fail, Calm Mode, outline, and score"
+        case .controls: return "Flying, menu scanning, and pausing"
+        case .colours: return "Helicopter and pipe colours"
+        case .sound: return "Sound effects and music"
+        case .caregiver: return "Lock settings"
+        }
+    }
+
+    /// The SF Symbol on the category's card. Decoration only.
+    var symbolName: String {
+        switch self {
+        case .difficulty: return "speedometer"
+        case .comfort: return "heart.fill"
+        case .controls: return "hand.tap.fill"
+        case .colours: return "paintpalette.fill"
+        case .sound: return "speaker.wave.2.fill"
+        case .caregiver: return "lock.fill"
+        }
+    }
+}
+
+/// What a Settings panel shows: the menu of categories, or one category.
+enum SettingsPage: Equatable {
+    case menu
+    case category(SettingsCategory)
+
+    var category: SettingsCategory? {
+        if case .category(let category) = self { return category }
+        return nil
+    }
+}
+
 // MARK: - SettingsPanelView
-// The scrolling list of settings shown by SettingsViewController. Rows are built in
-// SettingsRows.swift; the switch-friendly adjustment page in SettingsAdjustmentPanel.swift.
+// One page of Settings, shown by SettingsViewController: the menu of categories, or a
+// category's settings. Rows are built in SettingsRows.swift; the switch-friendly
+// adjustment page in SettingsAdjustmentPanel.swift.
 
 final class SettingsPanelView: ScrollingPanelView {
 
-    override class var title: String { "Settings" }
+    let page: SettingsPage
+
+    init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil, page: SettingsPage) {
+        self.page = page
+        super.init(frame: frame, theme: theme, fontTraits: fontTraits)
+    }
+
+    /// The menu of categories.
+    required init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil) {
+        page = .menu
+        super.init(frame: frame, theme: theme, fontTraits: fontTraits)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var title: String { page.category?.title ?? "Settings" }
+    override var backHint: String { page == .menu ? "Goes to the home screen" : "Goes back to Settings" }
+
+    static let lockedMessage = "Locked by a caregiver. To change these, turn off Lock Settings on the Caregiver page."
+
+    /// Opens a category's page.
+    var onOpenCategory: ((SettingsCategory) -> Void)?
 
     var adjustmentPanel: UIView?
     var adjustmentTargets: [NSObject] = []
     var returnControlLabel: String?
     var paletteViews: [UIView] = []
+    /// Long explanations, by the name of the control whose page shows them.
+    var infoPages: [String: String] = [:]
+    /// The buttons of each list of choices, by the list's name.
+    var choiceGroups: [String: [ChoiceButton]] = [:]
 
     /// Opens the Hangar, where the menu theme is now chosen.
     var onOpenHangar: (() -> Void)?
@@ -24,9 +103,9 @@ final class SettingsPanelView: ScrollingPanelView {
 
     override var focusedSetting: String? { returnControlLabel ?? super.focusedSetting }
 
-    /// Sliders and segmented controls open the adjustment page instead of changing directly.
+    /// Sliders open the adjustment page instead of changing directly.
     override func activate(_ control: UIControl) {
-        if control is UISlider || control is UISegmentedControl {
+        if control is UISlider {
             showAdjustment(for: control)
         } else {
             super.activate(control)
@@ -36,8 +115,48 @@ final class SettingsPanelView: ScrollingPanelView {
     // MARK: - Sections
 
     override func buildSections() {
-        let gs = GameSettings.shared
+        guard let category = page.category else { return buildMenu() }
+        let locked = GameSettings.shared.isSettingsLocked && category != .caregiver
+        if locked {
+            noteRow(Self.lockedMessage)
+            // The note has a card of its own: the page's rows are dimmed, the note is not.
+            endCard()
+        }
+        let note = stack.arrangedSubviews
+        switch category {
+        case .difficulty: buildDifficulty()
+        case .comfort: buildComfort()
+        case .controls: buildControls()
+        case .colours: buildColours()
+        case .sound: buildSound()
+        case .caregiver: buildCaregiver()
+        }
+        // The page stays readable, and Back stays reachable, while preventing edits.
+        if locked { lock(stack.arrangedSubviews.filter { !note.contains($0) }) }
+    }
 
+    /// The menu: one card per category, then Reset and the About pages.
+    private func buildMenu() {
+        for category in SettingsCategory.allCases { appendToPage(categoryCard(category)) }
+
+        sectionHeader("Reset")
+        let reset = panelButton("Reset Settings", icon: "arrow.counterclockwise", target: self,
+                                action: #selector(showAdjustment(from:)))
+        reset.accessibilityLabel = "Reset Settings"
+        appendToPage(reset)
+        if GameSettings.shared.isSettingsLocked { lock([reset]) }
+
+        // Informational only, so it stays available when Settings is locked.
+        sectionHeader("About")
+        for title in ["Privacy Policy", "Acknowledgements"] {
+            let button = panelButton(title, target: self, action: #selector(showAdjustment(from:)))
+            button.accessibilityLabel = title
+            appendToPage(button)
+        }
+    }
+
+    private func buildDifficulty() {
+        let gs = GameSettings.shared
         sectionHeader("Difficulty Preset")
         presetButtons()
 
@@ -68,14 +187,17 @@ final class SettingsPanelView: ScrollingPanelView {
 
         sectionHeader("Motion")
         sliderRow("Background Scroll",
-                  detail: "Speed of the sky behind the game — independent of pipe speed",
+                  detail: "How fast the sky moves behind the game",
+                  more: "Speed of the sky behind the game — independent of pipe speed",
                   lo: "Still", hi: "Fast",
                   min: 0, max: 200,
                   value: Float(gs.backgroundScrollSpeed)) { v in
             gs.backgroundScrollSpeed = Double(v)
         }
+    }
 
-        sectionHeader("Comfort")
+    private func buildComfort() {
+        let gs = GameSettings.shared
         toggleRow("No-Fail Mode",
                   detail: "Helicopter passes through pipes — no game over",
                   isOn: gs.noFailMode) { v in gs.noFailMode = v }
@@ -86,20 +208,25 @@ final class SettingsPanelView: ScrollingPanelView {
                   detail: "Black and white contrast marker around the helicopter",
                   isOn: gs.helicopterOutline) { v in gs.helicopterOutline = v }
         toggleRow("Hide Game While Paused",
-                  detail: "Use a solid background behind the pause menu to reduce distractions",
+                  detail: "A plain background behind the pause menu",
+                  hint: "Use a solid background behind the pause menu to reduce distractions",
                   isOn: gs.hideGameWhilePaused) { v in gs.hideGameWhilePaused = v }
         toggleRow("Show Score",
-                  detail: "Display current and best scores during play and at the end of a run",
+                  detail: "Your score and best score, in play and after",
+                  hint: "Display current and best scores during play and at the end of a run",
                   isOn: gs.showScore) { v in gs.showScore = v }
+    }
 
-        sectionHeader("Switch Access")
+    private func buildControls() {
+        let gs = GameSettings.shared
+        sectionHeader("Menu Scanning")
         toggleRow("Auto-Scan Menus",
                   detail: "Menus start scanning as soon as they open. When off, your first switch press starts scanning.",
                   isOn: gs.scanningEnabled) { v in gs.scanningEnabled = v }
-        segmentedRow("Menu Scan Mode",
-                     detail: "Timed moves the highlight on a timer. Step with Switch 2 waits for your second switch to move it.",
-                     items: ["Timed", "Step with Switch 2"],
-                     selectedIndex: gs.scanScheme.rawValue) { idx in
+        choiceRow("Menu Scan Mode",
+                  detail: "Timed moves the highlight on a timer. Step with Switch 2 waits for your second switch to move it.",
+                  items: ["Timed", "Step with Switch 2"],
+                  selectedIndex: gs.scanScheme.rawValue) { idx in
             if let scheme = ScanScheme(rawValue: idx) { gs.scanScheme = scheme }
         }
         sliderRow("Scan Dwell Time",
@@ -109,43 +236,52 @@ final class SettingsPanelView: ScrollingPanelView {
                   value: Float(gs.scanDwellTime), seconds: true) { v in
             gs.scanDwellTime = TimeInterval(v)
         }
-        segmentedRow("In-Game Control",
-                     detail: "How you control the helicopter's altitude while playing",
-                     items: ["Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches"],
-                     selectedIndex: gs.controlScheme.rawValue) { idx in
+
+        sectionHeader("Flying")
+        choiceRow("In-Game Control",
+                  detail: "How you control the helicopter's altitude while playing",
+                  items: ["Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches"],
+                  selectedIndex: gs.controlScheme.rawValue) { idx in
             if let scheme = ControlScheme(rawValue: idx) { gs.controlScheme = scheme }
         }
         toggleRow("VoiceOver Direct Touch",
-                  detail: "With VoiceOver on, touching the lower half of the game flies the helicopter at once, with no double-tap. Turn off to fly with double-taps and VoiceOver actions instead.",
+                  detail: "With VoiceOver on, touch the lower half of the game to fly",
+                  more: "With VoiceOver on, touching the lower half of the game flies the helicopter at once, with no double-tap. Turn off to fly with double-taps and VoiceOver actions instead.",
                   isOn: gs.voiceOverDirectTouch) { v in gs.voiceOverDirectTouch = v }
 
+        sectionHeader("Pausing")
         toggleRow("Pause by Holding Switch",
-                  detail: "Hold the primary switch to pause in Tap to Flap, Hold to Hover, and Auto Hover. Turn off if a player pauses by accident; the Pause button still works. The secondary switch pauses Tap to Flap and Hold to Hover, and holding both switches pauses Up/Down Switches.",
+                  detail: "Hold the primary switch to pause the game",
+                  more: "Hold the primary switch to pause in Tap to Flap, Hold to Hover, and Auto Hover. Turn off if a player pauses by accident; the Pause button still works. The secondary switch pauses Tap to Flap and Hold to Hover, and holding both switches pauses Up/Down Switches.",
                   isOn: gs.holdToPauseEnabled) { v in gs.holdToPauseEnabled = v }
         sliderRow("Hold Switch to Pause",
-                  detail: "How long to hold the primary switch to pause. Release it before choosing a menu item.",
+                  detail: "How long to hold the primary switch to pause",
+                  more: "How long to hold the primary switch to pause. Release it before choosing a menu item.",
                   lo: "2 s", hi: "10 s",
                   min: 2, max: 10,
                   value: Float(gs.switchPauseHoldDuration), seconds: true) { v in
             gs.switchPauseHoldDuration = TimeInterval(v)
         }
+    }
+
+    private func buildColours() {
+        sectionHeader("Colour Accessibility")
+        paletteRow()
 
         // The theme is chosen in the Hangar; this points players who look for it here.
         sectionHeader("Menu Theme")
-        let hangar = plainButton(Self.hangarPointerTitle, target: self,
+        // No icon at accessibility text sizes: the long title needs the width.
+        let large = (fontTraits ?? traitCollection).preferredContentSizeCategory.isAccessibilityCategory
+        let hangar = panelButton(Self.hangarPointerTitle, icon: large ? nil : "paintbrush.fill", target: self,
                                  action: #selector(openHangar))
         hangar.accessibilityLabel = Self.hangarPointerTitle
         hangar.accessibilityHint = "Opens the Hangar"
         // Voice Control users can say the short name.
         hangar.accessibilityUserInputLabels = ["Menu Theme", Self.hangarPointerTitle]
-        hangar.titleLabel?.numberOfLines = 0
-        hangar.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
-        stack.addArrangedSubview(hangar)
+        appendToPage(hangar)
+    }
 
-        sectionHeader("Colour Accessibility")
-        paletteRow()
-
-        sectionHeader("Audio")
+    private func buildSound() {
         toggleRow("Sound Effects",
                   detail: "Play sounds during the game",
                   isOn: UserDefaults.standard.bool(for: .isSoundEffectsOn)) { v in
@@ -156,34 +292,15 @@ final class SettingsPanelView: ScrollingPanelView {
                   isOn: UserDefaults.standard.bool(for: .isMusicOn)) { v in
             UserDefaults.standard.set(v, for: .isMusicOn)
         }
+    }
 
-        sectionHeader("Reset")
-        let reset = plainButton("Reset Settings", target: self,
-                                action: #selector(showAdjustment(from:)))
-        reset.accessibilityLabel = "Reset Settings"
-        reset.titleLabel?.numberOfLines = 0
-        reset.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
-        stack.addArrangedSubview(reset)
-
-        if gs.isSettingsLocked {
-            // Keep the panel and Back reachable, while preventing accidental edits.
-            lock(stack.arrangedSubviews)
-        }
-        sectionHeader("Caregiver")
+    private func buildCaregiver() {
+        let gs = GameSettings.shared
         toggleRow("Lock Settings",
-                  detail: "Prevents changes to the controls above. Turn this off to edit settings.",
+                  detail: "Prevents changes to every other setting and to the Hangar. Turn this off to edit them.",
                   isOn: gs.isSettingsLocked) { [weak self] v in
             gs.isSettingsLocked = v
             self?.onThemeChanged?()
-        }
-
-        // Informational only, so it stays available when Settings is locked.
-        sectionHeader("About")
-        for title in ["Privacy Policy", "Acknowledgements"] {
-            let button = plainButton(title, target: self, action: #selector(showAdjustment(from:)))
-            button.accessibilityLabel = title
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minButtonHeight).isActive = true
-            stack.addArrangedSubview(button)
         }
     }
 

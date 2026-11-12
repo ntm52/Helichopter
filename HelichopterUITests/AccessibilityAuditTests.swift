@@ -90,22 +90,46 @@ final class AccessibilityAuditTests: XCTestCase {
 
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5), "Back must be read as Back, without its arrow")
-        try audit("Settings, top")
-        let pointer = app.buttons.matching(NSPredicate(format: "label == %@", "Menu Theme: Night Sky. Change it in the Hangar"))
-        var sawPointer = pointer.count == 1
-        // A finger tap leaves a slider alone; only assistive technology opens its larger
-        // buttons (covered by AssistiveTechTreeTests, since UI tests can only touch).
-        let gap = app.sliders["Gap Size"]
-        let value = gap.value as? String
-        gap.tap()
-        XCTAssertFalse(app.buttons["Done"].waitForExistence(timeout: 2), "A finger tap must not open the slider page")
-        XCTAssertEqual(gap.value as? String, value)
-        for part in ["middle", "lower", "bottom"] {
-            drag(from: 0.85, to: 0.25)
-            try auditScrolled("Settings, \(part)")
-            sawPointer = sawPointer || pointer.count == 1
+        let reset = app.buttons["Reset Settings"]
+        XCTAssertTrue(reset.waitForExistence(timeout: 5))
+        try audit("Settings menu")
+
+        // Each category: a control that shows its page is open, and how many more
+        // screenfuls to audit below the first.
+        let pages: [(category: String, control: XCUIElement, screensBelow: Int)] = [
+            ("Difficulty", app.buttons["Gentle"], 1),
+            ("Comfort", app.switches["Calm Mode"], 0),
+            ("Controls and Switches", app.buttons["Timed"], 2),
+            ("Colours", app.buttons["Default"], 0),
+            ("Sound", app.switches["Music"], 0),
+            ("Caregiver", app.switches["Lock Settings"], 0)
+        ]
+        for page in pages {
+            app.buttons[page.category].tap()
+            XCTAssertTrue(page.control.waitForExistence(timeout: 5), "\(page.category) did not open")
+            XCTAssertFalse(reset.exists, "\(page.category) is a page of its own")
+            try audit("Settings, \(page.category)")
+            if page.category == "Difficulty" {
+                // A finger tap leaves a slider alone; only assistive technology opens its larger
+                // buttons (covered by AssistiveTechTreeTests, since UI tests can only touch).
+                let gap = app.sliders["Gap Size"]
+                let value = gap.value as? String
+                gap.tap()
+                XCTAssertFalse(app.buttons["Done"].waitForExistence(timeout: 2), "A finger tap must not open the slider page")
+                XCTAssertEqual(gap.value as? String, value)
+            }
+            if page.category == "Colours" {
+                let pointer = app.buttons.matching(NSPredicate(format: "label == %@", "Menu Theme: Night Sky. Change it in the Hangar"))
+                XCTAssertEqual(pointer.count, 1, "Settings points to the Hangar for the menu theme")
+            }
+            for part in 0..<page.screensBelow {
+                drag(from: 0.85, to: 0.25)
+                try auditScrolled("Settings, \(page.category), part \(part + 2)")
+            }
+            app.buttons["Back"].tap()
+            XCTAssertTrue(reset.waitForExistence(timeout: 5), "Back from \(page.category) returns to the Settings menu")
         }
-        XCTAssertTrue(sawPointer, "Settings points to the Hangar for the menu theme")
+        if !app.buttons["Acknowledgements"].isHittable { drag(from: 0.85, to: 0.25) }
         app.buttons["Acknowledgements"].tap()
         try audit("Acknowledgements")
         app.buttons["Done"].tap()

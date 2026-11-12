@@ -316,7 +316,7 @@ struct HangarTests {
         try await withSettings {
             GameSettings.shared.scanScheme = .twoSwitch
             GameSettings.shared.selectedThemeID = GameSettings.themeNeonNight.id
-            let settings = SettingsViewController()
+            let settings = SettingsViewController(page: .category(.colours))
             settings.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
             settings.screenDidAppear()
             defer { settings.screenWillDisappear() }
@@ -327,9 +327,9 @@ struct HangarTests {
             settings.switchPrimaryBegan()
             let panel = try #require(settings.panel)
             #expect(panel.switchScanner.items.contains { $0.accessibilityScanLabel == title })
-            // Settings no longer holds a theme control.
-            #expect(!descendants(panel, UISegmentedControl.self).contains { $0.accessibilityLabel == "Menu Theme" })
-            #expect(descendants(panel, UILabel.self).contains { ($0.text ?? "").contains("Independent of the menu theme in the Hangar") })
+            // Settings holds no theme control of its own.
+            #expect(panel.choiceGroups["Menu Theme"] == nil)
+            #expect(descendants(panel, UILabel.self).contains { ($0.text ?? "").contains("The menu theme is separate") })
             for _ in panel.switchScanner.items where panel.focusedSetting != title { settings.switchSecondaryBegan() }
             #expect(panel.focusedSetting == title)
             settings.switchPrimaryBegan()
@@ -344,7 +344,7 @@ struct HangarTests {
     @Test func settingsPointerIsDisabledWhenLocked() async throws {
         try await withSettings {
             GameSettings.shared.isSettingsLocked = true
-            let settings = SettingsViewController()
+            let settings = SettingsViewController(page: .category(.colours))
             settings.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
             settings.loadViewIfNeeded()
             let pointer = try #require(descendants(settings.panel, UIButton.self).first {
@@ -394,15 +394,27 @@ struct HangarTests {
         }
     }
 
-    @Test func standardTextShowsCardsSideBySide() async throws {
-        await withSettings {
+    /// Looks share a row. Themes are a column, picture before the name: three names do
+    /// not fit side by side on a phone ("Parchment" broke inside the word).
+    @Test func standardTextShowsLooksSideBySideAndThemesInAColumn() async throws {
+        try await withSettings {
             let traits = UITraitCollection(preferredContentSizeCategory: .large)
             let panel = HangarPanelView(frame: CGRect(x: 0, y: 0, width: 390, height: 844),
                                         theme: GameSettings.shared.selectedTheme, fontTraits: traits)
             panel.layoutIfNeeded()
-            let cards = panel.themeCards
-            #expect(Set(cards.map { $0.frame.minY }).count == 1)
-            #expect(Set(cards.map { $0.frame.height }).count == 1)
+            for cards in [panel.helicopterCards, panel.pipeCards] {
+                #expect(cards.count == 2 && Set(cards.map { $0.frame.minY }).count == 1)
+                #expect(Set(cards.map { $0.frame.height }).count == 1)
+            }
+            let themes = panel.themeCards
+            #expect(Set(themes.map { $0.frame.minY }).count == themes.count)
+            #expect(Set(themes.map { $0.frame.height }).count == 1)
+            #expect(themes.allSatisfy { $0.frame.width == themes[0].frame.width && $0.frame.height >= Layout.minButtonHeight })
+            // No name breaks: each is on one line.
+            for card in themes {
+                let name = try #require(descendants(card, UILabel.self).first { $0.text == card.accessibilityLabel })
+                #expect(name.bounds.height < name.font.lineHeight * 1.5)
+            }
         }
     }
 }

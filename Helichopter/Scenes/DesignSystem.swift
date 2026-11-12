@@ -280,3 +280,105 @@ class ArcadeButton: DynamicTextButton {
         CATransaction.commit()
     }
 }
+
+/// The two layers behind a card: a solid ink lower edge and a face with an ink outline.
+/// The owning view keeps its content above `Stroke.edge` and calls `layout(in:)`.
+struct SurfaceLayers {
+    private let edge = CALayer()
+    private let face = CALayer()
+
+    func install(in view: UIView, radius: CGFloat = Radius.card) {
+        view.layer.cornerRadius = radius
+        for layer in [face, edge] {
+            layer.cornerRadius = radius
+            view.layer.insertSublayer(layer, at: 0)
+        }
+    }
+
+    func layout(in bounds: CGRect) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        edge.frame = bounds
+        face.frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bounds.height - Stroke.edge))
+        CATransaction.commit()
+    }
+
+    func colour(fill: UIColor, edge edgeColour: UIColor, outline: UIColor, width: CGFloat) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        edge.backgroundColor = edgeColour.cgColor
+        face.backgroundColor = fill.cgColor
+        face.borderColor = outline.cgColor
+        face.borderWidth = width
+        CATransaction.commit()
+    }
+}
+
+/// A card: a rounded theme surface with an ink outline and a solid lower edge. Rows and
+/// other content go in `content`, which stays inside the outline and above the edge.
+final class SurfaceView: UIView {
+    let content = UIStackView()
+    private let layers = SurfaceLayers()
+
+    init(theme: UITheme) {
+        super.init(frame: .zero)
+        // The view's own colour matches the face, for anything that reads the view tree.
+        backgroundColor = theme.cardColor
+        layers.install(in: self)
+        layers.colour(fill: theme.cardColor, edge: theme.inkColor, outline: theme.inkColor, width: Stroke.outline)
+        content.axis = .vertical
+        content.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(content)
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: topAnchor, constant: Stroke.outline),
+            content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Stroke.outline - Stroke.edge),
+            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Stroke.outline),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Stroke.outline)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layers.layout(in: bounds)
+    }
+}
+
+/// A card that is chosen by pressing it: a theme, a helicopter, or a set of pipes. The
+/// chosen card has a thicker outline in the theme's accent; hosts also say so in words.
+final class CardButton: UIButton {
+    private let theme: UITheme
+    private let layers = SurfaceLayers()
+    /// How far content must stay from the bottom, to clear the lower edge.
+    static let bottomInset = Stroke.edge
+
+    var isChosen = false {
+        didSet { applyColours() }
+    }
+
+    init(theme: UITheme) {
+        self.theme = theme
+        super.init(frame: .zero)
+        backgroundColor = theme.cardColor
+        layers.install(in: self)
+        applyColours()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func applyColours() {
+        layers.colour(fill: theme.cardColor, edge: theme.inkColor,
+                      outline: isChosen ? theme.accentColor : theme.inkColor,
+                      width: isChosen ? Stroke.focus : Stroke.outline)
+    }
+
+    override var isHighlighted: Bool {
+        didSet { subviews.forEach { $0.alpha = isHighlighted ? 0.6 : 1 } }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layers.layout(in: bounds)
+    }
+}
