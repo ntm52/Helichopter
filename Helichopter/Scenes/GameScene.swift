@@ -62,9 +62,6 @@ class GameScene: SKScene {
         let theme = GameSettings.shared.selectedTheme
         backgroundColor = theme.sceneBackgroundColor
         view.backgroundColor = theme.sceneBackgroundColor
-        // Themes with a plain backdrop hide the starfield so the scene colour shows.
-        // Tinting would not work: SpriteKit multiplies the tint by the dark texture.
-        sceneAdapter?.infiniteBackgroundNode?.isHidden = theme.backgroundSpriteTintColor != nil
     }
 
     override func willMove(from view: SKView) {

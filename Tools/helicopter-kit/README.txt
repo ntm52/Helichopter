@@ -14,6 +14,12 @@ own frame prefix:
     classic    Helicopter Player.spriteatlas     r_player1..60    the art as drawn
     two-tone   Helicopter Two-Tone.spriteatlas   r_twotone1..60   dark underside (2.2)
 
+Every skin gets the cartoon look (cartoonify in the script): thicker dark
+lines and stronger colour, with wide light rotor blades. LINE_GROWTH and
+COLOUR_BOOST at the top of the script set its strength. After running the
+script, copy frame 1 of the classic atlas over the three LaunchHelicopter
+images and rerun Tools/icon-kit/make_icon.py, so launch and icon match.
+
 Atlases live inside Assets.xcassets, so no target or scene-file changes are
 needed. To add a helicopter: add a painter and a SKINS entry here, run the
 script, then add the atlas name and frame prefix to CosmeticsCatalog (Utils/Cosmetics.swift)

@@ -7,7 +7,6 @@ class GameSceneAdapter: NSObject {
 
     var gravity: CGFloat { GameSettings.shared.gravity }
     let playerSize = CGSize(width: 100, height: 100)
-    let backgroundResourceName = "Background"
     let floorDistance: CGFloat = 0
 
     let isSoundEffectsOn: Bool = {
@@ -178,18 +177,20 @@ class GameSceneAdapter: NSObject {
 
         // Use backgroundScrollSpeed — independent of gameplay difficulty — so the
         // parallax can be slowed or stopped without making the game easier.
+        // Each theme scrolls its own picture: stars, or Parchment's sketched sky.
+        let backgroundName = GameSettings.shared.selectedTheme.gameBackgroundName
         infiniteBackgroundNode = InfiniteSpriteScrollNode(
-            fileName: backgroundResourceName,
+            fileName: backgroundName,
             scaleFactor: CGPoint(x: scaleFactor, y: scaleFactor),
             speed: GameSettings.shared.backgroundScrollSpeed,
             coverWidth: scene.size.width
         )
         infiniteBackgroundNode!.zPosition = 0
 
-        // Pin the tile's top edge to the scene top so the starry portion of the texture
-        // fills the play area. The tile is taller than the scene, keeping the plain dark
-        // bottom of the image below the visible area.
-        let tileHeight = SKTexture(imageNamed: backgroundResourceName).size().height * CGFloat(scaleFactor)
+        // Pin the tile's top edge to the scene top so the upper part of the picture
+        // fills the play area. The tile is taller than the scene, keeping the bottom of
+        // the image below the visible area.
+        let tileHeight = SKTexture(imageNamed: backgroundName).size().height * CGFloat(scaleFactor)
         infiniteBackgroundNode!.position.y = scene.size.height - tileHeight
 
         scene.addChild(infiniteBackgroundNode!)

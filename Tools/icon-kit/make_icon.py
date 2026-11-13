@@ -12,6 +12,9 @@ import json
 import sys
 from PIL import Image, ImageDraw, ImageFilter
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'helicopter-kit'))
+from make_frames import prepared_body  # noqa: E402  (the same cartoon look as the game)
+
 ROOT = Path(__file__).resolve().parent
 REPO = ROOT.parents[1]
 BODY = REPO / 'Tools/helicopter-kit/helicopter_body.png'
@@ -43,8 +46,7 @@ def sky(size):
 
 def helicopter():
     """The body with one bold, level rotor blade: a hairline rotor vanishes at small sizes."""
-    body = Image.open(BODY).convert('RGBA')
-    body.putalpha(body.getchannel('A').point(lambda a: 0 if a <= 5 else a))
+    body = prepared_body()
     w, h = body.size
     cx, cy = HUB[0] * w, HUB[1] * h
     radius, half, line = ROTOR_RADIUS * w, ROTOR_THICKNESS * w / 2, OUTLINE * w

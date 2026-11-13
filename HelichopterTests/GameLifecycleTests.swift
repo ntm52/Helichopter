@@ -646,16 +646,27 @@ struct GameLifecycleTests {
         }
     }
 
-    /// The cream theme hides the starfield so the plain scene colour shows; others keep it.
-    @Test func plainBackdropThemeHidesStarfield() throws {
+    /// Every theme has a background that moves behind the pipes: the starfield, or
+    /// Parchment's own sketched sky on its cream page.
+    @Test func everyThemeScrollsItsOwnBackground() throws {
         try withSettings {
             for theme in GameSettings.allThemes {
                 GameSettings.shared.selectedThemeID = theme.id
                 let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
                 let scene = try #require(GameScene(fileNamed: "GameScene"))
                 view.presentScene(scene)
-                let starfield = try #require(scene.sceneAdapter?.infiniteBackgroundNode)
-                #expect(starfield.isHidden == (theme.backgroundSpriteTintColor != nil))
+                let background = try #require(scene.sceneAdapter?.infiniteBackgroundNode)
+                #expect(!background.isHidden)
+                #expect(UIImage(named: theme.gameBackgroundName) != nil, "\(theme.name) has no \(theme.gameBackgroundName) image")
+                #expect(theme.gameBackgroundName == (theme.id == "parchment" ? "BackgroundParchment" : "Background"))
+                // The same size as the starfield, so it is placed and repeated the same way.
+                #expect(UIImage(named: theme.gameBackgroundName)?.size == UIImage(named: "Background")?.size)
+                let tile = try #require(background.tiles.first as? SKSpriteNode)
+                #expect(tile.texture?.size() == UIImage(named: theme.gameBackgroundName)?.size)
+                let start = background.background.position.x
+                background.update(1)
+                background.update(1.1)
+                #expect(background.background.position.x < start || UIAccessibility.isReduceMotionEnabled || GameSettings.shared.backgroundScrollSpeed == 0)
                 view.presentScene(nil)
             }
         }

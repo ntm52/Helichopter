@@ -1,6 +1,6 @@
 # Plan 03 — UI polish: an open, finished-looking app
 
-**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, 4b, and 5 done 2026-11-12. **Next: Stage 6 (Guide).**
+**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, 4b, 5, and 5b (two art requests) done 2026-11-12. **Next: Stage 6 (Guide).**
 **Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
 **Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
 **Release:** the 2.2 skins are held and ship together with this plan in one release (owner decision 2026-11-11).
@@ -173,6 +173,14 @@ What was built:
 - Score and Best as two clear chips; Pause as a button with an icon, still large, at the trailing edge. Remove the stray full stop.
 - Pause and Round Over as a centred card with a title, the score shown large on Round Over, one primary button (Resume or Play Again) and secondary ones.
 - No change to `GameSceneHUDDelegate` or to what the overlay is told.
+
+### Stage 5b — Owner's art requests (done 2026-11-12)
+
+Asked for on 2026-11-12 after looking through Stages 0 to 5.
+
+- [x] **Parchment has a background that moves in play.** New image `BackgroundParchment` (the cream page with faint sketched clouds, dashed flight paths, and birds), drawn by `Tools/background-kit/make_parchment.py`. It is the starfield's size and repeats without a seam, so the game scrolls it the same way; Background Scroll and Reduce Motion apply as before. `UITheme.gameBackgroundName` names each theme's picture. Marks are kept faint (the darkest is about 1.4:1 against the page) so pipes and the helicopter stand out as before. Parchment's menus are still the plain page.
+- [x] **The helicopter is slightly more cartoony.** `make_frames.py` now runs every skin through `cartoonify`: dark lines 7 source pixels thicker (growing inward, so the silhouette, size, and hitbox are unchanged) and colour 25% stronger. Rotor blades are wide and light with an ink outline; the old hairline blades disappeared on the night sky. Both helicopters, the launch picture, and the app icon were rebuilt from it. `LINE_GROWTH` and `COLOUR_BOOST` at the top of the script set the strength.
+- [x] **Owner approved both** from simulator pictures, 2026-11-12.
 
 ### Stage 6 — Guide
 

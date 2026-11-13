@@ -8,7 +8,7 @@ from pathlib import Path
 import json
 import math
 import sys
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'output'
@@ -17,6 +17,38 @@ FRAMES = 60
 HUB = (0.608, 0.435)
 RADIUS = 0.32
 TILT = 0.13
+
+# The cartoon look (Plan 03, 2026-11-12): every dark line is LINE_GROWTH pixels thicker
+# and colours are a little stronger, to match the app's bold outlines. Change these two
+# numbers to make it stronger or weaker; 1 and 1.0 give the art exactly as drawn.
+LINE_GROWTH = 7
+COLOUR_BOOST = 1.25
+INK = (0x1B, 0x1F, 0x2A)
+BLADE_FILL = '#E8EDF5'
+# Half-widths of a rotor blade at the hub and at the tip, and its outline, in source pixels.
+BLADE_ROOT, BLADE_TIP, BLADE_OUTLINE = 44, 66, 5
+
+def cartoonify(body):
+    """Thicken the outline and inner lines and strengthen colour. Alpha is untouched, so
+    the silhouette, crop, and hitbox stay exactly as drawn: the outer line grows inward."""
+    alpha = body.getchannel('A')
+    flat = Image.new('RGB', body.size, INK)
+    flat.paste(body.convert('RGB'), mask=alpha)
+    # Each pixel takes the darkest colour near it, which widens every dark line.
+    bold = flat.filter(ImageFilter.MinFilter(LINE_GROWTH)).filter(ImageFilter.GaussianBlur(0.8))
+    bold = ImageEnhance.Color(bold).enhance(COLOUR_BOOST).convert('RGBA')
+    bold.putalpha(alpha)
+    return bold
+
+def prepared_body(painter=None):
+    """The source art, cleaned, repainted for a skin if asked, then given the cartoon look.
+    The app icon (Tools/icon-kit) uses this too, so it always matches the game."""
+    body = Image.open(ROOT / 'helicopter_body.png').convert('RGBA')
+    # Ignore near-transparent export noise so it cannot change the shared crop.
+    body.putalpha(body.getchannel('A').point(lambda alpha: 0 if alpha <= 5 else alpha))
+    if painter is not None:
+        body = painter(body)
+    return cartoonify(body)
 
 def paint_two_tone(body):
     """Darken the body panels below the waistline. Glass, outlines, and alpha are untouched."""
@@ -59,11 +91,7 @@ def build(key):
     global OUT
     atlas_name, prefix, painter = SKINS[key]
     OUT = ROOT / 'output' if painter is None else ROOT / 'output' / key
-    body = Image.open(ROOT / 'helicopter_body.png').convert('RGBA')
-    # Ignore near-transparent export noise so it cannot change the shared crop.
-    body.putalpha(body.getchannel('A').point(lambda alpha: 0 if alpha <= 5 else alpha))
-    if painter is not None:
-        body = painter(body)
+    body = prepared_body(painter)
     w, h = body.size
     cx, cy = HUB[0] * w, HUB[1] * h
     radius = RADIUS * w
@@ -72,7 +100,7 @@ def build(key):
         raise ValueError('Source image is empty')
     # One common crop for every frame; never center frames independently.
     left = math.floor(min(box[0], cx - radius - 8))
-    top = math.floor(min(box[1], cy - radius * TILT - 8))
+    top = math.floor(min(box[1], cy - (radius + BLADE_TIP) * TILT - 8))
     right = math.ceil(max(box[2], cx + radius + 8))
     bottom = math.ceil(box[3])
     crop = (left, top, right, bottom)
@@ -91,10 +119,12 @@ def build(key):
             def project(radial, transverse):
                 return (cx + radial * math.cos(a) - transverse * math.sin(a),
                         cy + (radial * math.sin(a) + transverse * math.cos(a)) * TILT)
-            points = [project(7, -11), project(radius, -16),
-                      project(radius, 16), project(7, 11)]
-            draw.polygon(points, fill='#697380', outline='#303641', width=3)
-        draw.ellipse((cx-15, cy-10, cx+15, cy+10), fill='#515965', outline='#303641', width=3)
+            # Wide, light blades with an ink outline: the old hairline blades vanished
+            # against the night sky.
+            points = [project(7, -BLADE_ROOT), project(radius, -BLADE_TIP),
+                      project(radius, BLADE_TIP), project(7, BLADE_ROOT)]
+            draw.polygon(points, fill=BLADE_FILL, outline=INK, width=BLADE_OUTLINE)
+        draw.ellipse((cx-22, cy-15, cx+22, cy+15), fill='#515965', outline=INK, width=8)
         cropped = frame.crop(crop)
         images = []
         imageset = atlas / f'{prefix}{i + 1}.imageset'

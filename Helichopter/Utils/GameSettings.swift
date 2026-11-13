@@ -116,6 +116,8 @@ struct UITheme {
     /// `sceneBackgroundColor` shows, and menus draw no sky image.
     /// Use for light themes where the default dark sky would make text unreadable.
     let backgroundSpriteTintColor: UIColor?
+    /// The image the game scrolls behind the pipes: the starfield, or a theme's own.
+    let gameBackgroundName: String
     /// When non-nil, overrides the ColorPalette's helicopterColor for this theme.
     /// Use when the selected palette's helicopter color clashes with the background
     /// (e.g. gold on cream is low-contrast; warm red reads well on parchment).
@@ -153,6 +155,7 @@ extension GameSettings {
         onFocusColor:              UIColor(hex: 0x050814),
         titleTextColor:            UIColor(red: 0.416, green: 0.675, blue: 1.000, alpha: 1),
         backgroundSpriteTintColor: nil,
+        gameBackgroundName:        "Background",
         helicopterTintColor:       nil
     )
 
@@ -174,6 +177,7 @@ extension GameSettings {
         onFocusColor:              .white,
         titleTextColor:            UIColor(red: 0.102, green: 0.165, blue: 0.341, alpha: 1),
         backgroundSpriteTintColor: UIColor(red: 0.949, green: 0.925, blue: 0.847, alpha: 1),
+        gameBackgroundName:        "BackgroundParchment",
         helicopterTintColor:       UIColor(red: 0.800, green: 0.149, blue: 0.149, alpha: 1)
     )
 
@@ -193,6 +197,7 @@ extension GameSettings {
         onFocusColor:              UIColor(hex: 0x010506),
         titleTextColor:            UIColor(red: 0.251, green: 0.820, blue: 0.914, alpha: 1),
         backgroundSpriteTintColor: nil,
+        gameBackgroundName:        "Background",
         helicopterTintColor:       nil
     )
 
