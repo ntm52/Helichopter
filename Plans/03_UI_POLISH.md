@@ -1,6 +1,6 @@
 # Plan 03 — UI polish: an open, finished-looking app
 
-**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, 4b, 5, and 5b (two art requests) done 2026-11-12. **Next: Stage 6 (Guide).**
+**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, 4b, 5, 5b (two art requests), and 6 done 2026-11-12. **Next: Stage 7 (Feedback and motion).**
 **Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
 **Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
 **Release:** the 2.2 skins are held and ship together with this plan in one release (owner decision 2026-11-11).
@@ -182,7 +182,16 @@ Asked for on 2026-11-12 after looking through Stages 0 to 5.
 - [x] **The helicopter is slightly more cartoony.** `make_frames.py` now runs every skin through `cartoonify`: dark lines 7 source pixels thicker (growing inward, so the silhouette, size, and hitbox are unchanged) and colour 25% stronger. Rotor blades are wide and light with an ink outline; the old hairline blades disappeared on the night sky. Both helicopters, the launch picture, and the app icon were rebuilt from it. `LINE_GROWTH` and `COLOUR_BOOST` at the top of the script set the strength.
 - [x] **Owner approved both** from simulator pictures, 2026-11-12.
 
-### Stage 6 — Guide
+### Stage 6 — Guide (done 2026-11-12)
+
+What was built:
+- **Card.** Each step's picture, heading, "Step 1 of 3" (accent text colour), and body are on one card (`MenuStackView.addTextCard()`, a `SurfaceView` with 16 pt padding; `addLabel(_:style:on:)` puts a label on it in the card's text colour). The buttons stay on the page below the card.
+- **Pictures** (`GuideViewController.picture(for:theme:compact:)`): step 1 is the player's chosen helicopter (a still frame with its empty margins cut away, `Cosmetic.helicopterPortraitImage()`), step 2 the SF Symbol `pause.circle.fill`, step 3 `button.programmable`, the symbols in the accent text colour. 120 pt tall, 80 pt at accessibility text sizes. Hidden from VoiceOver. No new art, so nothing to add to `ASSET_RIGHTS.md`.
+- **Buttons.** Next (Done on the last step) is the one primary button; Read this step aloud, Back, and Skip guide are secondary. Each has a picture (speaker, arrow or tick, chevron, house).
+- **Kept as it was:** every word of the guide, every spoken name and hint, and the order of choices (Read this step aloud, Next, Back, Skip guide), so the primary button is second in the column, not first.
+- **Checking by eye.** `ScreenSheetTests` now also draws the three guide steps (`guide1` to `guide3`).
+
+Original scope:
 
 - Text on a card so stars never show through it. One picture per step. Next is primary; Read aloud and Skip are secondary.
 

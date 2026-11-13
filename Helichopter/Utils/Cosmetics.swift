@@ -46,6 +46,29 @@ extension Cosmetic {
         return UIImage(cgImage: atlas.textureNamed(helicopterFrameName(index)).cgImage())
     }
 
+    /// The first rotor frame with the empty space around the helicopter cut away, for a
+    /// picture that should fill its place. The frames keep that space so the rotor fits.
+    func helicopterPortraitImage() -> UIImage {
+        let whole = helicopterImage()
+        guard let art = whole.cgImage else { return whole }
+        let width = art.width, height = art.height
+        var alpha = [UInt8](repeating: 0, count: width * height)
+        guard let context = CGContext(data: &alpha, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                                      space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue)
+        else { return whole }
+        context.draw(art, in: CGRect(x: 0, y: 0, width: width, height: height))
+        var minX = width, maxX = -1, minY = height, maxY = -1
+        for y in 0..<height {
+            for x in 0..<width where alpha[y * width + x] > 8 {
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        guard maxX >= minX, maxY >= minY,
+              let cut = art.cropping(to: CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1))
+        else { return whole }
+        return UIImage(cgImage: cut)
+    }
+
     // MARK: Pipe art
 
     var pipeTextureName: String { "pipe-\(assetName)" }

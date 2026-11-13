@@ -102,19 +102,31 @@ class MenuStackView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    /// A card in the column for running text, so the backdrop never shows through it.
+    /// Labels go on it with `addLabel(_:style:on:)`; buttons stay on the page below.
+    func addTextCard() -> SurfaceView {
+        let surface = SurfaceView(theme: theme)
+        surface.content.spacing = Spacing.m
+        surface.content.isLayoutMarginsRelativeArrangement = true
+        surface.content.layoutMargins = UIEdgeInsets(top: Spacing.l, left: Spacing.l, bottom: Spacing.l, right: Spacing.l)
+        stack.addArrangedSubview(surface)
+        return surface
+    }
+
+    /// `surface` is a card from `addTextCard()`; without one the label joins the column.
     @discardableResult
     func addLabel(_ text: String, style: TypeStyle, alignment: NSTextAlignment = .center,
-                  into label: UILabel = UILabel()) -> UILabel {
+                  into label: UILabel = UILabel(), on surface: SurfaceView? = nil) -> UILabel {
         label.text = text
         label.font = style.font(compatibleWith: traits)
         label.adjustsFontForContentSizeCategory = true
         label.numberOfLines = 0
         label.textAlignment = alignment
         // On a card, text is in the card's text colour; over the sky, the title colour.
-        label.textColor = card == nil ? theme.titleTextColor : theme.textColor
+        label.textColor = card == nil && surface == nil ? theme.titleTextColor : theme.textColor
         label.setContentCompressionResistancePriority(.required, for: .vertical)
         if style == .display { label.accessibilityTraits = .header }
-        stack.addArrangedSubview(label)
+        (surface?.content ?? stack).addArrangedSubview(label)
         return label
     }
 

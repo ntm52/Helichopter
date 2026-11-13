@@ -78,6 +78,31 @@ final class GuideViewController: MenuViewController {
         }
     }
 
+    /// The picture on the current step's card.
+    private(set) var picture: UIImageView?
+    static let pictureHeight: CGFloat = 120
+    static let compactPictureHeight: CGFloat = 80
+    /// The SF Symbols for the steps after the first, which shows the player's helicopter.
+    static let stepSymbols = [1: "pause.circle.fill", 2: "button.programmable"]
+
+    /// One picture per step: the helicopter for flying, a pause sign for pacing, a switch
+    /// for switches. Decoration only, and still; smaller when the text is very large.
+    static func picture(for page: Int, theme: UITheme, compact: Bool) -> UIImageView {
+        let height = compact ? compactPictureHeight : pictureHeight
+        let view = UIImageView()
+        if let symbol = stepSymbols[page] {
+            view.image = UIImage(systemName: symbol,
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: height * 0.55, weight: .heavy))
+            view.tintColor = theme.accentTextColor
+        } else {
+            view.image = GameSettings.shared.selectedHelicopterSkin.helicopterPortraitImage()
+        }
+        view.contentMode = .scaleAspectFit
+        view.isAccessibilityElement = false
+        view.heightAnchor.constraint(equalToConstant: height).isActive = true
+        return view
+    }
+
     override func buildMenu() {
         show(page: 0)
     }
@@ -94,25 +119,37 @@ final class GuideViewController: MenuViewController {
         menu.removeAll()
 
         let content = pages[page]
-        headingLabel = menu.addLabel(content.heading, style: .display, alignment: .natural)
-        menu.addLabel("Step \(page + 1) of \(pages.count)", style: .caption, alignment: .natural)
-        menu.addLabel(content.body, style: .body, alignment: .natural)
+        // The step's picture and words sit on a card, so the sky never shows through them.
+        let card = menu.addTextCard()
+        let picture = Self.picture(for: page, theme: menu.theme,
+                                   compact: traitCollection.preferredContentSizeCategory.isAccessibilityCategory)
+        card.content.addArrangedSubview(picture)
+        self.picture = picture
+        headingLabel = menu.addLabel(content.heading, style: .display, alignment: .natural, on: card)
+        let step = menu.addLabel("Step \(page + 1) of \(pages.count)", style: .caption, alignment: .natural, on: card)
+        step.textColor = menu.theme.accentTextColor
+        menu.addLabel(content.body, style: .body, alignment: .natural, on: card)
+        menu.stack.setCustomSpacing(Spacing.xl, after: card)
 
         let isLast = page == pages.count - 1
-        var items: [MenuItem] = [
+        // Next (or Done) is the one primary button; the scan order is unchanged.
+        var choices: [(item: MenuItem, kind: ButtonKind, icon: String)] = [
             // Switch users can hear the full instructions without navigating static text.
-            item("Read this step aloud", hint: "Reads this page with the menu scanner paused") { [weak self] in
+            (item("Read this step aloud", hint: "Reads this page with the menu scanner paused") { [weak self] in
                 self?.scanner.readInstructions(content.heading + ". " + content.body + " Press your switch to resume menu scanning.")
-            },
-            item(isLast ? "Done" : "Next", hint: isLast ? "Finishes the guide and goes to the home screen" : "Shows the next step") { [weak self] in
+            }, .secondary, "speaker.wave.2.fill"),
+            (item(isLast ? "Done" : "Next", hint: isLast ? "Finishes the guide and goes to the home screen" : "Shows the next step") { [weak self] in
                 isLast ? self?.finish() : self?.show(page: page + 1)
-            }
+            }, .primary, isLast ? "checkmark" : "arrow.right")
         ]
         if page > 0 {
-            items.append(item("Back", hint: "Shows the previous step") { [weak self] in self?.show(page: page - 1) })
+            choices.append((item("Back", hint: "Shows the previous step") { [weak self] in self?.show(page: page - 1) },
+                            .secondary, "chevron.left"))
         }
-        items.append(item("Skip guide", hint: "Goes to the home screen") { [weak self] in self?.finish() })
-        items.forEach { menu.addButton(for: $0) }
+        choices.append((item("Skip guide", hint: "Goes to the home screen") { [weak self] in self?.finish() },
+                        .secondary, "house.fill"))
+        choices.forEach { menu.addButton(for: $0.item, kind: $0.kind, icon: $0.icon) }
+        let items = choices.map(\.item)
         scanner.items = items
         if wasScanning { scanner.start() }
         if !isFirstBuild { ScreenChangeAnnouncer.post(headingLabel) }

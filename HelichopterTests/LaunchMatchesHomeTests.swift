@@ -17,6 +17,10 @@ import UIKit
     ]
 
     @Test func launchHelicopterSitsWhereHomeShowsTheMascot() throws {
+        // The launch picture is Night Sky's; compare it with Home in that theme, whatever is saved.
+        let savedTheme = GameSettings.shared.selectedThemeID
+        defer { GameSettings.shared.selectedThemeID = savedTheme }
+        GameSettings.shared.selectedThemeID = "nightSky"
         for screen in Self.screens {
             let frame = CGRect(origin: .zero, size: screen.size)
             let home = HomeViewController()

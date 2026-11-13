@@ -220,6 +220,8 @@ struct GameLifecycleTests {
     @Test func renderedGameplayBoundariesAcrossEveryThemeAndPalette() throws {
         try withSettings {
             let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+            // The boundary is the helicopter's outline, which a player may have turned off.
+            GameSettings.shared.helicopterOutline = true
             // Every helicopter and pipe look, in all 18 theme and palette combinations.
             for helicopter in CosmeticsCatalog.items(of: .helicopter) {
               for theme in GameSettings.allThemes {
@@ -307,8 +309,8 @@ struct GameLifecycleTests {
             if pixels[i] < 5 && pixels[i + 1] < 5 && pixels[i + 2] < 5 { black += 1 }
             if pixels[i] > 250 && pixels[i + 1] > 250 && pixels[i + 2] > 250 { white += 1 }
         }
-        #expect(black > width, "Opaque black boundary must survive SpriteKit rendering")
-        #expect(white > width, "Opaque white boundary must survive SpriteKit rendering")
+        #expect(black > width, "Opaque black boundary must survive SpriteKit rendering (\(type(of: node)), \(GameSettings.shared.selectedThemeID), \(black) of \(width))")
+        #expect(white > width, "Opaque white boundary must survive SpriteKit rendering (\(type(of: node)), \(GameSettings.shared.selectedThemeID), \(white) of \(width))")
     }
 
     @Test func bundledScenesAndAtlasLoad() throws {

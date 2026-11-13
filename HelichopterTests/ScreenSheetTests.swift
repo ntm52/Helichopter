@@ -32,6 +32,14 @@ import GameplayKit
         for (index, category) in SettingsCategory.allCases.enumerated() {
             screens.append(("settings\(index + 1)-\(category)", { SettingsViewController(page: .category(category)) }))
         }
+        for page in 0..<3 {
+            screens.append(("guide\(page + 1)", {
+                let guide = GuideViewController()
+                guide.loadViewIfNeeded()
+                guide.show(page: page)
+                return guide
+            }))
+        }
         for theme in GameSettings.allThemes {
             settings.selectedThemeID = theme.id
             for device in widths {
