@@ -68,7 +68,10 @@ extension SettingsPanelView {
         return button
     }
 
-    @objc private func openInfoPage(_ sender: UIButton) { showAdjustment(for: sender) }
+    @objc private func openInfoPage(_ sender: UIButton) {
+        Feedback.choose()
+        showAdjustment(for: sender)
+    }
 
     /// `more` is a longer explanation, shown on the slider's adjustment page.
     func sliderRow(_ title: String, detail: String, more: String? = nil, lo: String, hi: String,
@@ -344,7 +347,7 @@ extension SettingsPanelView {
     }
 
     private func makeSwatch(_ palette: ColorPalette, selected: Bool, index: Int) -> UIButton {
-        let btn = UIButton(type: .custom)
+        let btn = SwatchButton(type: .custom)
         btn.widthAnchor.constraint(equalToConstant: max(100, font(.caption).pointSize * 8)).isActive = true
         styleCard(btn, chosen: selected)
         btn.accessibilityLabel = palette.name
@@ -458,6 +461,13 @@ final class ChoiceButton: UIButton {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    override var isHighlighted: Bool {
+        didSet { alpha = isHighlighted ? 0.6 : 1 }
+    }
+}
+
+/// A palette's small card. It has no lower edge to sink onto, so it dims when pressed.
+final class SwatchButton: UIButton {
     override var isHighlighted: Bool {
         didSet { alpha = isHighlighted ? 0.6 : 1 }
     }

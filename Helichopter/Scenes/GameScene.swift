@@ -28,7 +28,6 @@ class GameScene: SKScene {
     ])
 
     var sceneAdapter: GameSceneAdapter?
-    let selection = UISelectionFeedbackGenerator()
     weak var hudDelegate: GameSceneHUDDelegate?
 
     // Drives focus-ring scanning in pause / game-over overlays.
@@ -117,7 +116,7 @@ class GameScene: SKScene {
     /// has already closed, or one made during a screen change, is ignored.
     func perform(_ action: MenuAction, from menuPhase: GamePhase) {
         guard phase == menuPhase, RootViewController.acceptsInput(in: view) else { return }
-        selection.selectionChanged()
+        Feedback.choose()
 
         switch action {
         case .resume, .retry:
@@ -313,7 +312,7 @@ extension GameScene {
     /// The HUD's Pause button. Ignored outside play and during a screen change.
     func pauseFromHUD() {
         guard stateMachine.currentState is PlayingState, RootViewController.acceptsInput(in: view) else { return }
-        selection.selectionChanged()
+        Feedback.choose()
         stateMachine.enter(PausedState.self)
         setupOverlayScanner()
     }

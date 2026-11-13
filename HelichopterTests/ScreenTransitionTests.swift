@@ -300,6 +300,38 @@ struct ScreenTransitionTests {
         }
     }
 
+    /// Plan 03 Stage 7: as a screen fades in, its content settles into place with a short
+    /// spring and its backdrop stays still. Reduce Motion and Calm Mode leave the fade alone.
+    @Test func newScreenContentSettlesUnlessMovementIsOff() async throws {
+        #expect(ScreenTransition.preferred(reduceMotion: false).settlesContent)
+        #expect(!ScreenTransition.preferred(reduceMotion: true).settlesContent)
+        #expect(!ScreenTransition.instant.settlesContent)
+        let saved = (Feedback.prefersReducedMotion, GameSettings.shared.calmMode)
+        defer { (Feedback.prefersReducedMotion, GameSettings.shared.calmMode) = saved }
+        for (reduceMotion, calm) in [(false, false), (true, false), (false, true)] {
+            Feedback.prefersReducedMotion = { reduceMotion }
+            GameSettings.shared.calmMode = calm
+            try await withController { controller, _, _ in
+                for screen in [Screen.settings, .hangar, .guide, .home] {
+                    controller.present(screen, transition: .crossFade(duration: ScreenTransition.standardDuration))
+                    let incoming = try #require(controller.menuScreen)
+                    let content = try #require(incoming.settlingContent)
+                    let moving = content.layer.animationKeys()?.contains { $0.contains("transform") } == true
+                    #expect(moving == (!reduceMotion && !calm), "\(type(of: incoming)), Reduce Motion \(reduceMotion), Calm \(calm)")
+                    // It ends exactly in place, and the backdrop never moves.
+                    #expect(content.transform == .identity && content !== incoming.view)
+                    #expect(incoming.view.layer.animationKeys() == nil)
+                    try await waitForTransition(controller)
+                }
+                // The shorter fade never moves anything, whatever the settings.
+                controller.present(.settings, transition: .preferred(reduceMotion: true))
+                let content = try #require(controller.menuScreen?.settlingContent)
+                #expect(content.layer.animationKeys() == nil)
+                try await waitForTransition(controller)
+            }
+        }
+    }
+
     /// Reduce Motion and Prefer Cross-Fade Transitions get a short fade with no movement.
     @Test func reduceMotionSelectsTheNoMovementStyle() async throws {
         #expect(ScreenTransition.preferred(reduceMotion: true) == .crossFade(duration: ScreenTransition.reducedMotionDuration))

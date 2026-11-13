@@ -53,7 +53,8 @@ Owner request 2026-11-11: the app "appears very vibe-coded"; make the UI feel mo
 - [x] Stage 5: Score and Best chips with Pause at the trailing edge; Pause and Round Over on a card with one primary button. Done 2026-11-12. The owner chose to keep Home before Try Again on Round Over.
 - [x] Stage 5b (owner's requests): Parchment scrolls its own sketched sky in play; the helicopter has bolder lines and visible rotor blades. Done 2026-11-12; the owner approved both.
 - [x] Stage 6: the guide's words sit on a card with one picture per step; Next (or Done) is the primary button. Done 2026-11-12; the owner approved it.
-- [ ] Stages 7–8 (**start at Stage 7, feedback and motion**): feedback, release.
+- [x] Stage 7: pressed buttons sink onto their lower edge, one light haptic for every choice (off in Calm Mode), and a new screen's content settles into place as it fades in (plain fade under Reduce Motion or Calm Mode). Done 2026-11-12; not yet tried on a device.
+- [ ] Stage 8 (**next**): release prep.
 
 ## 4. Further improvements (suggested; pick by audience need)
 

@@ -33,6 +33,27 @@ enum Stroke {
     static let focus: CGFloat = 4
     /// Dividers between rows.
     static let divider: CGFloat = 1
+    /// How far a pressed button's face sinks onto its lower edge.
+    static let press: CGFloat = 4
+}
+
+/// What the app does in answer to a touch or a choice: a light tap of the haptic motor,
+/// and things that move. Calm Mode turns off both; Reduce Motion turns off the movement.
+enum Feedback {
+    /// Read whenever something is about to move; tests replace it.
+    static var prefersReducedMotion: () -> Bool = { UIAccessibility.isReduceMotionEnabled }
+    /// Plays the choose haptic; tests replace it to count choices.
+    static var playChoose: () -> Void = { chooseGenerator.impactOccurred() }
+    private static let chooseGenerator = UIImpactFeedbackGenerator(style: .light)
+
+    /// True when buttons may sink and screens may settle; otherwise they only fade or dim.
+    static var allowsMovement: Bool { !prefersReducedMotion() && !GameSettings.shared.calmMode }
+
+    /// The light haptic for a choice the player has just made. Silent in Calm Mode.
+    static func choose() {
+        guard !GameSettings.shared.calmMode else { return }
+        playChoose()
+    }
 }
 
 enum Layout {
@@ -239,10 +260,26 @@ class ArcadeButton: DynamicTextButton {
         CATransaction.commit()
     }
 
+    /// True while the face is sunk onto the lower edge under a touch.
+    private(set) var isPressedDown = false
+
+    /// A pressed primary or secondary button sinks onto its lower edge. A quiet button,
+    /// or any button when movement is off, dims its title instead.
     override var isHighlighted: Bool {
         didSet {
-            titleLabel?.alpha = isHighlighted ? 0.6 : 1
-            iconView?.alpha = isHighlighted ? 0.6 : 1
+            let sinks = kind != .quiet && Feedback.allowsMovement
+            let dims = isHighlighted && !sinks
+            titleLabel?.alpha = dims ? 0.6 : 1
+            iconView?.alpha = dims ? 0.6 : 1
+            isPressedDown = isHighlighted && sinks
+            let depth = isPressedDown ? Stroke.press : 0
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            // Everything on the button moves down except the edge it lands on. The
+            // scanner's focus border is the button's own, so it stays put.
+            layer.sublayerTransform = CATransform3DMakeTranslation(0, depth, 0)
+            edgeLayer.transform = CATransform3DMakeTranslation(0, -depth, 0)
+            CATransaction.commit()
         }
     }
 
@@ -275,7 +312,9 @@ class ArcadeButton: DynamicTextButton {
         guard kind != .quiet else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        edgeLayer.frame = bounds
+        // Not `frame`: the edge may be shifted while the button is pressed.
+        edgeLayer.bounds = CGRect(origin: .zero, size: bounds.size)
+        edgeLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
         faceLayer.frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bounds.height - Stroke.edge))
         CATransaction.commit()
     }
@@ -298,8 +337,19 @@ struct SurfaceLayers {
     func layout(in bounds: CGRect) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        edge.frame = bounds
+        // Not `frame`: the edge may be shifted while its card is pressed.
+        edge.bounds = CGRect(origin: .zero, size: bounds.size)
+        edge.position = CGPoint(x: bounds.midX, y: bounds.midY)
         face.frame = CGRect(x: 0, y: 0, width: bounds.width, height: max(0, bounds.height - Stroke.edge))
+        CATransaction.commit()
+    }
+
+    /// Sinks everything in `view` by `depth` except the lower edge, for a pressed card.
+    func press(_ view: UIView, depth: CGFloat) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        view.layer.sublayerTransform = CATransform3DMakeTranslation(0, depth, 0)
+        edge.transform = CATransform3DMakeTranslation(0, -depth, 0)
         CATransaction.commit()
     }
 
@@ -373,8 +423,17 @@ final class CardButton: UIButton {
                       width: isChosen ? Stroke.focus : Stroke.outline)
     }
 
+    /// True while the card is sunk onto its lower edge under a touch.
+    private(set) var isPressedDown = false
+
+    /// A pressed card sinks onto its lower edge, or dims when movement is off.
     override var isHighlighted: Bool {
-        didSet { subviews.forEach { $0.alpha = isHighlighted ? 0.6 : 1 } }
+        didSet {
+            let sinks = Feedback.allowsMovement
+            subviews.forEach { $0.alpha = isHighlighted && !sinks ? 0.6 : 1 }
+            isPressedDown = isHighlighted && sinks
+            layers.press(self, depth: isPressedDown ? Stroke.press : 0)
+        }
     }
 
     override func layoutSubviews() {

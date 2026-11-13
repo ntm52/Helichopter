@@ -304,10 +304,14 @@ final class SettingsPanelView: ScrollingPanelView {
         }
     }
 
-    @objc private func openHangar() { onOpenHangar?() }
+    @objc private func openHangar() {
+        Feedback.choose()
+        onOpenHangar?()
+    }
 
     /// Reset, Privacy Policy, and Acknowledgements open the adjustment page.
     @objc private func showAdjustment(from sender: UIButton) {
+        Feedback.choose()
         showAdjustment(for: sender)
     }
 

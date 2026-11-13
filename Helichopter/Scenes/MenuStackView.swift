@@ -259,6 +259,10 @@ class ScreenViewController: UIViewController, ScreenTransitionScanning, SwitchIn
     /// True while this screen is fading in or out; choices are ignored then.
     var isChangingScreen: Bool { (parent as? RootViewController)?.isChangingScreen == true }
 
+    /// The part of the screen that settles into place as the screen fades in: its
+    /// content, never its backdrop. Nil for a screen that only fades.
+    var settlingContent: UIView? { nil }
+
     /// The element VoiceOver moves to when this screen appears.
     var announcement: Any? { nil }
 
@@ -283,7 +287,6 @@ class ScreenViewController: UIViewController, ScreenTransitionScanning, SwitchIn
 class MenuViewController: ScreenViewController {
     let scanner = FocusScanner()
     private(set) var menu: MenuStackView!
-    private let selection = UISelectionFeedbackGenerator()
 
     override func loadView() {
         let backdrop = BackdropView(theme: GameSettings.shared.selectedTheme)
@@ -306,7 +309,7 @@ class MenuViewController: ScreenViewController {
     func item(_ title: String, hint: String, action: @escaping () -> Void) -> MenuItem {
         MenuItem(title, hint: hint) { [weak self] in
             guard let self = self, !self.isChangingScreen else { return }
-            self.selection.selectionChanged()
+            Feedback.choose()
             action()
         }
     }
@@ -322,6 +325,8 @@ class MenuViewController: ScreenViewController {
     }
 
     override var scannersDuringTransition: [FocusScanner] { [scanner] }
+
+    override var settlingContent: UIView? { menu }
 
     override func switchPrimaryBegan() { scanner.primaryActivate() }
     override func switchSecondaryBegan() { scanner.secondaryAdvance() }

@@ -88,6 +88,13 @@ enum ScreenTransition: Equatable {
         if case .crossFade(let duration) = self { return duration }
         return 0
     }
+
+    /// Only the full-length fade lets the new screen's content settle into place. The
+    /// shorter fade is for players who asked for less motion; nothing moves in it.
+    var settlesContent: Bool { duration >= Self.standardDuration }
+    /// How far below its place the new content starts, and how long it takes to settle.
+    static let settleDistance: CGFloat = 16
+    static let settleDuration: TimeInterval = 0.45
 }
 
 /// Everything `RootViewController.present` can show. Home, the guide, the Hangar, and
@@ -319,6 +326,16 @@ class RootViewController: UIViewController {
             ScreenChangeAnnouncer.release()
         }
         guard let fading = snapshot else { return finish() }
+        // The new screen's content rises the last few points with a short spring while
+        // the old screen fades. Its backdrop stays still. Reduce Motion and Calm Mode
+        // leave the plain fade.
+        if transition.settlesContent, Feedback.allowsMovement, let content = incoming?.settlingContent {
+            content.transform = CGAffineTransform(translationX: 0, y: ScreenTransition.settleDistance)
+            UIView.animate(withDuration: ScreenTransition.settleDuration, delay: 0, usingSpringWithDamping: 0.7,
+                           initialSpringVelocity: 0, options: [.allowUserInteraction]) {
+                content.transform = .identity
+            }
+        }
         UIView.animate(withDuration: transition.duration, delay: 0, options: [.curveEaseInOut]) {
             fading.alpha = 0
         } completion: { _ in finish() }

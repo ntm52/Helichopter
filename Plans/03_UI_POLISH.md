@@ -1,6 +1,6 @@
 # Plan 03 — UI polish: an open, finished-looking app
 
-**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, 4b, 5, 5b (two art requests), and 6 done 2026-11-12. **Next: Stage 7 (Feedback and motion).**
+**Status:** Written 2026-11-11. Stages 0, 1, and 2 done 2026-11-11 (decisions below; tokens in `Scenes/DesignSystem.swift`). Stages 3, 4, 4b, 5, 5b (two art requests), 6, and 7 done 2026-11-12. **Next: Stage 8 (Release).**
 **Goal:** The owner's words: the app "appears very vibe-coded"; the UI should "feel more open and more polished". Every screen should look designed as one product, with room to breathe, a clear order of importance, and no leftover placeholder art.
 **Depends on:** nothing. Plan 01 is done (every menu is UIKit), which is what makes this practical.
 **Release:** the 2.2 skins are held and ship together with this plan in one release (owner decision 2026-11-11).
@@ -195,7 +195,16 @@ Original scope:
 
 - Text on a card so stars never show through it. One picture per step. Next is primary; Read aloud and Skip are secondary.
 
-### Stage 7 — Feedback and motion
+### Stage 7 — Feedback and motion (done 2026-11-12)
+
+What was built:
+- **`Feedback`** (`DesignSystem.swift`) is the one place that decides. `Feedback.choose()` plays the choose haptic (a light impact) unless Calm Mode is on. `Feedback.allowsMovement` is false under Reduce Motion or Calm Mode. Tests replace `Feedback.playChoose` and `Feedback.prefersReducedMotion`.
+- **Pressed states.** A pressed primary or secondary `ArcadeButton`, or a `CardButton`, sinks 4 pt (`Stroke.press`) onto its lower edge, at once, with no animation; its size, place, and the scanner's focus border do not move. When movement is off it dims instead, as before. Quiet buttons, choices in a list, and palette cards (new `SwatchButton`; it had no pressed state) dim, because they have no edge to sink onto.
+- **Choose haptic.** One haptic for every choice, whether tapped, scanned, or activated by VoiceOver: Home, the guide, Pause and Round Over, the HUD's Pause, and every button, card, and choice in Settings and the Hangar (`ButtonTarget.tapped`, Back, "More about this", the Hangar pointer). A switch flipped by the scanner plays it; a touched switch keeps only the system's own. Sliders have none. Before, only Home, the guide, and the game menus had one (a selection tick), and Calm Mode did not silence it.
+- **Settle.** During the standard 0.3 s cross-fade, the new screen's content (`ScreenViewController.settlingContent`: the menu column, or the Settings or Hangar panel) starts 16 pt low and rises into place with a 0.45 s spring (damping 0.7). The backdrop does not move. Under Reduce Motion, Prefer Cross-Fade Transitions, or Calm Mode it is the plain fade. The first screen at launch appears with no animation, so the launch picture still matches Home. Pause and Round Over appear without a screen change and do not settle.
+- **Timing to know:** input, scanning, and the VoiceOver announcement resume when the fade ends (0.3 s), while the content is still settling its last point or two.
+
+Original scope:
 
 - Pressed states, the choose haptic, and a short spring on screen content after the cross-fade (plain fade under Reduce Motion).
 

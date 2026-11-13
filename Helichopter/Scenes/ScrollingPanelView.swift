@@ -7,7 +7,10 @@ import UIKit
 final class ButtonTarget: NSObject {
     private let f: () -> Void
     init(_ f: @escaping () -> Void) { self.f = f }
-    @objc func tapped() { f() }
+    @objc func tapped() {
+        Feedback.choose()
+        f()
+    }
 }
 
 // MARK: - Theme-derived colour tokens
@@ -196,6 +199,8 @@ class ScrollingPanelView: UIView {
     /// What a scanner selection does: switches flip, other controls are tapped.
     func activate(_ control: UIControl) {
         if let toggle = control as? UISwitch {
+            // A touched switch gives the system's own haptic; a scanned one has only this.
+            Feedback.choose()
             toggle.setOn(!toggle.isOn, animated: false)
             toggle.sendActions(for: .valueChanged)
         } else {
@@ -302,7 +307,10 @@ class ScrollingPanelView: UIView {
         addSubview(focusRing)
     }
 
-    @objc private func backTapped() { onBack?() }
+    @objc private func backTapped() {
+        Feedback.choose()
+        onBack?()
+    }
 }
 
 // MARK: - Shared row builders
@@ -433,6 +441,8 @@ class PanelScreenViewController<Panel: ScrollingPanelView>: ScreenViewController
 
     /// VoiceOver lands on the control named by `focusOnAppear`, or on the panel.
     override var announcement: Any? { focusOnAppear.flatMap { panel.control(labelled: $0) } ?? panel }
+
+    override var settlingContent: UIView? { panel }
 
     /// Where Back goes.
     var backDestination: Screen { .home }
