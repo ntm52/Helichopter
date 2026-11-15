@@ -225,6 +225,24 @@ class RootViewController: UIViewController {
 
     override var prefersStatusBarHidden: Bool { true }
 
+    /// Pauses a game in play, or resumes a paused one. False on every other screen.
+    /// `fromSwitch` starts menu scanning on the pause menu, as a switch pause does.
+    @discardableResult
+    func togglePause(fromSwitch: Bool = false) -> Bool {
+        guard !inputSuspended, !isChangingScreen,
+              let game = (viewIfLoaded as? SKView)?.scene as? GameScene else { return false }
+        switch game.phase {
+        case .playing: fromSwitch ? game.pauseFromSwitch() : game.pauseForInterruption()
+        case .paused: game.perform(.resume, from: .paused)
+        case .roundOver: return false
+        }
+        refreshSceneText()
+        return true
+    }
+
+    /// VoiceOver's Magic Tap (a two-finger double-tap) pauses and resumes the game.
+    override func accessibilityPerformMagicTap() -> Bool { togglePause() }
+
     @objc private func voiceOverStatusChanged() {
         // Changing input methods must not leave a toggled climb/descent running.
         ((viewIfLoaded as? SKView)?.scene as? GameScene)?.pauseForInterruption()
@@ -500,6 +518,8 @@ class RootViewController: UIViewController {
             pad.dpad.down.pressedChangedHandler        = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
             pad.dpad.left.pressedChangedHandler        = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
             pad.dpad.right.pressedChangedHandler       = { [weak self] _, _, p in self?.forwardController(primary: false, pressed: p) }
+            // Menu pauses and resumes, as players expect of a controller.
+            pad.buttonMenu.pressedChangedHandler       = { [weak self] _, _, p in if p { self?.togglePause(fromSwitch: true) } }
         }
     }
 

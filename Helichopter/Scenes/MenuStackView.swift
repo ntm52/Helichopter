@@ -173,7 +173,15 @@ class MenuStackView: UIView {
         button.onFocus = { [weak self, weak button] in
             guard let self = self, let button = button else { return }
             self.layoutIfNeeded()
-            self.scroll.scrollRectToVisible(button.convert(button.bounds.insetBy(dx: -Spacing.s, dy: -Spacing.s), to: self.scroll), animated: false)
+            let rect = button.convert(button.bounds.insetBy(dx: -Spacing.s, dy: -Spacing.s), to: self.scroll)
+            guard button === self.buttons.first else {
+                return self.scroll.scrollRectToVisible(rect, animated: false)
+            }
+            // Back on the first choice, scroll up as far as keeps it on screen, so a
+            // switch user who cannot scroll sees the words above the choices again.
+            let highest = max(0, min(rect.maxY - self.scroll.bounds.height,
+                                     self.scroll.contentSize.height - self.scroll.bounds.height))
+            self.scroll.setContentOffset(CGPoint(x: 0, y: highest), animated: false)
         }
         buttons.append(button)
         return button

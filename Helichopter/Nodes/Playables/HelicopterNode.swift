@@ -55,13 +55,20 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
         isInvulnerable = true
         physicsBody?.collisionBitMask = PhysicsCategories.boundary.rawValue
 
-        // Pulse the artwork tint, never the opacity of its contrast boundary.
+        // Pulse the artwork tint, never the opacity of its contrast boundary. Two and a
+        // half pulses a second: under the three a second that flashing must stay below.
         let flash = SKAction.repeatForever(SKAction.sequence([
-            SKAction.colorize(withColorBlendFactor: 0.75, duration: 0.15),
-            SKAction.colorize(withColorBlendFactor: 0.35, duration: 0.15)
+            SKAction.colorize(withColorBlendFactor: Self.bumpTint, duration: Self.bumpPulseHalfPeriod),
+            SKAction.colorize(withColorBlendFactor: 0.35, duration: Self.bumpPulseHalfPeriod)
         ]))
-        if !UIAccessibility.isReduceMotionEnabled && !GameSettings.shared.calmMode {
-            run(flash, withKey: "invulnerabilityFlash")
+        if !GameSettings.shared.calmMode {
+            if UIAccessibility.isReduceMotionEnabled {
+                // Nothing pulses, but the bump still shows: a steady stronger tint until it
+                // ends, for players who cannot hear or feel the bump (an iPad has no haptics).
+                colorBlendFactor = Self.bumpTint
+            } else {
+                run(flash, withKey: "invulnerabilityFlash")
+            }
         }
 
         let duration = GameSettings.shared.invulnerabilityDuration
@@ -83,6 +90,10 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
     // MARK: - Properties
 
     static let rotorFrameInterval: TimeInterval = 1.0 / 60.0
+    /// How strongly the helicopter is tinted while a No-Fail bump lasts.
+    static let bumpTint: CGFloat = 0.75
+    /// Half of one pulse of that tint.
+    static let bumpPulseHalfPeriod: TimeInterval = 0.2
 
     var flyTextures: [SKTexture]? = nil
     private(set) var animationTimeInterval: TimeInterval = 0

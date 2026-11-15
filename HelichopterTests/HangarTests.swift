@@ -37,6 +37,11 @@ struct HangarTests {
         panel.switchScanner.items.map(\.accessibilityScanLabel)
     }
 
+    /// Each control's name as the scanner says it, without ", selected" or ", Equipped".
+    private func scanNames(_ panel: ScrollingPanelView) -> [String] {
+        scanLabels(panel).map { $0.components(separatedBy: ", ")[0] }
+    }
+
     private var themeNames: [String] { GameSettings.allThemes.map(\.name) }
     private var skinNames: [String] { CosmeticsCatalog.all.map(\.name) }
     /// Every Hangar control in scan order after Back.
@@ -257,7 +262,7 @@ struct HangarTests {
             defer { screen.screenWillDisappear() }
             let panel = try #require(screen.panel)
             screen.switchPrimaryBegan()
-            #expect(scanLabels(panel) == ["Back"] + cardNames)
+            #expect(scanNames(panel) == ["Back"] + cardNames)
             var visited: [String] = []
             for _ in scanLabels(panel) {
                 visited.append(try #require(panel.focusedSetting))
@@ -275,7 +280,7 @@ struct HangarTests {
             defer { screen.screenWillDisappear() }
             let panel = try #require(screen.panel)
             screen.switchPrimaryBegan()
-            #expect(scanLabels(panel) == ["Back"] + cardNames)
+            #expect(scanNames(panel) == ["Back"] + cardNames)
             var seen = Set<String>()
             let reachedAll = try await waitUntil(timeout: 20) {
                 if let label = panel.focusedSetting { seen.insert(label) }

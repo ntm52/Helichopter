@@ -103,6 +103,21 @@ final class SettingsPanelView: ScrollingPanelView {
 
     override var focusedSetting: String? { returnControlLabel ?? super.focusedSetting }
 
+    /// While a page covers the list, only that page is scanned.
+    override var scanRoot: UIView { adjustmentPanel ?? self }
+
+    override func reopenAdjustment(labelled label: String?) {
+        guard let control = label.flatMap({ control(labelled: $0) }) else { return }
+        showAdjustment(for: control)
+    }
+
+    /// VoiceOver's escape gesture closes an open page (Cancel or Done) before it goes back.
+    override func accessibilityPerformEscape() -> Bool {
+        guard isAdjusting else { return super.accessibilityPerformEscape() }
+        closeAdjustment()
+        return true
+    }
+
     /// Sliders open the adjustment page instead of changing directly.
     override func activate(_ control: UIControl) {
         if control is UISlider {

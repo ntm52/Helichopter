@@ -253,8 +253,9 @@ extension GameSceneAdapter: SKPhysicsContactDelegate {
         onGameOverEntered?()
 
         if GameSettings.shared.showScore && UIAccessibility.isVoiceOverRunning {
+            // The same words as the menu's title, which Calm Mode softens.
             UIAccessibility.post(notification: .announcement,
-                                 argument: "Game over. Score \(finalScore)")
+                                 argument: "\(GameSettings.shared.calmMode ? "Well done" : "Round over"). Score \(finalScore)")
         }
     }
 

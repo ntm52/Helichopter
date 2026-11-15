@@ -69,8 +69,12 @@ final class GameMenuView: MenuStackView {
     /// The round's score, shown large on Round Over.
     private(set) var scoreLabel: UILabel?
     private(set) var bestLabel: UILabel?
+    private weak var game: GameScene?
+    private let phase: GamePhase
 
     init(game: GameScene, phase: GamePhase, traits: UITraitCollection) {
+        self.game = game
+        self.phase = phase
         super.init(traits: traits, onCard: true)
         switch phase {
         case .paused:
@@ -99,4 +103,13 @@ final class GameMenuView: MenuStackView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// VoiceOver's escape gesture (a two-finger scrub) closes the pause menu, as Resume
+    /// does. Round Over has nothing to go back to.
+    override func accessibilityPerformEscape() -> Bool {
+        guard phase == .paused, let game = game, game.phase == .paused else { return false }
+        game.perform(.resume, from: .paused)
+        onAction?()
+        return true
+    }
 }

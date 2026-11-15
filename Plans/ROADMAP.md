@@ -29,6 +29,8 @@ These were never done on hardware and they gate two more Accessibility Nutrition
 - [x] Run Xcode's Accessibility Inspector audit on every screen and fix what it reports. Done 2026-10-09 as an automated UI test (`HelichopterUITests`), which now passes on every screen; see the progress log for what it found.
 - [ ] **Owner:** TestFlight or in-person sessions with real players (occupational or speech therapists, a school, or an assistive-technology lab).
 
+Also check on a device the fixes from the 2026-11-15 audit ([report](../Audit/ACCESSIBILITY_AUDIT_2026-11-15.md)): the escape gesture (Back, close a page, Resume), Magic Tap to pause and resume, "Tap Decrease" in Voice Control, one voice when a switch is used with VoiceOver on, a controller's Menu button, and tapping a switch row. Its Open table lists work that needs an owner decision.
+
 Do a second pass of this list after Plan 01 Stage B, since every menu will have been rebuilt. The Hangar (Plan 02 Phase 1 steps 1–2) is part of 2.1, so every check above covers it too: theme cards, Back, the caregiver lock, and the largest text size.
 
 ## 3. Cosmetic skins, Hangar screen, and in-app purchases — [Plan 02](02_COSMETICS_AND_STORE.md)

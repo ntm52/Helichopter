@@ -351,6 +351,30 @@ struct ScreenTransitionTests {
             try await waitForTransition(controller)
         }
     }
+
+    /// Accessibility audit, 2026-11-15: VoiceOver's Magic Tap and a controller's Menu
+    /// button pause a game in play and resume a paused one, and do nothing elsewhere.
+    @Test func magicTapPausesAndResumesTheGame() async throws {
+        try await withController { controller, skView, _ in
+            #expect(!controller.accessibilityPerformMagicTap())
+            try homeItem(.play, in: controller).scannerActivate()
+            let game = try #require(skView.scene as? GameScene)
+            // Held while the game fades in.
+            #expect(!controller.accessibilityPerformMagicTap())
+            try await waitForTransition(controller)
+            #expect(controller.accessibilityPerformMagicTap())
+            #expect(game.phase == .paused && controller.sceneTextOverlay.gameMenu != nil)
+            // Not started by a switch, so the scanner stays off unless menus auto-scan.
+            #expect(game.overlayScanner?.isActive != true)
+            #expect(controller.accessibilityPerformMagicTap())
+            #expect(game.phase == .playing && controller.sceneTextOverlay.gameMenu == nil)
+            // The controller's Menu button also starts scanning, as a switch pause does.
+            #expect(controller.togglePause(fromSwitch: true))
+            #expect(game.phase == .paused && game.overlayScanner?.isActive == true)
+            #expect(controller.togglePause(fromSwitch: true))
+            #expect(game.phase == .playing)
+        }
+    }
 }
 
 private extension UIView {

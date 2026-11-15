@@ -395,7 +395,8 @@ extension GameScene: SwitchInputReceivable {
         RunLoop.main.add(timer, forMode: .common)
     }
 
-    private func pauseFromSwitch() {
+    /// Also the game controller's Menu button.
+    func pauseFromSwitch() {
         cancelSwitchPauseHold()
         guard stateMachine.currentState is PlayingState else { return }
         if stateMachine.enter(PausedState.self) {

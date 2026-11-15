@@ -1,6 +1,6 @@
 # Helichopter — Project Reference
 
-**Status (2026-11-12):** Version 2.1 (build 5, git tag `2.1`) is live on the App Store, distributed 2026-10-30. It carries Plan 01 Stage B (every menu in UIKit, one cross-fade per screen change), the Hangar (Plan 02 Phase 1 steps 1–2), VoiceOver Direct Touch, the top/bottom touch split, and per-scheme switch pausing. Development is post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.2 (build 6; version already set): Plan 02 Phase 1 step 3, whose code and art are done on `master` (Striped Pipes and a Two Tone Helicopter, both free). The owner decided on 2026-11-11 to hold these skins and ship them together with the UI polish ([Plans/03_UI_POLISH.md](Plans/03_UI_POLISH.md), direction "Bold arcade", Stages 0–7 and two art requests (5b) done; Stage 8, release prep, next), so release prep and the owner's device check wait for that plan's Stage 8. The device accessibility checks in roadmap step 2 are still unticked. 167 unit tests and 4 UI tests pass (2026-11-12); the UI tests run Apple's accessibility audit on every screen.
+**Status (2026-11-12):** Version 2.1 (build 5, git tag `2.1`) is live on the App Store, distributed 2026-10-30. It carries Plan 01 Stage B (every menu in UIKit, one cross-fade per screen change), the Hangar (Plan 02 Phase 1 steps 1–2), VoiceOver Direct Touch, the top/bottom touch split, and per-scheme switch pausing. Development is post-launch improvement work, ordered in [Plans/ROADMAP.md](Plans/ROADMAP.md). Next release is 2.2 (build 6; version already set): Plan 02 Phase 1 step 3, whose code and art are done on `master` (Striped Pipes and a Two Tone Helicopter, both free). The owner decided on 2026-11-11 to hold these skins and ship them together with the UI polish ([Plans/03_UI_POLISH.md](Plans/03_UI_POLISH.md), direction "Bold arcade", Stages 0–7 and two art requests (5b) done; Stage 8, release prep, next), so release prep and the owner's device check wait for that plan's Stage 8. The device accessibility checks in roadmap step 2 are still unticked. An accessibility audit on 2026-11-15 fixed 13 issues and left 10 open ([Audit/ACCESSIBILITY_AUDIT_2026-11-15.md](Audit/ACCESSIBILITY_AUDIT_2026-11-15.md)); the fixes are on `master`, not pushed. 180 unit tests and 4 UI tests pass (2026-11-15); the UI tests run Apple's accessibility audit on every screen.
 
 > **Starting a session:** read this file, then the roadmap, then the plan file for the work you are doing. Before you finish, append an entry to [Audit/PROGRESS_LOG.md](Audit/PROGRESS_LOG.md).
 > **If this file and the code disagree, trust the code** and fix this file.
@@ -38,6 +38,7 @@ These apply to every change, including cosmetics and the store.
 | `Plans/03_UI_POLISH.md` | Plan to make every screen look designed and open: shared tokens, type, buttons, and a new Home, Settings, Hangar, HUD, and guide. |
 | `Plans/02_COSMETICS_AND_STORE.md` | Plan for cosmetic helicopter and pipe skins, a Hangar/Store screen, and in-app purchases. |
 | `Audit/PROGRESS_LOG.md` | Session-by-session history. Append here. |
+| `Audit/ACCESSIBILITY_AUDIT_2026-11-15.md` | Accessibility audit: what was fixed and what is still open, with what each open item would take. |
 | `Audit/REVIEW_2026-09-05.md`, `Audit/APP_STORE_READINESS.md` | Historical pre-release audits. Read only for background. |
 | `Release/` | App Store listing copy, asset rights register, privacy notes, screenshots. |
 | `docs/` | Public GitHub Pages site (privacy and support pages). Changes here go live when pushed. |
@@ -100,6 +101,7 @@ Tests live in `HelichopterTests/` (Swift Testing): settings, scanner, lifecycle,
 
 - **Double page during screen changes:** fixed in 2.1 by Plan 01 Stage B (every menu is UIKit, one cross-fade per change): [Plans/01_SINGLE_LAYER_UI.md](Plans/01_SINGLE_LAYER_UI.md). The owner's device screen recordings (Plan 01 "Manual checks") are not recorded as done.
 - Narrow iPad windows use the phone layout (larger game, smaller bars) since Plan 01 step 6, but only when Play is pressed: resizing mid-run changes the scale mode only. Not yet checked in a real Split View or Stage Manager window.
+- **Open accessibility issues** from the 2026-11-15 audit (sliders need a drag by touch, the scanner cannot scroll long text, the palette row scrolls sideways, iPhone is portrait only, and others): see the audit's Open table.
 - **Not yet verified on a physical device:** VoiceOver, Voice Control, Switch Control, hardware switches, adaptive controllers, the oldest supported device, iPad window resizing, and real transitions.
 
 ---

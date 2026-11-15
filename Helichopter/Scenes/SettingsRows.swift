@@ -16,6 +16,19 @@ final class SwitchTarget: NSObject {
     @objc func changed(_ sender: UISwitch) { f(sender.isOn) }
 }
 
+/// Flips a switch when its row's name or description is tapped, so the target is the
+/// whole row and not only the small switch.
+final class RowTapTarget: NSObject {
+    private weak var toggle: UISwitch?
+    init(_ toggle: UISwitch) { self.toggle = toggle }
+    @objc func tapped() {
+        guard let toggle = toggle, toggle.isEnabled else { return }
+        Feedback.choose()
+        toggle.setOn(!toggle.isOn, animated: Feedback.allowsMovement)
+        toggle.sendActions(for: .valueChanged)
+    }
+}
+
 // MARK: - Row builders
 
 extension SettingsPanelView {
@@ -168,6 +181,12 @@ extension SettingsPanelView {
         let t = SwitchTarget(onChange)
         controlTargets.append(t)
         sw.addTarget(t, action: #selector(SwitchTarget.changed(_:)), for: .valueChanged)
+
+        // A tap on the name or description flips the switch too. UIKit keeps this
+        // recogniser from firing for touches on the switch itself.
+        let rowTap = RowTapTarget(sw)
+        controlTargets.append(rowTap)
+        main.addGestureRecognizer(UITapGestureRecognizer(target: rowTap, action: #selector(RowTapTarget.tapped)))
 
         main.addSubview(lStack)
         main.addSubview(sw)
@@ -351,7 +370,11 @@ extension SettingsPanelView {
         btn.widthAnchor.constraint(equalToConstant: max(100, font(.caption).pointSize * 8)).isActive = true
         styleCard(btn, chosen: selected)
         btn.accessibilityLabel = palette.name
-        if selected { btn.accessibilityTraits.insert(.selected) }
+        // A tick in the corner marks the chosen palette by shape, not only by its border.
+        btn.mark.image = UIImage(systemName: "checkmark.circle.fill",
+                                 withConfiguration: UIImage.SymbolConfiguration(font: font(.caption), scale: .small))
+        btn.mark.tintColor = style.accent
+        btn.isChosen = selected
 
         let heliDot = colorDot(palette.helicopterColor, size: 26)
         let pipeDot = colorDot(palette.pipeColor,       size: 26)
@@ -378,7 +401,11 @@ extension SettingsPanelView {
         vs.translatesAutoresizingMaskIntoConstraints = false
 
         btn.addSubview(vs)
+        btn.addSubview(btn.mark)
         NSLayoutConstraint.activate([
+            btn.mark.topAnchor.constraint(equalTo: btn.topAnchor, constant: Spacing.xs),
+            // The leading corner: the first to show when a wide card runs off the row.
+            btn.mark.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: Spacing.xs),
             nameL.widthAnchor.constraint(lessThanOrEqualTo: vs.widthAnchor),
             vs.topAnchor.constraint(equalTo: btn.topAnchor, constant: Spacing.s),
             vs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -Spacing.s),
@@ -400,8 +427,7 @@ extension SettingsPanelView {
         GameSettings.shared.selectedPaletteID = GameSettings.allPalettes[index].id
         for (i, view) in paletteViews.enumerated() {
             let chosen = (i == index)
-            if chosen { view.accessibilityTraits.insert(.selected) }
-            else { view.accessibilityTraits.remove(.selected) }
+            (view as? SwatchButton)?.isChosen = chosen
             styleCard(view, chosen: chosen)
         }
     }
@@ -468,6 +494,22 @@ final class ChoiceButton: UIButton {
 
 /// A palette's small card. It has no lower edge to sink onto, so it dims when pressed.
 final class SwatchButton: UIButton {
+    /// The tick shown on the chosen palette.
+    let mark: UIImageView = {
+        let view = UIImageView()
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = false
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
+    var isChosen = false {
+        didSet {
+            mark.isHidden = !isChosen
+            if isChosen { accessibilityTraits.insert(.selected) } else { accessibilityTraits.remove(.selected) }
+        }
+    }
+
     override var isHighlighted: Bool {
         didSet { alpha = isHighlighted ? 0.6 : 1 }
     }

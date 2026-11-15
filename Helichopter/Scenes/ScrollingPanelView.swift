@@ -62,6 +62,9 @@ private final class PanelScanItem: FocusScannable {
         let label = control.accessibilityLabel ?? (control as? UIButton)?.currentTitle ?? ""
         if let toggle = control as? UISwitch { return "\(label), \(toggle.isOn ? "On" : "Off")" }
         if let slider = control as? UISlider { return "\(label), \(slider.spokenValue). Select to adjust." }
+        // The chosen card or choice says so, as VoiceOver does: "Classic Pipes, Equipped".
+        if let value = control.accessibilityValue, !value.isEmpty { return "\(label), \(value)" }
+        if control.accessibilityTraits.contains(.selected) { return "\(label), selected" }
         return label
     }
 
@@ -140,9 +143,15 @@ class ScrollingPanelView: UIView {
         focusedControl?.accessibilityLabel ?? (focusedControl as? UIButton)?.currentTitle
     }
 
+    /// The part of the panel the scanner moves through: all of it, or a page covering it.
+    var scanRoot: UIView { self }
+
+    /// Opens the page that covered a rebuilt panel again, for a player who is not scanning.
+    func reopenAdjustment(labelled label: String?) { }
+
     func startScanning(focusing label: String? = nil) {
         switchScanner.stop()
-        navigationItems = controls(in: self).map { scanItem(for: $0) }
+        navigationItems = controls(in: scanRoot).map { scanItem(for: $0) }
         switchScanner.items = navigationItems
         let index = navigationItems.firstIndex {
             let control = ($0 as? PanelScanItem)?.control
@@ -310,6 +319,13 @@ class ScrollingPanelView: UIView {
     @objc private func backTapped() {
         Feedback.choose()
         onBack?()
+    }
+
+    /// VoiceOver's escape gesture (a two-finger scrub) goes back, as Back does.
+    override func accessibilityPerformEscape() -> Bool {
+        guard onBack != nil else { return false }
+        backTapped()
+        return true
     }
 }
 
@@ -506,6 +522,8 @@ class PanelScreenViewController<Panel: ScrollingPanelView>: ScreenViewController
         if wasScanning || GameSettings.shared.scanningEnabled {
             new.startScanning(focusing: focusedSetting)
             if wasAdjusting { new.primaryActivate() }
+        } else if wasAdjusting {
+            new.reopenAdjustment(labelled: focusedSetting)
         }
         view.backgroundColor = GameSettings.shared.selectedTheme.sceneBackgroundColor
         UIView.animate(withDuration: 0.25) {

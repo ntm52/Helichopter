@@ -142,8 +142,15 @@ final class FocusScanner {
         speak(item.accessibilityScanLabel)
     }
 
+    /// Read before each spoken label; tests replace it.
+    static var isVoiceOverRunning: () -> Bool = { UIAccessibility.isVoiceOverRunning }
+    /// Hands a label to VoiceOver to speak; tests replace it.
+    static var announce: (String) -> Void = { UIAccessibility.post(notification: .announcement, argument: $0) }
+
     private func speak(_ text: String) {
         synthesizer.stopSpeaking(at: .immediate)
+        // With VoiceOver on, VoiceOver is the only voice: a second one would talk over it.
+        guard !Self.isVoiceOverRunning() else { return Self.announce(text) }
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         synthesizer.speak(utterance)

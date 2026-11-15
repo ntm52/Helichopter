@@ -8,6 +8,9 @@ extension SettingsPanelView {
 
     func showAdjustment(for control: UIControl) {
         returnControlLabel = control.accessibilityLabel
+        // Only a player who is scanning gets the scanner, its highlight, and its voice on
+        // this page; a finger, VoiceOver, or Voice Control opens it without them.
+        let wasScanning = switchScanner.isActive
         switchScanner.stop()
         let panel = UIView()
         panel.backgroundColor = style.bg.withAlphaComponent(1)
@@ -59,6 +62,8 @@ extension SettingsPanelView {
                 for case let button as UIButton in choices.arrangedSubviews {
                     if let name = button.currentTitle, name != "Done" {
                         button.accessibilityLabel = "\(name). \(value.text ?? "")"
+                        // Voice Control users say what they see: "Tap Increase".
+                        button.accessibilityUserInputLabels = [name]
                     }
                 }
             }
@@ -98,19 +103,20 @@ extension SettingsPanelView {
             }
             addChoice("Done") { [weak self] in self?.closeAdjustment() }
         }
-        switchScanner.items = controls(in: panel).map { scanItem(for: $0) }
-        switchScanner.start()
+        if wasScanning { startScanning() }
         ScreenChangeAnnouncer.post(title)
     }
 
     func closeAdjustment() {
+        let wasScanning = switchScanner.isActive
         switchScanner.stop()
         adjustmentPanel?.removeFromSuperview()
         adjustmentPanel = nil
         adjustmentTargets.removeAll()
         let label = returnControlLabel
         returnControlLabel = nil
-        startScanning(focusing: label)
-        ScreenChangeAnnouncer.post(focusedControl)
+        if wasScanning { startScanning(focusing: label) }
+        // VoiceOver returns to the control that opened the page, scanning or not.
+        ScreenChangeAnnouncer.post(label.flatMap { control(labelled: $0) } ?? self)
     }
 }

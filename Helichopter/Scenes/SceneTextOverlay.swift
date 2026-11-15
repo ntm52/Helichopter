@@ -18,7 +18,12 @@ final class SceneTextOverlay: UIView {
     private(set) var scoreChip: ScoreChip?
     private(set) var bestScoreChip: ScoreChip?
     private var newHighScoreLabel: UILabel?
-    private var flightHintLabel: UILabel?
+    private(set) var flightHintLabel: UILabel?
+    private var hintConstraints: [NSLayoutConstraint] = []
+    /// Up and Down beside the divider, for schemes that split the screen.
+    private(set) var upDownLabels: [UILabel] = []
+    /// True until the hint fades after the first flight input.
+    private var hintIsShowing = false
     private weak var hudStack: UIStackView?
     private weak var chipRow: UIStackView?
     private(set) weak var pauseButton: ArcadeButton?
@@ -26,6 +31,9 @@ final class SceneTextOverlay: UIView {
     private var flightElements: [FlightAccessibilityElement] = []
     // Stack constraints survive removing the scroll view, so track them per rebuild.
     private var layoutConstraints: [NSLayoutConstraint] = []
+
+    /// Read when the pause menu is built; tests replace it.
+    static var prefersReducedTransparency: () -> Bool = { UIAccessibility.isReduceTransparencyEnabled }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -67,6 +75,7 @@ final class SceneTextOverlay: UIView {
         bestScoreChip = nil
         newHighScoreLabel = nil
         flightHintLabel = nil
+        upDownLabels = []
         gameMenu = nil
         flightElements = []
         builtPhase = nil
@@ -79,8 +88,10 @@ final class SceneTextOverlay: UIView {
         builtPhase = game.phase
         let theme = GameSettings.shared.selectedTheme
         let isPaused = game.stateMachine.currentState is PausedState
+        // Reduce Transparency asks for solid backgrounds, as Hide Game While Paused does.
+        let solid = GameSettings.shared.hideGameWhilePaused || Self.prefersReducedTransparency()
         backgroundColor = isPaused
-            ? (GameSettings.shared.hideGameWhilePaused ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
+            ? (solid ? theme.sceneBackgroundColor : UIColor.black.withAlphaComponent(0.25))
             : (menu ? theme.sceneBackgroundColor : .clear)
         game.hudDelegate = self
         if menu {
@@ -134,8 +145,8 @@ final class SceneTextOverlay: UIView {
         scroll.isUserInteractionEnabled = true
 
         let hint = ChipLabel(style: .body, theme: theme, traits: traitCollection)
-        stack.addArrangedSubview(hint)
         flightHintLabel = hint
+        placeHint()
         // Static text; no animation, sound, or input capture, so flight is never interrupted.
         let banner = ChipLabel(style: .heading, theme: theme, traits: traitCollection)
         banner.textColor = theme.accentTextColor
@@ -179,10 +190,40 @@ final class SceneTextOverlay: UIView {
             ]
             return element
         }
-        accessibilityElements = flightElements + [scroll]
+        listAccessibilityElements()
         showCurrentHUD(of: game)
         accessibilityViewIsModal = false
         ScreenChangeAnnouncer.post(flightElements.first)
+    }
+
+    /// The hint sits under the HUD row. At accessibility text sizes it is tall enough
+    /// there to cover the waiting helicopter, so it goes to the bottom of the screen.
+    private func placeHint() {
+        guard let hint = flightHintLabel, hudStack != nil else { return }
+        NSLayoutConstraint.deactivate(hintConstraints)
+        hintConstraints = []
+        hint.removeFromSuperview()
+        if traitCollection.preferredContentSizeCategory.isAccessibilityCategory {
+            hint.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(hint)
+            hintConstraints = [
+                hint.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: Spacing.l),
+                hint.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -Spacing.l),
+                hint.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.m)
+            ]
+            NSLayoutConstraint.activate(hintConstraints)
+        } else {
+            // After the HUD row, before the banner.
+            stack.insertArrangedSubview(hint, at: min(1, stack.arrangedSubviews.count))
+        }
+        listAccessibilityElements()
+    }
+
+    /// The flight areas first, then the HUD, then the hint when it stands outside the HUD.
+    private func listAccessibilityElements() {
+        guard !menu else { return }
+        let hint = flightHintLabel.flatMap { $0.superview === self ? $0 : nil }
+        accessibilityElements = flightElements + [scroll] + (hint.map { [$0] } ?? [])
     }
 
     /// Chips, a gap, then Pause on one row. At accessibility text sizes Pause has a row
@@ -203,6 +244,7 @@ final class SceneTextOverlay: UIView {
             gap.setContentHuggingPriority(.defaultLow - 1, for: .horizontal)
             [chips, gap, pause].forEach { hud.addArrangedSubview($0) }
         }
+        placeHint()
     }
 
     /// A faint line across the middle with Up and Down beside it, for schemes where the
@@ -228,6 +270,7 @@ final class SceneTextOverlay: UIView {
             label.text = text
             label.isAccessibilityElement = false
             addSubview(label)
+            upDownLabels.append(label)
             constraints += [
                 label.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -Spacing.l),
                 above ? label.bottomAnchor.constraint(equalTo: line.topAnchor, constant: -Spacing.s)
@@ -271,6 +314,23 @@ final class SceneTextOverlay: UIView {
         flightHintLabel?.text = game.flightHintText
             ?? GameScene.flightHintText(for: GameSettings.shared.controlScheme, voiceOver: UIAccessibility.isVoiceOverRunning)
         flightHintLabel?.alpha = game.flightHintText == nil ? 0 : 1
+        hintIsShowing = game.flightHintText != nil
+        setNeedsLayout()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        showUpDownLabelsClearOfHint()
+    }
+
+    /// At large text sizes the hint reaches the middle of the screen, where Up and Down
+    /// sit. The hint says the same thing, so a label it would cover waits until it fades.
+    private func showUpDownLabelsClearOfHint() {
+        guard !upDownLabels.isEmpty else { return }
+        let hint = flightHintLabel.flatMap { hintIsShowing ? $0.convert($0.bounds, to: self) : nil }
+        for label in upDownLabels {
+            label.isHidden = hint.map { $0.intersects(label.frame) } ?? false
+        }
     }
 }
 
@@ -292,6 +352,8 @@ extension SceneTextOverlay: GameSceneHUDDelegate {
     func flightHintDidChange(_ text: String?) {
         guard let label = flightHintLabel else { return }
         label.layer.removeAllAnimations()
+        hintIsShowing = text != nil
+        setNeedsLayout()
         if let text = text {
             label.text = text
             label.alpha = 1
