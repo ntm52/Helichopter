@@ -39,7 +39,10 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
     /// Set by PlayingState at the start of each run. Called and self-cleared on the player's
     /// first input so that pipe spawning (and the hint fade) is deferred until the player acts.
-    var onFirstInput: (() -> Void)?
+    /// Setting it starts a new run, so Hold to Hover waits in place again.
+    var onFirstInput: (() -> Void)? {
+        didSet { if onFirstInput != nil { hasTakenOff = false } }
+    }
 
     // MARK: - Phase 5: Invulnerability
 
@@ -90,10 +93,11 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
     // MARK: - Properties
 
     static let rotorFrameInterval: TimeInterval = 1.0 / 60.0
-    /// SpriteKit moves a body under world gravity at 150 scene units per metre, but turns a
-    /// force or impulse straight into scene units (force / mass). A force meant to balance
-    /// gravity must be scaled by this. Measured in a running scene on 2026-11-24.
-    static let sceneUnitsPerMeter: CGFloat = 150
+    /// Scene units per second for Hold to Hover and Up/Down Switches, up and down alike.
+    /// Those schemes set the speed directly: no gravity, no build-up, no coasting.
+    static let steadyFlightSpeed: CGFloat = 260
+    /// How far Hold to Hover leans at that speed, in radians (about 14 degrees).
+    static let steadyFlightTilt: CGFloat = 0.25
     /// How strongly the helicopter is tinted while a No-Fail bump lasts.
     static let bumpTint: CGFloat = 0.75
     /// Half of one pulse of that tint.
@@ -107,6 +111,10 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
     private(set) var isHoveringHeld = false
     /// Auto Hover nudge speed; with per-frame damping each nudge moves about 100 scene units.
     static var autoHoverNudgeSpeed: CGFloat { GameSettings.shared.terminalVelocity }
+
+    /// Hold to Hover: true once the run's first hold has happened, so the helicopter goes
+    /// down whenever it is not held. Before that it waits in place. A pause keeps it.
+    private(set) var hasTakenOff = false
 
     private(set) var isTwoSwitchUpHeld = false
     private(set) var isTwoSwitchDownHeld = false
@@ -215,15 +223,21 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
         let velocityY = body.velocity.dy
         let scheme    = GameSettings.shared.controlScheme
 
-        // Cap upward launch speed for schemes that use standard physics
-        if scheme == .tapFlap || scheme == .holdHover {
+        // Cap upward launch speed for the scheme that uses standard physics
+        if scheme == .tapFlap {
             let cap = GameSettings.shared.terminalVelocity
             if velocityY > cap { body.velocity = CGVector(dx: 0, dy: cap) }
         }
 
-        // Tilt the helicopter to match vertical velocity
-        let tiltFactor = velocityY * (velocityY < 0 ? 0.004 : 0.002)
-        zRotation = tiltFactor.clamp(min: -1, max: 1.0)
+        // Tilt the helicopter to match vertical velocity. Hold to Hover spends most of its
+        // time going down at a steady speed, so it leans gently rather than diving.
+        if scheme == .holdHover {
+            zRotation = (velocityY / Self.steadyFlightSpeed * Self.steadyFlightTilt).clamp(min: -Self.steadyFlightTilt,
+                                                                                          max: Self.steadyFlightTilt)
+        } else {
+            let tiltFactor = velocityY * (velocityY < 0 ? 0.004 : 0.002)
+            zRotation = tiltFactor.clamp(min: -1, max: 1.0)
+        }
     }
 
     private func applyControlSchemeUpdate(body: SKPhysicsBody) {
@@ -233,15 +247,12 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
             break  // standard impulse + gravity; nothing to do per-frame
 
         case .holdHover:
-            // The force that cancels gravity. Without `sceneUnitsPerMeter` it was about
-            // 1/150 of that: holding barely slowed the fall and the helicopter dropped.
-            let counterGravity = abs(GameSettings.shared.gravity) * Self.sceneUnitsPerMeter * cachedMass
+            // isAffectedByGravity remains false. Held, it goes up; let go, it goes down; both
+            // at one steady speed that starts and stops at once, as in Up/Down Switches.
             if isHoveringHeld {
-                // Net upward acceleration ≈ 1.2× gravity.
-                body.applyForce(CGVector(dx: 0, dy: counterGravity * 2.2))
-            } else if isAffectedByGravity {
-                // Net downward acceleration ≈ 0.3× gravity — slow fall so the player can recover.
-                body.applyForce(CGVector(dx: 0, dy: counterGravity * 0.7))
+                body.velocity.dy = Self.steadyFlightSpeed
+            } else if hasTakenOff {
+                body.velocity.dy = -Self.steadyFlightSpeed
             }
 
         case .autoHover:
@@ -253,7 +264,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
         case .twoSwitchUD:
             // isAffectedByGravity remains false. Direct velocity control.
             // Both held is the pause gesture, so the helicopter holds still rather than rising.
-            let speed: CGFloat = 260
+            let speed = Self.steadyFlightSpeed
             if isTwoSwitchUpHeld && !isTwoSwitchDownHeld {
                 body.velocity.dy = speed
             } else if isTwoSwitchDownHeld && !isTwoSwitchUpHeld {
@@ -303,7 +314,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
         case .holdHover:
             isHoveringHeld = true
-            isAffectedByGravity = true  // enable gravity so it falls when released
+            hasTakenOff = true  // from now on, letting go means going down
             flightHaptic()
 
         case .autoHover:

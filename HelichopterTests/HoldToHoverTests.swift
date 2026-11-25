@@ -2,13 +2,18 @@ import Testing
 import SpriteKit
 @testable import Helichopter
 
-/// Hold to Hover as the guide describes it: hold to rise, let go to fall gently. Until
-/// 2026-11-24 the hold force was about 1/150 of what it should be, so the helicopter fell
-/// almost as fast while held as when let go, and could not lift off the floor.
+/// Hold to Hover, as the owner asked on 2026-11-24: hold to go up, let go to go down, at
+/// one steady speed that starts and stops at once, like Up/Down Switches with one input.
+/// Before that it used forces: first far too weak to climb, then, once fixed, it coasted
+/// upward for about two seconds after being let go.
 @MainActor struct HoldToHoverTests {
 
-    /// Scene units per second squared that world gravity pulls at.
-    private var gravity: CGFloat { abs(GameSettings.shared.gravity) * HelicopterNode.sceneUnitsPerMeter }
+    private let speed = HelicopterNode.steadyFlightSpeed
+
+    /// The vertical speed, within SpriteKit's own small per-step damping of the speed set.
+    private func moves(_ heli: HelicopterNode, at expected: CGFloat) -> Bool {
+        abs(heli.physicsBody!.velocity.dy - expected) <= abs(expected) * 0.02
+    }
 
     /// A live game in a window, so SpriteKit runs its physics each frame.
     private func play() throws -> (GameScene, HelicopterNode, UIWindow) {
@@ -35,32 +40,42 @@ import SpriteKit
         try await work()
     }
 
-    /// Acceleration over game time (the frames' own clock, not the wall clock, so a slow
-    /// simulator does not change the answer) from now until `seconds` of game time pass.
-    private func acceleration(of heli: HelicopterNode, over seconds: TimeInterval) async throws -> CGFloat {
-        let t0 = heli.lastUpdateTime, v0 = heli.physicsBody!.velocity.dy
+    /// Waits for `seconds` of game time (the frames' own clock, so a slow simulator does
+    /// not change the answer).
+    private func frames(of heli: HelicopterNode, for seconds: TimeInterval) async throws {
+        let t0 = heli.lastUpdateTime
         #expect(try await waitUntil { heli.lastUpdateTime - t0 >= seconds })
-        return (heli.physicsBody!.velocity.dy - v0) / CGFloat(heli.lastUpdateTime - t0)
     }
 
-    @Test func holdingRisesAndLettingGoFallsGently() async throws {
+    @Test func holdingGoesUpAndLettingGoGoesDownAtOnce() async throws {
         try await withHoldToHover {
             let (scene, heli, window) = try play()
             defer { window.isHidden = true; scene.view?.presentScene(nil) }
             #expect(try await waitUntil { heli.lastUpdateTime > 0 })
+
+            // Before the first hold it waits in place.
             let start = heli.position.y
+            try await frames(of: heli, for: 0.2)
+            #expect(abs(heli.position.y - start) < 1 && !heli.isAffectedByGravity, "\(start) → \(heli.position.y)")
 
             heli.switchPrimaryBegan()
-            let rising = try await acceleration(of: heli, over: 0.2)
-            // Designed: about 1.2 times gravity upwards.
-            #expect(rising > 0.9 * gravity && rising < 1.5 * gravity, "held: \(rising), gravity \(gravity)")
-            #expect(heli.position.y > start)
+            try await frames(of: heli, for: 0.05)
+            #expect(moves(heli, at: speed), "up at full speed straight away (\(heli.physicsBody!.velocity.dy))")
+            try await frames(of: heli, for: 0.2)
+            #expect(moves(heli, at: speed), "and no faster (\(heli.physicsBody!.velocity.dy))")
+            let released = heli.position.y
+            #expect(released > start + 0.2 * speed * 0.8)
 
             heli.switchPrimaryEnded()
-            #expect(try await waitUntil { heli.physicsBody!.velocity.dy < -20 })
-            let falling = try await acceleration(of: heli, over: 0.3)
-            // Designed: about 0.3 times gravity downwards, far gentler than a free fall.
-            #expect(falling < -0.2 * gravity && falling > -0.45 * gravity, "released: \(falling), gravity \(gravity)")
+            try await frames(of: heli, for: 0.05)
+            #expect(moves(heli, at: -speed), "down at once, with no coasting up (\(heli.physicsBody!.velocity.dy))")
+            // At most a frame or two of upward travel after letting go.
+            #expect(heli.position.y < released + speed / 20)
+            try await frames(of: heli, for: 0.3)
+            #expect(moves(heli, at: -speed), "a steady speed, not a fall that speeds up (\(heli.physicsBody!.velocity.dy))")
+            // A gentle lean, not a nose-down dive.
+            #expect(abs(heli.zRotation) <= HelicopterNode.steadyFlightTilt + 0.01, "tilt \(heli.zRotation)")
+            #expect(!heli.isAffectedByGravity)
         }
     }
 
@@ -73,10 +88,11 @@ import SpriteKit
             #expect(try await waitUntil { heli.lastUpdateTime > 0 })
             heli.touchBegan(up: true)
             heli.touchEnded()
-            #expect(try await waitUntil(timeout: 15) {
-                heli.position.y < scene.size.height * 0.2 && abs(heli.physicsBody!.velocity.dy) < 5
-            }, "let go, it settles on the floor")
+            #expect(try await waitUntil(timeout: 15) { heli.position.y < scene.size.height * 0.2 }, "let go, it goes down")
+            try await frames(of: heli, for: 1)
             let floor = heli.position.y
+            try await frames(of: heli, for: 0.2)
+            #expect(abs(heli.position.y - floor) < 2, "and rests on the floor")
             heli.touchBegan(up: true)
             #expect(try await waitUntil { heli.position.y > floor + 100 }, "held, it climbs off the floor")
             heli.touchEnded()

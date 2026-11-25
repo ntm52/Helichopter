@@ -567,21 +567,23 @@ struct GameLifecycleTests {
         }
     }
 
-    @Test func pausePreservesGravityAndClearsHeldInput() throws {
+    /// Hold to Hover flies at steady speeds with gravity off; after a pause, letting go
+    /// still means going down.
+    @Test func pausePreservesTakeOffAndClearsHeldInput() throws {
         try withSettings {
             GameSettings.shared.controlScheme = .holdHover
             let scene = try #require(GameScene(fileNamed: "GameScene"))
             let heli = try #require(scene.sceneAdapter?.playerCharacter as? HelicopterNode)
-            #expect(!heli.isAffectedByGravity)
+            #expect(!heli.isAffectedByGravity && !heli.hasTakenOff)
             heli.switchPrimaryBegan()
-            #expect(heli.isAffectedByGravity)
+            #expect(!heli.isAffectedByGravity && heli.hasTakenOff)
             #expect(heli.isHoveringHeld)
             #expect(scene.action(forKey: "Pipe Action") != nil)
             #expect(scene.stateMachine.enter(PausedState.self))
             #expect(!heli.isHoveringHeld)
             #expect(!heli.shouldAcceptTouches)
             #expect(scene.stateMachine.enter(PlayingState.self))
-            #expect(heli.isAffectedByGravity)
+            #expect(heli.hasTakenOff)
             #expect(heli.shouldAcceptTouches)
             #expect(scene.action(forKey: "Pipe Action") != nil)
         }

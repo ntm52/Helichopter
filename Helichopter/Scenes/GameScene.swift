@@ -211,7 +211,7 @@ class GameScene: SKScene {
             let pause = "Pause is at the top of the screen."
             switch scheme {
             case .tapFlap: return "Direct touch. Tap the lower half of the screen to flap upward. \(pause)"
-            case .holdHover: return "Direct touch. Touch and hold the lower half of the screen to rise; lift your finger to fall. \(pause)"
+            case .holdHover: return "Direct touch. Touch and hold the lower half of the screen to rise; lift your finger to go down. \(pause)"
             case .autoHover: return "Direct touch. Tap here to nudge \(down ? "down" : "up"). \(pause)"
             case .twoSwitchUD: return "Direct touch. Touch and hold here to move \(down ? "down" : "up"); lift your finger to stop. \(pause)"
             }

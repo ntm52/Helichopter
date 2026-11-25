@@ -212,12 +212,12 @@ extension GameSettings {
 /// In-game input scheme for the helicopter.
 enum ControlScheme: Int {
     case tapFlap     = 0  // single tap / press to flap
-    case holdHover   = 1  // hold to climb, release to fall
+    case holdHover   = 1  // hold to go up, release to go down; steady speed, no gravity
     case autoHover   = 2  // gravity off; switch nudges altitude up/down
     case twoSwitchUD = 3  // switch 1 = up, switch 2 = down; no gravity
 
     /// Touching the top half moves up and the bottom half moves down. Tap to Flap and
-    /// Hold to Hover keep the whole screen as one target, since gravity brings them down.
+    /// Hold to Hover keep the whole screen as one target: gravity, or letting go, brings them down.
     var splitsTouchIntoUpAndDown: Bool { self == .autoHover || self == .twoSwitchUD }
 
     /// The secondary switch pauses where it has no flight job.

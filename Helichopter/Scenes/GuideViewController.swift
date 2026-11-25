@@ -45,7 +45,7 @@ final class GuideViewController: MenuViewController {
         case .tapFlap:
             return "Tap the screen or press your primary switch to rise. Between taps, the helicopter falls."
         case .holdHover:
-            return "Hold the screen or your primary switch to rise. Release to fall gently."
+            return "Hold the screen or your primary switch to rise. Release to go down. It moves at a steady speed and changes direction the moment you press or let go."
         case .autoHover:
             return "The helicopter hovers automatically. Tap the top half of the screen or press your primary switch to nudge up; tap the bottom half or press your secondary switch to nudge down."
         case .twoSwitchUD:
