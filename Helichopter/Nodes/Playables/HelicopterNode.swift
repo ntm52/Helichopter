@@ -90,6 +90,10 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
     // MARK: - Properties
 
     static let rotorFrameInterval: TimeInterval = 1.0 / 60.0
+    /// SpriteKit moves a body under world gravity at 150 scene units per metre, but turns a
+    /// force or impulse straight into scene units (force / mass). A force meant to balance
+    /// gravity must be scaled by this. Measured in a running scene on 2026-11-24.
+    static let sceneUnitsPerMeter: CGFloat = 150
     /// How strongly the helicopter is tinted while a No-Fail bump lasts.
     static let bumpTint: CGFloat = 0.75
     /// Half of one pulse of that tint.
@@ -229,7 +233,9 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
             break  // standard impulse + gravity; nothing to do per-frame
 
         case .holdHover:
-            let counterGravity = abs(GameSettings.shared.gravity) * cachedMass
+            // The force that cancels gravity. Without `sceneUnitsPerMeter` it was about
+            // 1/150 of that: holding barely slowed the fall and the helicopter dropped.
+            let counterGravity = abs(GameSettings.shared.gravity) * Self.sceneUnitsPerMeter * cachedMass
             if isHoveringHeld {
                 // Net upward acceleration ≈ 1.2× gravity.
                 body.applyForce(CGVector(dx: 0, dy: counterGravity * 2.2))
