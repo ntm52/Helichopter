@@ -148,14 +148,20 @@ final class GuideViewController: MenuViewController {
         }
         choices.append((item("Skip guide", hint: "Goes to the home screen") { [weak self] in self?.finish() },
                         .secondary, "house.fill"))
-        choices.forEach { menu.addButton(for: $0.item, kind: $0.kind, icon: $0.icon) }
-        let items = choices.map(\.item)
+        // Music goes right after Next: high enough to be on screen, so a VoiceOver user can
+        // quiet the music to hear the guide, while Next stays one switch step away.
+        var items: [FocusScannable] = []
+        for (index, choice) in choices.enumerated() {
+            menu.addButton(for: choice.item, kind: choice.kind, icon: choice.icon)
+            items.append(choice.item)
+            if index == 1 { items.append(addMusicButton(kind: .secondary).item) }
+        }
         scanner.items = items
         // A step too long for the screen is scanned with Scroll down and Scroll up first,
         // so a switch user can read all of it.
         scanner.onStart = { [weak self] in
             guard let self = self else { return }
-            self.scanner.items = self.menu.scrollItemsIfNeeded() + items
+            self.scanner.items = self.menu.scrollItemsIfNeeded().map { $0 as FocusScannable } + items
         }
         if wasScanning { scanner.start() }
         if !isFirstBuild { ScreenChangeAnnouncer.post(headingLabel) }

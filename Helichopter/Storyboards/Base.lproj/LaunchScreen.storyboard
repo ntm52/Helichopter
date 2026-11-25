@@ -37,8 +37,8 @@
                             <constraint firstItem="eCY-Un-8Cj" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="m4k-Ho-hvb"/>
                             <constraint firstItem="eCY-Un-8Cj" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="xk6-NN-sQ8"/>
                             <constraint firstItem="yAJ-pv-Edz" firstAttribute="centerX" secondItem="6Tk-OE-BBY" secondAttribute="centerX" id="ypR-Ec-Ky0"/>
-                            <constraint firstItem="yAJ-pv-Edz" firstAttribute="centerY" secondItem="6Tk-OE-BBY" secondAttribute="centerY" constant="-155" id="bnw-RI-A8I">
-                                <variation key="heightClass=regular-widthClass=regular" constant="-144.67"/>
+                            <constraint firstItem="yAJ-pv-Edz" firstAttribute="centerY" secondItem="6Tk-OE-BBY" secondAttribute="centerY" constant="-191" id="bnw-RI-A8I">
+                                <variation key="heightClass=regular-widthClass=regular" constant="-180.67"/>
                             </constraint>
                         </constraints>
                     </view>

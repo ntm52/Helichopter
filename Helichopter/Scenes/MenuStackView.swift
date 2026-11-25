@@ -393,6 +393,30 @@ class MenuViewController: ScreenViewController {
         }
     }
 
+    /// Starts or stops the menu theme after the music setting changes. In the app, the
+    /// root controller's player; tests replace it.
+    lazy var applyMusicSetting: () -> Void = { [weak self] in
+        (self?.parent as? RootViewController)?.menuMusic.play()
+    }
+
+    /// The Music button, at the end of the column. It turns the music setting (also in
+    /// Settings → Sound) off or on, so VoiceOver and spoken steps can be heard over it.
+    @discardableResult
+    func addMusicButton(kind: ButtonKind) -> MenuButton {
+        weak var button: MenuButton?
+        let choice = MusicChoice { [weak self] in
+            guard let self = self, !self.isChangingScreen else { return }
+            Feedback.choose()
+            MusicChoice.isOn.toggle()
+            self.applyMusicSetting()
+            button?.showMusicState()
+        }
+        let made = menu.addButton(for: choice, kind: kind, icon: choice.icon)
+        made.showMusicState()
+        button = made
+        return made
+    }
+
     override func screenDidAppear() {
         // Auto-start only for switch users; anyone else starts with a first switch press.
         if GameSettings.shared.scanningEnabled { scanner.start() }
@@ -411,3 +435,38 @@ class MenuViewController: ScreenViewController {
     override func switchSecondaryBegan() { scanner.secondaryAdvance() }
 }
 
+/// The Music choice on Home and in the guide. Its title says whether music is playing.
+final class MusicChoice: MenuChoice {
+    /// The music setting, shared with the Music switch in Settings → Sound and the game.
+    static var isOn: Bool {
+        get { UserDefaults.standard.bool(for: .isMusicOn) }
+        set { UserDefaults.standard.set(newValue, for: .isMusicOn) }
+    }
+
+    var title: String { Self.isOn ? "Music On" : "Music Off" }
+    var hint: String { Self.isOn ? "Turns the music off" : "Turns the music on" }
+    var icon: String { Self.isOn ? "speaker.wave.2.fill" : "speaker.slash.fill" }
+    var onFocusChange: ((Bool) -> Void)?
+    var isFocused = false {
+        didSet { onFocusChange?(isFocused) }
+    }
+    private let action: () -> Void
+
+    init(action: @escaping () -> Void) {
+        self.action = action
+    }
+
+    func scannerActivate() { action() }
+}
+
+extension MenuButton {
+    /// Shows a Music button's current state: its title (also its spoken name), icon,
+    /// and hint. Voice Control also knows it as plain "Music", whichever state it is in.
+    func showMusicState() {
+        guard let music = item as? MusicChoice else { return }
+        setTitle(music.title, for: .normal)
+        setIcon(systemName: music.icon)
+        accessibilityHint = music.hint
+        accessibilityUserInputLabels = [music.title, "Music"]
+    }
+}

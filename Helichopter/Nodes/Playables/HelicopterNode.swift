@@ -139,6 +139,8 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
         // A stable rounded flight marker surrounds all rotor frames. It remains opaque
         // during no-fail feedback and does not alter the forgiving circular hitbox.
+        // On a dark sky its black middle reads as part of the sky, so only the ring
+        // shows; a light sky (Parchment) gets the ring alone, not a black disc.
         let boundary = SKNode()
         boundary.name = "flightBoundary"
         boundary.zPosition = -2
@@ -148,7 +150,8 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
         boundary.addGameplayBoundary(path: CGPath(roundedRect: rect,
                                                   cornerWidth: size.height / 2,
                                                   cornerHeight: size.height / 2,
-                                                  transform: nil), filled: true)
+                                                  transform: nil),
+                                     filled: !theme.hasLightSky)
         addChild(boundary)
 
         animate(with: animationTimeInterval)

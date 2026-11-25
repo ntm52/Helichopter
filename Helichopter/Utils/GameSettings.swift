@@ -123,6 +123,9 @@ struct UITheme {
     /// (e.g. gold on cream is low-contrast; warm red reads well on parchment).
     /// Contrast guarantee: each non-nil value must achieve ≥ 4.5:1 vs sceneBackgroundColor.
     let helicopterTintColor: UIColor?
+
+    /// True for a theme whose game is played on a light, plain sky (Parchment).
+    var hasLightSky: Bool { backgroundSpriteTintColor != nil }
 }
 
 private extension UIColor {

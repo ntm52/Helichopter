@@ -78,6 +78,15 @@ final class AccessibilityAuditTests: XCTestCase {
         try audit("Guide, step 2")
         app.buttons["Skip guide"].tap()
         try audit("Home")
+        // Music turns off and on from Home; Voice Control also knows it as "Music".
+        let music = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Music'")).firstMatch
+        XCTAssertTrue(music.exists, "Home has a Music button")
+        let musicBefore = music.label
+        music.tap()
+        XCTAssertNotEqual(music.label, musicBefore, "Music changes its name when tapped")
+        try audit("Home, music changed")
+        music.tap()
+        XCTAssertEqual(music.label, musicBefore)
 
         app.buttons["Hangar"].tap()
         XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5))

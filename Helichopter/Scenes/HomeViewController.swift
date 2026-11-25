@@ -66,7 +66,8 @@ final class HomeViewController: MenuViewController {
         // Play first and largest; the scanner still moves Play, Hangar, Settings, How to Play.
         menu.addButton(for: items[0], kind: .primary, size: .large, icon: HomeAction.play.symbolName)
         menu.addTileRow(for: zip(items, HomeAction.allCases).dropFirst().map { (choice: $0, icon: $1.symbolName) })
-        scanner.items = items
+        let music = addMusicButton(kind: .quiet)
+        scanner.items = items.map { $0 as FocusScannable } + [music.item]
     }
 
     static let mascotHeight: CGFloat = 170

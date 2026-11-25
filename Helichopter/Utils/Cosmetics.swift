@@ -40,10 +40,13 @@ extension Cosmetic {
     /// The name of rotor frame `index` (1 to 60) in the helicopter's atlas.
     func helicopterFrameName(_ index: Int) -> String { "\(framePrefix)\(index)" }
 
-    /// Rotor frame `index` as an image, for UIKit screens.
+    /// Rotor frame `index` as an image, for UIKit screens, sized one point per pixel as
+    /// the SpriteKit texture is. Read from the asset catalog, which is quick and cached:
+    /// drawing a texture's `cgImage()` took about 80 ms a frame, and Home loads all 60.
     func helicopterImage(frame index: Int = 1) -> UIImage {
-        let atlas = SKTextureAtlas(named: assetName)
-        return UIImage(cgImage: atlas.textureNamed(helicopterFrameName(index)).cgImage())
+        let name = helicopterFrameName(index)
+        if let art = UIImage(named: name)?.cgImage { return UIImage(cgImage: art) }
+        return UIImage(cgImage: SKTextureAtlas(named: assetName).textureNamed(name).cgImage())
     }
 
     /// The first rotor frame with the empty space around the helicopter cut away, for a

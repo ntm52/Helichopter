@@ -359,7 +359,8 @@ struct AccessibilityAuditFixTests {
         #expect(scroll.contentOffset.y < down)
         for button in guide.menu.buttons {
             guide.scanner.secondaryAdvance()
-            #expect(scroll.bounds.contains(button.convert(button.bounds, to: scroll)))
+            // Within a hair: the last button ends exactly at the bottom when scrolled there.
+            #expect(scroll.bounds.insetBy(dx: -0.01, dy: -0.01).contains(button.convert(button.bounds, to: scroll)))
         }
         // The next step starts at its top; a step that fits has no scroll choices.
         guide.show(page: 1)

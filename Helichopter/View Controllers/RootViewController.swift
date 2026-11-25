@@ -157,18 +157,22 @@ final class MenuMusic {
     private var player: AVAudioPlayer?
     var isPlaying: Bool { player?.isPlaying == true }
 
+    /// Plays from the start, or stops if the player has turned music off.
     func play() {
         guard UserDefaults.standard.bool(for: .isMusicOn) else { return stop() }
         if player == nil, let url = Bundle.main.url(forResource: "MainTheme", withExtension: "caf") {
             player = try? AVAudioPlayer(contentsOf: url)
             player?.numberOfLoops = -1
+            player?.prepareToPlay()
         }
         if player?.isPlaying == false { player?.play() }
     }
 
+    /// Stops and rewinds. The player is kept, so coming back to Home does not load the
+    /// file again.
     func stop() {
         player?.stop()
-        player = nil
+        player?.currentTime = 0
     }
 }
 

@@ -214,7 +214,8 @@ struct WindowSizeTests {
         home.view.layoutIfNeeded()
         #expect(home.mascot.isHidden)
         #expect(!home.menu.scroll.overflowsVertically)
-        #expect(home.menu.buttons.count == 4)
+        // The four choices and Music.
+        #expect(home.menu.buttons.count == 5)
         home.view.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
         home.view.layoutIfNeeded()
         #expect(!home.mascot.isHidden)

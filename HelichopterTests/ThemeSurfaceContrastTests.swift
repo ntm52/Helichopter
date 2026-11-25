@@ -97,12 +97,12 @@ struct ThemeSurfaceContrastTests {
     @Test func playIsTheOnlyPrimaryAndTheLargestButton() {
         let home = home(.large)
         let buttons = home.menu.buttons
-        #expect(buttons.map { $0.currentTitle } == ["Play", "Hangar", "Settings", "How to Play"])
-        #expect(buttons.map { $0.kind } == [.primary, .secondary, .secondary, .secondary])
+        #expect(buttons.map { $0.currentTitle } == ["Play", "Hangar", "Settings", "How to Play", MusicChoice {}.title])
+        #expect(buttons.map { $0.kind } == [.primary, .secondary, .secondary, .secondary, .quiet])
         #expect(buttons[0].bounds.height >= Layout.largeButtonHeight)
         #expect(buttons[0].bounds.width > buttons[1].bounds.width * 2)
-        // The scanner still walks the same four choices in the same order.
-        #expect(home.scanner.items.count == 4)
+        // The scanner walks the same four choices in the same order, then Music.
+        #expect(home.scanner.items.count == 5)
         #expect(home.wordmarkHolder.transform != .identity && home.titleLabel.transform == .identity)
         // The name fits on one line at this width, and still does at the largest text size.
         for screen in [home, self.home(.accessibilityExtraExtraExtraLarge)] {
@@ -115,12 +115,12 @@ struct ThemeSurfaceContrastTests {
     }
 
     @Test func tilesShareARowAndBecomeAColumnAtAccessibilitySizes() {
-        let row = home(.large).menu.buttons.dropFirst()
+        let row = home(.large).menu.buttons.dropFirst().dropLast()
         #expect(Set(row.map { $0.frame.minY }).count == 1)
         #expect(Set(row.map { $0.frame.height }).count == 1)
         #expect(row.allSatisfy { $0.iconPlacement == .top && $0.bounds.height >= Layout.minButtonHeight })
 
-        let column = home(.accessibilityExtraExtraExtraLarge).menu.buttons.dropFirst()
+        let column = home(.accessibilityExtraExtraExtraLarge).menu.buttons.dropFirst().dropLast()
         #expect(Set(column.map { $0.frame.minY }).count == 3)
         #expect(column.allSatisfy { $0.iconPlacement == .leading })
         #expect(Set(column.map { $0.frame.width }).count == 1)

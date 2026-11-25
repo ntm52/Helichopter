@@ -64,7 +64,9 @@ struct GuidePolishTests {
             })
         }
         let expected = ["Read this step aloud", "Done", "Back", "Skip guide"]
-        #expect(guide.menu.buttons.map(\.currentTitle) == expected)
+        // With Music third, which has its own tests (HomeMusicAndOutlineTests).
+        #expect(guide.menu.buttons.filter { !($0.item is MusicChoice) }.map(\.currentTitle) == expected)
+        #expect(guide.menu.buttons[2].item is MusicChoice)
         #expect(guide.scanner.items.compactMap { ($0 as? MenuItem)?.title } == expected)
     }
 

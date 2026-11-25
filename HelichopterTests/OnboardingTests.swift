@@ -32,7 +32,7 @@ struct OnboardingTests {
         guide.screenDidAppear()
         defer { guide.screenWillDisappear() }
         #expect(guide.page == 0)
-        #expect(descendants(guide.view, UIButton.self).map(\.currentTitle) == ["Read this step aloud", "Next", "Skip guide"])
+        #expect(descendants(guide.view, UIButton.self).map(\.currentTitle) == ["Read this step aloud", "Next", MusicChoice {}.title, "Skip guide"])
         #expect(guide.headingLabel?.accessibilityTraits.contains(.header) == true)
         #expect(guide.scanner.items.count == guide.menu.buttons.count)
 

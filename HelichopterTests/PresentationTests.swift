@@ -265,9 +265,9 @@ struct PresentationTests {
             #expect(home.mascot.animationImages?.count == (reduceMotion ? nil : 60))
             #expect(home.mascot.image != nil)
             #expect(home.titleLabel.text == "Helichopter" && home.titleLabel.accessibilityTraits.contains(.header))
-            #expect(home.menu.buttons.map(\.currentTitle) == ["Play", "Hangar", "Settings", "How to Play"])
+            #expect(home.menu.buttons.map(\.currentTitle) == ["Play", "Hangar", "Settings", "How to Play", MusicChoice {}.title])
             #expect(home.menu.buttons.allSatisfy { !($0.accessibilityHint ?? "").isEmpty })
-            #expect(home.scanner.items.map(\.accessibilityScanLabel) == ["Play", "Hangar", "Settings", "How to Play"])
+            #expect(home.scanner.items.map(\.accessibilityScanLabel) == ["Play", "Hangar", "Settings", "How to Play", MusicChoice {}.title])
             #expect(home.view.accessibilityViewIsModal)
             #expect(home.announcement as? UILabel === home.titleLabel)
         }
