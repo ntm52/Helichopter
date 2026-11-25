@@ -47,8 +47,13 @@ final class FocusScanner {
 
     // MARK: - Public API
 
+    /// Called as scanning starts, before `items` is read, so a host can add items that
+    /// only a scanning player needs.
+    var onStart: (() -> Void)?
+
     func start(at index: Int = 0) {
         stop()
+        onStart?()
         guard !items.isEmpty else { return }
         isActive = true
         currentIndex = items.indices.contains(index) ? index : 0
@@ -90,7 +95,7 @@ final class FocusScanner {
     /// Read help without a scan timer interrupting it. The next switch press resumes scanning.
     func readInstructions(_ text: String) {
         stop()
-        speak(text)
+        speak(text, asked: true)
     }
 
     /// Primary switch: activate the focused button.
@@ -147,8 +152,11 @@ final class FocusScanner {
     /// Hands a label to VoiceOver to speak; tests replace it.
     static var announce: (String) -> Void = { UIAccessibility.post(notification: .announcement, argument: $0) }
 
-    private func speak(_ text: String) {
+    /// `asked` is true when the player chose to hear this, so it is spoken even with
+    /// Speak Menu Items off.
+    private func speak(_ text: String, asked: Bool = false) {
         synthesizer.stopSpeaking(at: .immediate)
+        guard asked || settings.speakMenuItems else { return }
         // With VoiceOver on, VoiceOver is the only voice: a second one would talk over it.
         guard !Self.isVoiceOverRunning() else { return Self.announce(text) }
         let utterance = AVSpeechUtterance(string: text)

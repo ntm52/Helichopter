@@ -25,7 +25,7 @@ struct SettingsStyle {
     let sub: UIColor              // secondary / detail text
     let rowBg: UIColor            // individual row backgrounds
     let div: UIColor              // dividers and outlines
-    let swatchBg: UIColor         // cards that sit on a row
+    let track: UIColor            // the unfilled part of a slider's track, on a row
     let focus: UIColor            // the scanner's focus ring
 
     init(theme: UITheme) {
@@ -36,7 +36,7 @@ struct SettingsStyle {
         sub = theme.secondaryTextColor
         rowBg = theme.cardColor
         div = theme.inkColor
-        swatchBg = theme.raisedColor
+        track = theme.secondaryTextColor
         focus = theme.focusColor
     }
 }
@@ -89,6 +89,9 @@ class ScrollingPanelView: UIView {
     let fontTraits: UITraitCollection?
     let theme: UITheme
     let style: SettingsStyle
+    /// True on a wide, short screen (a phone on its side): rows and page items go two to
+    /// a line, read and scanned left to right, then down.
+    let usesColumns: Bool
 
     var onBack: (() -> Void)?
     /// Asks the host to rebuild the panel: theme, preset, lock, reset, or text size changed.
@@ -109,13 +112,18 @@ class ScrollingPanelView: UIView {
     private(set) var header: UIStackView!
     /// The card that `appendRow` is filling; a section heading or a page button ends it.
     private var openCard: SurfaceView?
+    /// In columns, the line on the open card waiting for its second row.
+    private var openRowPair: ColumnPair?
+    /// In columns, the line on the page waiting for its second item.
+    private var openPagePair: ColumnPair?
 
     // MARK: - Initialization
 
-    required init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil) {
+    required init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil, columns: Bool = false) {
         self.fontTraits = fontTraits
         self.theme = theme
         style = SettingsStyle(theme: theme)
+        usesColumns = columns
         super.init(frame: frame)
         buildUI()
         registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (panel: ScrollingPanelView, previous: UITraitCollection) in
@@ -129,6 +137,20 @@ class ScrollingPanelView: UIView {
 
     /// Subclasses add their rows to `stack`.
     func buildSections() { }
+
+    /// The narrowest a column may be: about a portrait phone's card.
+    static let minColumnWidth: CGFloat = 300
+
+    /// Whether a screen of this size has room for two columns side by side. Only a screen
+    /// wider than tall, and never at accessibility text sizes, where a row needs the width.
+    static func fitsColumns(in size: CGSize, safeArea: UIEdgeInsets, traits: UITraitCollection) -> Bool {
+        guard !traits.preferredContentSizeCategory.isAccessibilityCategory, size.width > size.height else { return false }
+        let usable = size.width - safeArea.left - safeArea.right - 2 * Spacing.l
+        return usable >= 2 * minColumnWidth + Spacing.l
+    }
+
+    /// How wide the page may grow: one column, or two with a gap.
+    private var maxWidth: CGFloat { usesColumns ? 2 * Layout.maxContentWidth + Spacing.l : Layout.maxContentWidth }
 
     /// True while a page covers the list; a rebuild reopens it.
     var isAdjusting: Bool { false }
@@ -149,9 +171,16 @@ class ScrollingPanelView: UIView {
     /// Opens the page that covered a rebuilt panel again, for a player who is not scanning.
     func reopenAdjustment(labelled label: String?) { }
 
+    /// Controls the scanner passes over, because another control on the row does their job.
+    let scanSkipped = NSHashTable<UIControl>.weakObjects()
+
+    /// Called before the scanner lists its controls, so a page can show ones only it needs.
+    func prepareToScan() { }
+
     func startScanning(focusing label: String? = nil) {
         switchScanner.stop()
-        navigationItems = controls(in: scanRoot).map { scanItem(for: $0) }
+        prepareToScan()
+        navigationItems = controls(in: scanRoot).filter { !scanSkipped.contains($0) }.map { scanItem(for: $0) }
         switchScanner.items = navigationItems
         let index = navigationItems.firstIndex {
             let control = ($0 as? PanelScanItem)?.control
@@ -286,7 +315,9 @@ class ScrollingPanelView: UIView {
         NSLayoutConstraint.activate([
             header.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
             header.centerXAnchor.constraint(equalTo: centerXAnchor),
-            header.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth),
+            header.widthAnchor.constraint(lessThanOrEqualToConstant: maxWidth),
+            // Clear of the camera housing on a phone on its side.
+            header.widthAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.widthAnchor),
             headerFill,
 
             headerDiv.bottomAnchor.constraint(equalTo: header.bottomAnchor),
@@ -301,12 +332,14 @@ class ScrollingPanelView: UIView {
             stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: Spacing.l),
             scrollView.contentLayoutGuide.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
             stack.centerXAnchor.constraint(equalTo: scrollView.contentLayoutGuide.centerXAnchor),
-            stack.widthAnchor.constraint(lessThanOrEqualToConstant: Layout.maxContentWidth),
+            stack.widthAnchor.constraint(lessThanOrEqualToConstant: maxWidth),
+            stack.widthAnchor.constraint(lessThanOrEqualTo: safeAreaLayoutGuide.widthAnchor),
             stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -Spacing.xxl),
             fill,
         ])
 
         buildSections()
+        closeLines()
         focusRing.isUserInteractionEnabled = false
         focusRing.accessibilityElementsHidden = true
         focusRing.layer.borderWidth = Stroke.focus
@@ -335,6 +368,7 @@ extension ScrollingPanelView {
 
     /// Starts a section: a heading, then whatever is added until the next heading.
     func sectionHeader(_ title: String) {
+        closeLines()
         openCard = nil
         if let last = stack.arrangedSubviews.last { stack.setCustomSpacing(Spacing.xl, after: last) }
         let lbl = makeLabel(title, style: .heading, color: style.accent)
@@ -380,14 +414,6 @@ extension ScrollingPanelView {
         return btn
     }
 
-    /// The look of a small card that sits on a section card and can be chosen: a palette.
-    func styleCard(_ card: UIView, chosen: Bool) {
-        card.backgroundColor = style.swatchBg
-        card.layer.cornerRadius = Radius.inner
-        card.layer.borderWidth = chosen ? Stroke.focus : Stroke.outline
-        card.layer.borderColor = (chosen ? style.accentFill : style.div).cgColor
-    }
-
     /// A row of plain text on a card, such as "Locked by a caregiver".
     func noteRow(_ text: String) {
         let row = UIView()
@@ -411,7 +437,20 @@ extension ScrollingPanelView {
     }
 
     /// Adds a row to the section's card, starting the card if this is its first row.
+    /// In columns, rows go two to a line on the card.
     func appendRow(_ row: UIView) {
+        if let pair = openRowPair {
+            pair.fill(row)
+            openRowPair = nil
+            return
+        }
+        closePagePair()
+        var item = row
+        if usesColumns {
+            let pair = ColumnPair(first: row, divider: style.div)
+            openRowPair = pair
+            item = pair
+        }
         let card: SurfaceView
         if let open = openCard {
             card = open
@@ -421,17 +460,128 @@ extension ScrollingPanelView {
             stack.addArrangedSubview(card)
             openCard = card
         }
-        card.content.addArrangedSubview(row)
+        card.content.addArrangedSubview(item)
     }
 
     /// Ends the section's card, so the next row starts a new one.
-    func endCard() { openCard = nil }
+    func endCard() {
+        closeRowPair()
+        openCard = nil
+    }
 
     /// Adds something that stands on the page by itself, outside any card: a button or
-    /// a row of cards.
-    func appendToPage(_ view: UIView) {
-        openCard = nil
+    /// a row of cards. In columns, items go two to a line unless `spansColumns`.
+    func appendToPage(_ view: UIView, spansColumns: Bool = false) {
+        endCard()
+        if usesColumns && !spansColumns {
+            if let pair = openPagePair {
+                pair.fill(view)
+                openPagePair = nil
+            } else {
+                let pair = ColumnPair(first: view, divider: nil)
+                openPagePair = pair
+                stack.addArrangedSubview(pair)
+            }
+            return
+        }
+        closePagePair()
         stack.addArrangedSubview(view)
+    }
+
+    /// A line left with one item lets it take the whole width.
+    private func closeRowPair() {
+        openRowPair?.finish()
+        openRowPair = nil
+    }
+
+    private func closePagePair() {
+        openPagePair?.finish()
+        openPagePair = nil
+    }
+
+    func closeLines() {
+        closeRowPair()
+        closePagePair()
+    }
+}
+
+/// Two things side by side, equally wide. Rows on a card get a dividing line and keep to
+/// the top, so a short row does not stretch to match a tall one; things on the page are as
+/// tall as each other. With only one thing, `finish` lets it take the whole width.
+final class ColumnPair: UIStackView {
+    private(set) var items: [UIView] = []
+    private var placeholder: UIView? = UIView()
+    private var divider: UIView?
+    private let topAligned: Bool
+
+    init(first: UIView, divider colour: UIColor?) {
+        topAligned = colour != nil
+        super.init(frame: .zero)
+        axis = .horizontal
+        alignment = .fill
+        spacing = topAligned ? 0 : Spacing.l
+        translatesAutoresizingMaskIntoConstraints = false
+        add(first)
+        if let colour = colour {
+            let line = UIView()
+            line.backgroundColor = colour
+            line.isAccessibilityElement = false
+            line.widthAnchor.constraint(equalToConstant: Stroke.divider).isActive = true
+            addArrangedSubview(line)
+            divider = line
+        }
+        if let placeholder = placeholder {
+            addArrangedSubview(placeholder)
+            placeholder.widthAnchor.constraint(equalTo: arrangedSubviews[0].widthAnchor).isActive = true
+        }
+    }
+
+    required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func fill(_ second: UIView) {
+        placeholder?.removeFromSuperview()
+        placeholder = nil
+        add(second)
+        arrangedSubviews.last!.widthAnchor.constraint(equalTo: arrangedSubviews[0].widthAnchor).isActive = true
+    }
+
+    func finish() {
+        guard let placeholder = placeholder else { return }
+        placeholder.removeFromSuperview()
+        divider?.removeFromSuperview()
+        self.placeholder = nil
+    }
+
+    private func add(_ view: UIView) {
+        items.append(view)
+        guard topAligned else { return addArrangedSubview(view) }
+        let cell = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(view)
+        let hug = view.bottomAnchor.constraint(equalTo: cell.bottomAnchor)
+        hug.priority = .defaultLow
+        NSLayoutConstraint.activate([
+            view.topAnchor.constraint(equalTo: cell.topAnchor),
+            view.leadingAnchor.constraint(equalTo: cell.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: cell.trailingAnchor),
+            view.bottomAnchor.constraint(lessThanOrEqualTo: cell.bottomAnchor),
+            hug,
+        ])
+        addArrangedSubview(cell)
+    }
+}
+
+extension UIScrollView {
+    /// True when there is more below or above than fits, so someone must scroll to read it.
+    var overflowsVertically: Bool {
+        bounds.height > 0 && contentSize.height > bounds.height + 1
+    }
+
+    /// Moves most of a screenful down or up, keeping a little of the last view in sight.
+    func scrollPage(down: Bool) {
+        let step = bounds.height * 0.8 * (down ? 1 : -1)
+        let lowest = max(0, contentSize.height - bounds.height)
+        setContentOffset(CGPoint(x: contentOffset.x, y: min(lowest, max(0, contentOffset.y + step))), animated: false)
     }
 }
 
@@ -467,20 +617,39 @@ class PanelScreenViewController<Panel: ScrollingPanelView>: ScreenViewController
     var focusOnAppear: String? { nil }
 
     /// Makes the panel. Subclasses whose panel needs more than a theme override this.
-    func createPanel(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection) -> Panel {
-        Panel(frame: frame, theme: theme, fontTraits: fontTraits)
+    func createPanel(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection, columns: Bool) -> Panel {
+        Panel(frame: frame, theme: theme, fontTraits: fontTraits, columns: columns)
+    }
+
+    /// Whether the panel goes into two columns on a wide, short screen.
+    var arrangesInColumnsWhenWide: Bool { false }
+
+    private func wantsColumns(fontTraits: UITraitCollection) -> Bool {
+        arrangesInColumnsWhenWide && ScrollingPanelView.fitsColumns(in: view.bounds.size, safeArea: view.safeAreaInsets,
+                                                                     traits: fontTraits)
     }
 
     override func loadView() {
-        let view = UIView()
+        // The screen it replaces gives its size, so the first panel already has the right shape.
+        let view = UIView(frame: parent?.view.bounds ?? .zero)
         view.backgroundColor = GameSettings.shared.selectedTheme.sceneBackgroundColor
         self.view = view
-        install(makePanel(fontTraits: traitCollection))
+        install(makePanel(fontTraits: traitCollection, safeArea: parent?.view.safeAreaInsets))
     }
 
-    private func makePanel(fontTraits: UITraitCollection) -> Panel {
+    /// Turning the phone moves the panel between one column and two.
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        guard let panel = panel, view.bounds.width > 0,
+              panel.usesColumns != wantsColumns(fontTraits: view.traitCollection) else { return }
+        rebuildPanel()
+    }
+
+    private func makePanel(fontTraits: UITraitCollection, safeArea: UIEdgeInsets? = nil) -> Panel {
+        let columns = arrangesInColumnsWhenWide && ScrollingPanelView.fitsColumns(
+            in: view.bounds.size, safeArea: safeArea ?? view.safeAreaInsets, traits: fontTraits)
         let panel = createPanel(frame: view.bounds, theme: GameSettings.shared.selectedTheme,
-                                fontTraits: fontTraits)
+                                fontTraits: fontTraits, columns: columns)
         // Only this panel is read, never the empty SpriteKit view underneath.
         panel.accessibilityViewIsModal = true
         panel.autoresizingMask = [.flexibleWidth, .flexibleHeight]

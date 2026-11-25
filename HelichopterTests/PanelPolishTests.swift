@@ -52,9 +52,10 @@ import UIKit
             #expect(rowControls.allSatisfy { control in
                 sequence(first: control.superview, next: { $0?.superview }).contains { $0 is SurfaceView }
             })
-            // Nothing in Settings is a text-only button except "More about this".
+            // Nothing in Settings is a text-only button except "More about this" and a
+            // slider's "Adjust with buttons".
             let quiet = descendants(panel, ArcadeButton.self).filter { $0.kind == .quiet }
-            #expect(quiet.allSatisfy { $0.currentTitle == "More about this" })
+            #expect(quiet.allSatisfy { ["More about this", SettingsPanelView.adjustTitle].contains($0.currentTitle) })
         }
         #expect(cardCount >= 9)
     }

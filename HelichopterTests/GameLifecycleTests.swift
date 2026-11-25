@@ -903,7 +903,9 @@ struct GameLifecycleTests {
                 try focusSetting(label, in: scene)
                 scene.switchPrimaryBegan()
                 #expect(locked.isAdjusting)
-                #expect(locked.switchScanner.items[0].accessibilityScanLabel == expected)
+                // A page longer than the screen is scanned with Scroll down and Scroll up first.
+                let scanned = locked.switchScanner.items.map(\.accessibilityScanLabel)
+                #expect(scanned.first { !$0.hasPrefix("Scroll") } == expected)
                 let texts = [AppLinks.privacySummary, AppLinks.acknowledgements]
                 let showsText = locked.subviews.contains { panel in
                     @MainActor func labels(_ v: UIView) -> [String] { ((v as? UILabel)?.text).map { [$0] } ?? v.subviews.flatMap(labels) }
@@ -949,8 +951,8 @@ struct GameLifecycleTests {
             let pages: [(SettingsPage, [String])] = [
                 (.menu, SettingsCategory.allCases.map(\.title) + ["Reset Settings", "Privacy Policy", "Acknowledgements"]),
                 (.category(.difficulty), ["Gentle", "Standard", "Challenge", "Gap Size", "Pipe Speed", "Hitbox Size", "Background Scroll"]),
-                (.category(.comfort), ["No-Fail Mode", "Calm Mode", "Helicopter Outline", "Hide Game While Paused", "Show Score"]),
-                (.category(.controls), ["Auto-Scan Menus", "Timed", "Step with Switch 2", "Scan Dwell Time",
+                (.category(.comfort), ["No-Fail Mode", "Calm Mode", "Flap and score", "Score only", "No vibration", "Helicopter Outline", "Hide Game While Paused", "Show Score"]),
+                (.category(.controls), ["Auto-Scan Menus", "Speak Menu Items", "Timed", "Step with Switch 2", "Scan Dwell Time",
                                         "Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches",
                                         "VoiceOver Direct Touch", "More about VoiceOver Direct Touch",
                                         "Pause by Holding Switch", "More about Pause by Holding Switch", "Hold Switch to Pause"]),

@@ -17,9 +17,13 @@ final class SettingsViewController: PanelScreenViewController<SettingsPanelView>
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    override func createPanel(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection) -> SettingsPanelView {
-        SettingsPanelView(frame: frame, theme: theme, fontTraits: fontTraits, page: page)
+    override func createPanel(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection,
+                              columns: Bool) -> SettingsPanelView {
+        SettingsPanelView(frame: frame, theme: theme, fontTraits: fontTraits, page: page, columns: columns)
     }
+
+    /// On a phone on its side, categories and settings go two to a line.
+    override var arrangesInColumnsWhenWide: Bool { true }
 
     /// A category goes back to the menu; the menu goes Home.
     override var backDestination: Screen { page == .menu ? .home : .settings }

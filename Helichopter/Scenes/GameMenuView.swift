@@ -99,7 +99,25 @@ final class GameMenuView: MenuStackView {
             break
         }
         if let last = stack.arrangedSubviews.last { stack.setCustomSpacing(Spacing.xl, after: last) }
-        game.menuItems.forEach { addButton(for: $0, kind: $0.action.buttonKind, icon: $0.action.symbolName) }
+        choices = addButtonGroup(for: game.menuItems.map { ($0, $0.action.buttonKind, $0.action.symbolName) })
+    }
+
+    /// The choices: a column, or a row on a short screen.
+    private(set) var choices: UIStackView!
+    /// A screen shorter than this (a phone on its side) shows the choices side by side,
+    /// so the whole menu fits without scrolling.
+    static let heightForColumn: CGFloat = 520
+
+    override func layoutSubviews() {
+        // At accessibility text sizes two titles do not fit side by side; the menu scrolls.
+        let row = bounds.height < Self.heightForColumn
+            && !traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+        let axis: NSLayoutConstraint.Axis = row ? .horizontal : .vertical
+        if choices.axis != axis {
+            choices.axis = axis
+            choices.spacing = row ? Spacing.m : Spacing.l
+        }
+        super.layoutSubviews()
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }

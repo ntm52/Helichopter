@@ -48,7 +48,8 @@ struct ThemeSurfaceContrastTests {
             let pairs = [("focus on page", theme.focusColor, theme.sceneBackgroundColor),
                          ("focused face beside a card face", theme.focusColor, theme.cardColor),
                          ("accent on page", theme.accentColor, theme.sceneBackgroundColor),
-                         ("accent border on a raised card", theme.accentColor, theme.raisedColor)]
+                         ("accent border on a raised card", theme.accentColor, theme.raisedColor),
+                         ("slider track on a card", SettingsStyle(theme: theme).track, theme.cardColor)]
             for (name, a, b) in pairs {
                 let value = ratio(a, b)
                 #expect(value >= 3, "\(theme.name): \(name) is \(value)")

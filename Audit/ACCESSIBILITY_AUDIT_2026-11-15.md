@@ -1,6 +1,6 @@
 # Accessibility audit — 2026-11-15
 
-Audit of the code on `master` (2.2 in progress, after Plan 03 Stage 7), by Claude Code. Thirteen issues were found and fixed; ten are open and listed with what each would take.
+Audit of the code on `master` (2.2 in progress, after Plan 03 Stage 7), by Claude Code. Thirteen issues were found and fixed on 2026-11-15. Of the ten left open, a second pass on 2026-11-16 and 17 fixed six (A, B, C, D, E, H), part-fixed two (F, G), and left two (I, J). The Open table below is current.
 
 ## How it was tested
 
@@ -33,21 +33,32 @@ New tests: `HelichopterTests/AccessibilityAuditFixTests.swift` (12) and `magicTa
 
 **Two of these change how the app behaves for everyone, so the owner may want to veto them:** row taps flip switches (6), and the large-text hint moves to the bottom (5).
 
-## Open
+## Fixed in the second pass (2026-11-16)
 
-Ordered by how much they matter.
+| # | Issue | Fix |
+|---|---|---|
+| A | A Settings slider could only be dragged by touch. | Every slider row has an "Adjust with buttons" button that opens the page of Decrease and Increase for anyone. Voice Control: "Tap Adjust Gap Size". The scanner still stops once per slider, on the slider. |
+| B | The app's scanner could not scroll text. | While a page longer than the screen is scanned, Scroll down and Scroll up buttons sit under it and are scanned first: Privacy Policy, Acknowledgements, "More about this" pages, and the guide. Nobody else sees them. |
+| C | The palette row scrolled sideways. | Game Colours is a list of choices like every other, each with its helicopter and pipe colour dots (under the name at accessibility text sizes). `SwatchButton` is gone. |
+| E | Scanner speech could not be turned off. | "Speak Menu Items" switch under Menu Scanning (on by default). "Read this step aloud" still speaks when it is off. Still open: its own volume, and the silent switch muting it. |
+| F (part) | The unfilled slider track was 1.8:1 on Night Sky and 1.4:1 on Neon Night. | The track uses the theme's secondary text colour, 8:1 or better on a card in every theme; `ThemeSurfaceContrastTests` checks it. |
+| G (part) | Button Shapes and Differentiate Without Colour were not followed. | Button Shapes underlines text-only buttons ("More about this", "Adjust with buttons"). Differentiate Without Colour equips Striped Pipes until the player chooses pipes in the Hangar; Reset returns to that. |
+| H | Calm Mode left the flap and score vibrations on. | Owner's decision: Calm Mode stays as it is, and a new choice under it, "Vibration in Calm Mode", offers Flap and score (the default, as before), Score only, or No vibration. |
+
+| D | iPhone was portrait only; a phone mounted in landscape showed the app sideways. | Done 2026-11-17. The app turns with the phone. In a window much wider than tall, play uses a wide scene made to the window's shape (owner's choice over a narrow strip between bars): the helicopter and pipes are as large as in portrait, pipes move at their portrait speed and are seen sooner, and there is about half the vertical room. Home drops its mascot on a short screen so all four choices fit. A round keeps the layout it started with: turn the phone, and the round in progress is letterboxed until the next one starts from Home. On that short screen Pause and Round Over show their choices side by side, the HUD is one row at every text size, and the flight hint and the Up and Down labels stop growing at 28 and 22 points so they never cover the helicopter or Pause. On 2026-11-18 Settings went two to a line there (categories, and the rows on each page's cards), read and scanned left to right, then down; one column again at accessibility text sizes. |
+
+New tests in `AccessibilityAuditFixTests` (7 more; the guide scrolling test was rewritten). Five older tests were updated for the new rows and scan order.
+
+**Not looked at or tried:** the Button Shapes underline, the Differentiate Without Colour default, and the vibration choice have unit tests only; the simulator has no haptics. The scroll buttons were not tried in the running app.
+
+## Open
 
 | # | Issue | Why not fixed | What it would take |
 |---|---|---|---|
-| A | A Settings slider can only be dragged by touch. The page of Decrease and Increase buttons opens for VoiceOver, Switch Control, and the scanner, not for a finger. | A new visible control on every slider row is a design decision. | A small "Adjust" button on each slider row that opens the existing page. |
-| B | The app's scanner cannot scroll text. Privacy Policy, Acknowledgements, and the guide at large text sizes run past one screen, and a switch-only user sees only what is near the focused button. | Needs a new scanning item or paged text. | "Scroll down" and "Scroll up" scan items on long pages, or split long text into pages with Next. |
-| C | The palette row scrolls sideways; at the largest text size one palette is visible at a time. `CLAUDE.md` says a short list of choices should be a `choiceRow`. | Layout redesign of the Colours page. | A column of palette choices, each with its two colour dots. |
-| D | iPhone is portrait only. A phone mounted in landscape on a wheelchair shows the game sideways. iPad rotates. | Needs a landscape phone layout and testing. | Allow landscape on iPhone using the existing letterboxed fit. |
-| E | Scanner speech cannot be turned off or have its volume set, and the silent switch mutes it with the rest of the sound. | A new setting; changes scan order tests. | A "Speak Menu Items" switch under Menu Scanning. |
-| F | Two low-contrast spots. With Helicopter Outline off in Parchment, the helicopter is pale pink on cream. The unfilled part of a slider track is 1.8:1 on Night Sky cards and 1.4:1 on Neon Night (the thumb and the value text do pass). | The first is the player's own choice of setting; the second needs a new theme colour. | Keep a thin outline in Parchment; add a track colour to `UITheme` with a contrast test. |
-| G | Three iOS settings are not followed: Differentiate Without Colour (roadmap section 4 item 2: equip Striped Pipes), Increase Contrast, and Button Shapes (the "More about this" text button has no shape). | Each is a small feature. | As the roadmap describes for the first; an underline for quiet buttons under Button Shapes. |
-| H | Calm Mode silences menu haptics and bump haptics but not the flap and score haptics. | Unclear which the owner intends; flap haptics may be wanted feedback. | Owner decision, then one `guard`. |
-| I | English only, with no String Catalog. | Roadmap section 4 item 5. | As the roadmap describes. |
+| E (rest) | Scanner speech has no volume of its own, and the silent switch mutes it with the rest of the sound. | Needs an audio-session decision that also affects music. | A volume slider, or speech that ignores the silent switch. |
+| F (rest) | With Helicopter Outline off in Parchment, the helicopter is pale pink on cream. | The outline is on by default; turning it off is the player's own choice. | Keep a thin outline in Parchment whatever the switch says, or say so in the switch's description. |
+| G (rest) | Increase Contrast changes nothing. | Checked: main and secondary text are already 7:1 or better on the page and on cards in all three themes; only accent text falls short of 7:1 in places (6.2:1 at worst, Parchment headings on the page). | Darker accent text under Increase Contrast, if wanted. |
+| I | English only, with no String Catalog. | Roadmap section 4 item 5; a large piece of work. | As the roadmap describes. |
 | J | Not verified on a device: everything in roadmap step 2, plus how Full Keyboard Access interacts with the app's own handling of Space, Enter, and the arrow keys. | Needs hardware. | Owner device pass. |
 
 ## Checked and found sound

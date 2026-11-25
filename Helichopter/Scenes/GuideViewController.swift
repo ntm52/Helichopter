@@ -151,6 +151,12 @@ final class GuideViewController: MenuViewController {
         choices.forEach { menu.addButton(for: $0.item, kind: $0.kind, icon: $0.icon) }
         let items = choices.map(\.item)
         scanner.items = items
+        // A step too long for the screen is scanned with Scroll down and Scroll up first,
+        // so a switch user can read all of it.
+        scanner.onStart = { [weak self] in
+            guard let self = self else { return }
+            self.scanner.items = self.menu.scrollItemsIfNeeded() + items
+        }
         if wasScanning { scanner.start() }
         if !isFirstBuild { ScreenChangeAnnouncer.post(headingLabel) }
     }

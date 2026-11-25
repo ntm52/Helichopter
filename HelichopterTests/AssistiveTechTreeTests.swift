@@ -81,9 +81,13 @@ struct AssistiveTechTreeTests {
         }
         // Each choice says which list it belongs to, and the chosen one is marked selected.
         let choices = read.compactMap { $0 as? ChoiceButton }
-        #expect(choices.map(spoken) == ["Timed", "Step with Switch 2", "Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches"])
-        #expect(choices.map(\.accessibilityHint) == ["Menu Scan Mode", "Menu Scan Mode"] + Array(repeating: "In-Game Control", count: 4))
-        #expect(choices.filter { $0.accessibilityTraits.contains(.selected) }.count == 2)
+        #expect(choices.map(spoken) == ["Flap and score", "Score only", "No vibration",
+                                        "Timed", "Step with Switch 2", "Tap to Flap", "Hold to Hover", "Auto Hover", "Up/Down Switches"]
+                + GameSettings.allPalettes.map(\.name))
+        #expect(choices.map(\.accessibilityHint) == Array(repeating: "Vibration in Calm Mode", count: 3)
+                + ["Menu Scan Mode", "Menu Scan Mode"] + Array(repeating: "In-Game Control", count: 4)
+                + Array(repeating: "Game Colours", count: GameSettings.allPalettes.count))
+        #expect(choices.filter { $0.accessibilityTraits.contains(.selected) }.count == 4)
         // A category says what is inside it.
         let categories = read.compactMap { $0 as? CardButton }
         #expect(categories.map(spoken) == SettingsCategory.allCases.map(\.title))

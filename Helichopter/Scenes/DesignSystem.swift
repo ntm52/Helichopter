@@ -161,6 +161,11 @@ class ArcadeButton: DynamicTextButton {
     private var basePadding: UIEdgeInsets = .zero
     private var iconView: UIImageView?
     private var iconSize: CGSize = .zero
+    /// Read when a quiet button is laid out; tests replace it.
+    static var prefersButtonShapes: () -> Bool = { UIAccessibility.buttonShapesEnabled }
+    /// The line under a quiet button's title when iOS's Button Shapes setting is on: a
+    /// quiet button is otherwise text alone, told from a label only by its colour.
+    let underline = CALayer()
     /// Where the icon sits; a row of tiles changes this when it becomes a column.
     var iconPlacement: IconPlacement = .leading {
         didSet {
@@ -188,6 +193,10 @@ class ArcadeButton: DynamicTextButton {
         layer.borderColor = theme.focusColor.cgColor
         if kind == .quiet {
             padding = UIEdgeInsets(top: Spacing.m, left: Spacing.s, bottom: Spacing.m, right: Spacing.s)
+            underline.isHidden = true
+            layer.addSublayer(underline)
+            NotificationCenter.default.addObserver(self, selector: #selector(buttonShapesChanged),
+                                                   name: UIAccessibility.buttonShapesEnabledStatusDidChangeNotification, object: nil)
         } else {
             padding = UIEdgeInsets(top: Spacing.l, left: Spacing.l, bottom: Spacing.l + Stroke.edge, right: Spacing.l)
             for sublayer in [edgeLayer, faceLayer] {
@@ -212,6 +221,8 @@ class ArcadeButton: DynamicTextButton {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @objc private func buttonShapesChanged() { setNeedsLayout() }
 
     private func titleFont(compatibleWith traits: UITraitCollection?) -> UIFont {
         (size == .large ? TypeStyle.heading : TypeStyle.label).font(compatibleWith: traits)
@@ -309,7 +320,18 @@ class ArcadeButton: DynamicTextButton {
                                     width: iconSize.width, height: iconSize.height)
             }
         }
-        guard kind != .quiet else { return }
+        guard kind != .quiet else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            underline.isHidden = !Self.prefersButtonShapes()
+            underline.backgroundColor = titleColor(for: .normal)?.cgColor
+            if let label = titleLabel {
+                underline.frame = CGRect(x: label.frame.minX, y: label.frame.maxY + Stroke.divider,
+                                         width: label.frame.width, height: Stroke.divider * 2)
+            }
+            CATransaction.commit()
+            return
+        }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         // Not `frame`: the edge may be shifted while the button is pressed.

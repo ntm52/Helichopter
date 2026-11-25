@@ -47,10 +47,12 @@ extension SettingsPanelView {
             controlTargets.append(t)
             return panelButton(name, target: t, action: #selector(ButtonTarget.tapped))
         }
+        // Side by side when the page has two columns, as they read Gentle to Challenge.
         let column = UIStackView(arrangedSubviews: buttons)
-        column.axis = .vertical
+        column.axis = usesColumns ? .horizontal : .vertical
+        column.distribution = usesColumns ? .fillEqually : .fill
         column.spacing = Spacing.m
-        appendToPage(column)
+        appendToPage(column, spansColumns: true)
     }
 
     /// The row's name, then anything after it (a slider's value), on one line.
@@ -86,6 +88,9 @@ extension SettingsPanelView {
         showAdjustment(for: sender)
     }
 
+    /// The button under every slider that opens its page of Decrease and Increase buttons.
+    static let adjustTitle = "Adjust with buttons"
+
     /// `more` is a longer explanation, shown on the slider's adjustment page.
     func sliderRow(_ title: String, detail: String, more: String? = nil, lo: String, hi: String,
                    min: Float, max: Float, value: Float, seconds: Bool = false,
@@ -110,7 +115,7 @@ extension SettingsPanelView {
         slider.maximumValue          = max
         slider.value                 = value
         slider.minimumTrackTintColor = style.accentFill
-        slider.maximumTrackTintColor = style.div
+        slider.maximumTrackTintColor = style.track
         slider.thumbTintColor        = style.accentFill
 
         // The value in the accent colour, beside the name.
@@ -133,7 +138,23 @@ extension SettingsPanelView {
         rangeRow.axis         = .horizontal
         rangeRow.distribution = .equalSpacing
 
-        let vs = UIStackView(arrangedSubviews: [titleLine(titleL, trailing: valueL), detailL, slider, rangeRow])
+        // Dragging a slider needs a steady finger; this opens the page of large Decrease
+        // and Increase buttons for anyone, by touch or by saying its name.
+        let open = ButtonTarget { [weak self, weak slider] in
+            guard let self = self, let slider = slider, !self.isAdjusting else { return }
+            self.showAdjustment(for: slider)
+        }
+        controlTargets.append(open)
+        let adjust = panelButton(Self.adjustTitle, icon: "plusminus.circle", kind: .quiet,
+                                 target: open, action: #selector(ButtonTarget.tapped))
+        adjust.accessibilityLabel = "Adjust \(title) with buttons"
+        adjust.accessibilityHint = "Opens larger Decrease and Increase buttons"
+        adjust.accessibilityUserInputLabels = [Self.adjustTitle, "Adjust \(title)"]
+        // The scanner opens the same page from the slider itself.
+        scanSkipped.add(adjust)
+
+        let vs = UIStackView(arrangedSubviews: [titleLine(titleL, trailing: valueL), detailL, slider, rangeRow,
+                                                UIStackView(arrangedSubviews: [adjust, UIView()])])
         vs.axis    = .vertical
         vs.spacing = Spacing.xs
         vs.setCustomSpacing(Spacing.s, after: detailL)
@@ -142,7 +163,8 @@ extension SettingsPanelView {
         row.addSubview(vs)
         NSLayoutConstraint.activate([
             vs.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.l),
-            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.l),
+            // The Adjust button brings its own space below it.
+            vs.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.xs),
             vs.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
             vs.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
         ])
@@ -223,17 +245,21 @@ extension SettingsPanelView {
 
     /// A short list of choices, one button each, with the chosen one marked. Choosing
     /// takes one press; nothing scrolls sideways.
+    /// `accessory` gives a small picture to show after a choice's name.
     func choiceRow(_ title: String, detail: String, items: [String], selectedIndex: Int,
-                   onChange: @escaping (Int) -> Void) {
+                   accessory: ((Int) -> UIView?)? = nil, onChange: @escaping (Int) -> Void) {
         let row = UIView()
         let titleL  = makeLabel(title,  style: .label, color: style.text)
         let detailL = makeLabel(detail, style: .caption,  color: style.sub)
         // VoiceOver reads the name as a heading for the choices under it.
         titleL.accessibilityTraits = .header
 
+        // At accessibility text sizes a name needs the whole width, so its picture goes below.
+        let large = (fontTraits ?? traitCollection).preferredContentSizeCategory.isAccessibilityCategory
         var buttons: [ChoiceButton] = []
         for (index, item) in items.enumerated() {
-            let button = ChoiceButton(name: makeLabel(item, style: .label, color: style.text), theme: theme)
+            let button = ChoiceButton(name: makeLabel(item, style: .label, color: style.text), theme: theme,
+                                      accessory: accessory?(index), accessoryBelow: large)
             button.isChosen = index == selectedIndex
             button.accessibilityHint = title
             let t = ButtonTarget { [weak self, weak button] in
@@ -310,138 +336,52 @@ extension SettingsPanelView {
         return card
     }
 
-    func paletteRow() {
-        let descRow = UIView()
-        let descL = makeLabel(
-            "Helicopter and pipe colours for different colour vision. The menu theme is separate.",
-            style: .caption, color: style.sub)
-        descL.numberOfLines = 0
-        descL.translatesAutoresizingMaskIntoConstraints = false
-        descRow.addSubview(descL)
-        NSLayoutConstraint.activate([
-            descL.topAnchor.constraint(equalTo: descRow.topAnchor, constant: Spacing.l),
-            descL.bottomAnchor.constraint(equalTo: descRow.bottomAnchor, constant: -Spacing.m),
-            descL.leadingAnchor.constraint(equalTo: descRow.leadingAnchor, constant: Spacing.l),
-            descL.trailingAnchor.constraint(equalTo: descRow.trailingAnchor, constant: -Spacing.l),
-        ])
-        appendRow(descRow)
-
-        let row = UIView()
-
-        let hScroll = UIScrollView()
-        hScroll.showsHorizontalScrollIndicator = false
-        hScroll.translatesAutoresizingMaskIntoConstraints = false
-
-        let hs = UIStackView()
-        hs.axis    = .horizontal
-        hs.spacing = Spacing.m
-        hs.translatesAutoresizingMaskIntoConstraints = false
-        hScroll.addSubview(hs)
-
-        paletteViews = []
-        let currentID = GameSettings.shared.selectedPaletteID
-        for (i, palette) in GameSettings.allPalettes.enumerated() {
-            let swatch = makeSwatch(palette, selected: palette.id == currentID, index: i)
-            hs.addArrangedSubview(swatch)
-            paletteViews.append(swatch)
-        }
-
-        NSLayoutConstraint.activate([
-            hs.topAnchor.constraint(equalTo: hScroll.contentLayoutGuide.topAnchor, constant: Spacing.xs),
-            hs.bottomAnchor.constraint(equalTo: hScroll.contentLayoutGuide.bottomAnchor, constant: -Spacing.xs),
-            hs.leadingAnchor.constraint(equalTo: hScroll.contentLayoutGuide.leadingAnchor, constant: Spacing.xs),
-            hs.trailingAnchor.constraint(equalTo: hScroll.contentLayoutGuide.trailingAnchor, constant: -Spacing.xs),
-            hs.heightAnchor.constraint(equalTo: hScroll.frameLayoutGuide.heightAnchor, constant: -Spacing.xs),
-        ])
-
-        row.addSubview(hScroll)
-        NSLayoutConstraint.activate([
-            hScroll.topAnchor.constraint(equalTo: row.topAnchor, constant: Spacing.m),
-            hScroll.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -Spacing.m),
-            hScroll.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Spacing.l),
-            hScroll.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Spacing.l),
-            hScroll.heightAnchor.constraint(equalToConstant: 50 + font(.caption).lineHeight * 3),
-        ])
-        appendRow(row)
-    }
-
-    private func makeSwatch(_ palette: ColorPalette, selected: Bool, index: Int) -> UIButton {
-        let btn = SwatchButton(type: .custom)
-        btn.widthAnchor.constraint(equalToConstant: max(100, font(.caption).pointSize * 8)).isActive = true
-        styleCard(btn, chosen: selected)
-        btn.accessibilityLabel = palette.name
-        // A tick in the corner marks the chosen palette by shape, not only by its border.
-        btn.mark.image = UIImage(systemName: "checkmark.circle.fill",
-                                 withConfiguration: UIImage.SymbolConfiguration(font: font(.caption), scale: .small))
-        btn.mark.tintColor = style.accent
-        btn.isChosen = selected
-
-        let heliDot = colorDot(palette.helicopterColor, size: 26)
-        let pipeDot = colorDot(palette.pipeColor,       size: 26)
-        let dots = UIStackView(arrangedSubviews: [heliDot, pipeDot])
-        dots.axis         = .horizontal
-        dots.spacing      = Spacing.s
-        dots.distribution = .fillEqually
+    /// A palette's helicopter and pipe colours, shown after its name. Decoration: the
+    /// name is what is spoken.
+    func paletteDots(_ palette: ColorPalette) -> UIView {
+        let dots = UIStackView(arrangedSubviews: [colorDot(palette.helicopterColor, size: 26),
+                                                  colorDot(palette.pipeColor, size: 26)])
+        dots.spacing = Spacing.s
+        dots.alignment = .center
         dots.isUserInteractionEnabled = false
-
-        let nameL = UILabel()
-        nameL.text          = palette.name
-        nameL.textColor     = style.text
-        nameL.font = font(.caption)
-        nameL.adjustsFontForContentSizeCategory = true
-        nameL.numberOfLines = 0
-        nameL.textAlignment = .center
-        nameL.isUserInteractionEnabled = false
-
-        let vs = UIStackView(arrangedSubviews: [dots, nameL])
-        vs.axis      = .vertical
-        vs.spacing   = Spacing.xs
-        vs.alignment = .center
-        vs.isUserInteractionEnabled = false
-        vs.translatesAutoresizingMaskIntoConstraints = false
-
-        btn.addSubview(vs)
-        btn.addSubview(btn.mark)
-        NSLayoutConstraint.activate([
-            btn.mark.topAnchor.constraint(equalTo: btn.topAnchor, constant: Spacing.xs),
-            // The leading corner: the first to show when a wide card runs off the row.
-            btn.mark.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: Spacing.xs),
-            nameL.widthAnchor.constraint(lessThanOrEqualTo: vs.widthAnchor),
-            vs.topAnchor.constraint(equalTo: btn.topAnchor, constant: Spacing.s),
-            vs.bottomAnchor.constraint(equalTo: btn.bottomAnchor, constant: -Spacing.s),
-            vs.leadingAnchor.constraint(equalTo: btn.leadingAnchor, constant: Spacing.xs),
-            vs.trailingAnchor.constraint(equalTo: btn.trailingAnchor, constant: -Spacing.xs),
-        ])
-
-        let t = ButtonTarget { [weak self] in self?.selectPalette(atIndex: index) }
-        controlTargets.append(t)
-        btn.addTarget(t, action: #selector(ButtonTarget.tapped), for: .touchUpInside)
-
-        return btn
-    }
-
-    // MARK: Palette selection
-
-    private func selectPalette(atIndex index: Int) {
-        guard index < GameSettings.allPalettes.count else { return }
-        GameSettings.shared.selectedPaletteID = GameSettings.allPalettes[index].id
-        for (i, view) in paletteViews.enumerated() {
-            let chosen = (i == index)
-            (view as? SwatchButton)?.isChosen = chosen
-            styleCard(view, chosen: chosen)
-        }
+        return dots
     }
 
     // MARK: Factory helpers
 
     private func colorDot(_ color: UIColor, size: CGFloat) -> UIView {
-        let v = UIView()
-        v.backgroundColor    = color
-        v.layer.cornerRadius = size / 2
-        v.isUserInteractionEnabled = false
+        // An outline, so a dot the card's own colour (white on Parchment) still shows.
+        let v = DotView(fill: color, outline: style.sub)
         v.widthAnchor.constraint(equalToConstant: size).isActive = true
         v.heightAnchor.constraint(equalToConstant: size).isActive = true
         return v
+    }
+}
+
+/// A round dot of colour with a thin outline. Decoration only.
+private final class DotView: UIView {
+    private let fill: UIColor
+    private let outline: UIColor
+
+    init(fill: UIColor, outline: UIColor) {
+        self.fill = fill
+        self.outline = outline
+        super.init(frame: .zero)
+        isOpaque = false
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        contentMode = .redraw
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func draw(_ rect: CGRect) {
+        let circle = UIBezierPath(ovalIn: bounds.insetBy(dx: Stroke.divider / 2, dy: Stroke.divider / 2))
+        fill.setFill()
+        circle.fill()
+        outline.setStroke()
+        circle.lineWidth = Stroke.divider
+        circle.stroke()
     }
 }
 
@@ -462,7 +402,8 @@ final class ChoiceButton: UIButton {
     }
 
     /// `name` is the choice's label, already in the panel's font and colour.
-    init(name: UILabel, theme: UITheme) {
+    /// `accessory` is a small picture after the name, or under it when `accessoryBelow`.
+    init(name: UILabel, theme: UITheme, accessory: UIView? = nil, accessoryBelow: Bool = false) {
         self.theme = theme
         symbols = UIImage.SymbolConfiguration(font: name.font, scale: .large)
         super.init(frame: .zero)
@@ -470,6 +411,17 @@ final class ChoiceButton: UIButton {
         mark.setContentHuggingPriority(.required, for: .horizontal)
         mark.setContentCompressionResistancePriority(.required, for: .horizontal)
         let line = UIStackView(arrangedSubviews: [mark, name])
+        if let accessory = accessory, accessoryBelow {
+            let column = UIStackView(arrangedSubviews: [name, accessory])
+            column.axis = .vertical
+            column.alignment = .leading
+            column.spacing = Spacing.xs
+            line.addArrangedSubview(column)
+        } else if let accessory = accessory {
+            accessory.setContentHuggingPriority(.required, for: .horizontal)
+            accessory.setContentCompressionResistancePriority(.required, for: .horizontal)
+            line.addArrangedSubview(accessory)
+        }
         line.alignment = .center
         line.spacing = Spacing.m
         line.isUserInteractionEnabled = false
@@ -486,29 +438,6 @@ final class ChoiceButton: UIButton {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override var isHighlighted: Bool {
-        didSet { alpha = isHighlighted ? 0.6 : 1 }
-    }
-}
-
-/// A palette's small card. It has no lower edge to sink onto, so it dims when pressed.
-final class SwatchButton: UIButton {
-    /// The tick shown on the chosen palette.
-    let mark: UIImageView = {
-        let view = UIImageView()
-        view.isUserInteractionEnabled = false
-        view.isAccessibilityElement = false
-        view.translatesAutoresizingMaskIntoConstraints = false
-        return view
-    }()
-
-    var isChosen = false {
-        didSet {
-            mark.isHidden = !isChosen
-            if isChosen { accessibilityTraits.insert(.selected) } else { accessibilityTraits.remove(.selected) }
-        }
-    }
 
     override var isHighlighted: Bool {
         didSet { alpha = isHighlighted ? 0.6 : 1 }

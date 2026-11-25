@@ -268,8 +268,13 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
 
     // MARK: - Private input helpers
 
+    /// The vibration that answers a flap, hold, or nudge; Calm Mode can turn it off.
+    private func flightHaptic() {
+        if GameSettings.shared.playsFlightHaptics { impact.impactOccurred() }
+    }
+
     private func flap() {
-        impact.impactOccurred()
+        flightHaptic()
         isAffectedByGravity = true
         physicsBody?.applyImpulse(CGVector(dx: 0, dy: GameSettings.shared.flapStrength))
     }
@@ -290,7 +295,7 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
         case .holdHover:
             isHoveringHeld = true
             isAffectedByGravity = true  // enable gravity so it falls when released
-            impact.impactOccurred()
+            flightHaptic()
 
         case .autoHover:
             // Nudge up on primary, nudge down on secondary. Set a bounded speed rather than
@@ -298,11 +303,11 @@ class HelicopterNode: SKSpriteNode, Updatable, Playable {
             // helicopter into the floor. Damping then glides it ~0.2 s × speed and stops.
             physicsBody?.velocity.dy = primary ? HelicopterNode.autoHoverNudgeSpeed
                                                : -HelicopterNode.autoHoverNudgeSpeed
-            impact.impactOccurred()
+            flightHaptic()
 
         case .twoSwitchUD:
             if primary { isTwoSwitchUpHeld = true } else { isTwoSwitchDownHeld = true }
-            impact.impactOccurred()
+            flightHaptic()
         }
     }
 

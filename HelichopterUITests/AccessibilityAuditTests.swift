@@ -16,7 +16,8 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     /// Audits what is on screen now; any issue fails the test.
-    private func audit(_ screen: String) throws {
+    /// `cappedText` names labels whose text stops growing on purpose on this screen.
+    private func audit(_ screen: String, cappedText: Set<String> = []) throws {
         // A screen change cross-fades for 0.3 s over a picture of the old screen. Audited
         // mid-fade, the old screen's text is visible but not in the tree, which the audit
         // reports as "Potentially inaccessible text" with no element.
@@ -29,6 +30,7 @@ final class AccessibilityAuditTests: XCTestCase {
                 // so the name never breaks mid-word or pushes Play off the screen. Only
                 // this one check on this one label is excused.
                 if issue.auditType == .dynamicType, issue.element?.label == "Helichopter" { return true }
+                if issue.auditType == .dynamicType, let label = issue.element?.label, cappedText.contains(label) { return true }
                 // Name the element in the log; the failure message alone does not.
                 print("AUDIT ISSUE on \(screen): \(issue.compactDescription) — \(issue.element?.debugDescription ?? "no element")")
                 return false
@@ -165,6 +167,46 @@ final class AccessibilityAuditTests: XCTestCase {
             XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
             app.terminate()
         }
+    }
+
+    /// A phone on its side: Home, Settings, the wide play screen, and Pause pass the
+    /// audit, and turning the phone during a round leaves a round that can be paused.
+    func testLandscapePhonePassesTheAudit() throws {
+        guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("Phones only") }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launchArguments = ["-gs_noFailMode", "<true/>", "-gs_scanningEnabled", "NO", "-gs_isSettingsLocked", "NO",
+                               "-onboarding_completed_v1", "YES", "-gs_selectedThemeID", "nightSky"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 5))
+        // All four choices are on screen without scrolling.
+        for name in ["Play", "Hangar", "Settings", "How to Play"] {
+            XCTAssertTrue(app.buttons[name].isHittable, "\(name) is on screen in landscape")
+        }
+        try audit("Home, landscape")
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.buttons["Back"].waitForExistence(timeout: 5))
+        try audit("Settings menu, landscape")
+        app.buttons["Back"].tap()
+
+        app.buttons["Play"].tap()
+        XCTAssertTrue(app.buttons["Helicopter flight control"].waitForExistence(timeout: 5))
+        // On a screen this short the flight hint stops growing at 28 points
+        // (`SceneTextOverlay.wideHintPointSize`): any larger and it covers the waiting
+        // helicopter. Only this check on this label is excused.
+        try audit("Playing, landscape", cappedText: ["Tap or press your switch to fly"])
+        // Turned upright mid-round and back: the round carries on and can still be paused.
+        XCUIDevice.shared.orientation = .portrait
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Pause"].isHittable)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.buttons["Pause"].waitForExistence(timeout: 5))
+        app.buttons["Pause"].tap()
+        XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Home"].isHittable, "Both pause choices are on screen in landscape")
+        try audit("Paused, landscape")
+        app.buttons["Home"].tap()
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 5))
     }
 
     /// The Hangar rebuilds in each theme's colours when a card is chosen. The theme is

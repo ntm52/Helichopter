@@ -120,7 +120,8 @@ class PlayingState: GKState {
         guard let playerNode = adapter.playerCharacter else {
             return
         }
-        playerNode.position = CGPoint(x: playerNode.size.width / 2 + 50, y: scene.size.height / 2)
+        playerNode.position = CGPoint(x: playerNode.size.width / 2 + 50 + ((scene as? GameScene)?.leadingInset ?? 0),
+                                      y: scene.size.height / 2)
         playerNode.zPosition = 10
     }
 

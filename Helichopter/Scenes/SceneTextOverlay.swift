@@ -155,7 +155,11 @@ final class SceneTextOverlay: UIView {
         stack.addArrangedSubview(banner)
         newHighScoreLabel = banner
         let scheme = GameSettings.shared.controlScheme
-        if scheme.splitsTouchIntoUpAndDown { addUpDownGuide(theme: theme) }
+        if scheme.splitsTouchIntoUpAndDown {
+            addUpDownGuide(theme: theme)
+            // Again, now that the labels exist: it sizes them for the screen's shape.
+            placeHint()
+        }
         // Split schemes get Up and Down areas; the others keep one area on the lower half.
         let areas: [FlightAccessibilityElement.Area] = scheme.splitsTouchIntoUpAndDown ? [.up, .down] : [.whole]
         flightElements = areas.map { area in
@@ -203,6 +207,15 @@ final class SceneTextOverlay: UIView {
         NSLayoutConstraint.deactivate(hintConstraints)
         hintConstraints = []
         hint.removeFromSuperview()
+        // A screen on its side is short: at the largest sizes the hint would reach up to
+        // the waiting helicopter, so there it stops growing at a size that stays below it.
+        hint.font = TypeStyle.body.font(compatibleWith: traitCollection,
+                                        maximumPointSize: isWide ? Self.wideHintPointSize : nil)
+        // Up sits just above the middle line; any larger and it would reach Pause.
+        upDownLabels.forEach {
+            $0.font = TypeStyle.label.font(compatibleWith: traitCollection,
+                                           maximumPointSize: isWide ? Self.wideLabelPointSize : nil)
+        }
         if traitCollection.preferredContentSizeCategory.isAccessibilityCategory {
             hint.translatesAutoresizingMaskIntoConstraints = false
             addSubview(hint)
@@ -228,10 +241,22 @@ final class SceneTextOverlay: UIView {
 
     /// Chips, a gap, then Pause on one row. At accessibility text sizes Pause has a row
     /// of its own above the chips, so neither is squeezed.
+    /// The largest the flight hint's text grows on a screen that is wider than tall.
+    static let wideHintPointSize: CGFloat = 28
+    /// The largest Up and Down grow on such a screen.
+    static let wideLabelPointSize: CGFloat = 22
+
+    /// True when the overlay is wider than tall: a phone on its side.
+    private var isWide: Bool { bounds.width > bounds.height }
+    private var hudIsForWideScreen = false
+
     private func arrangeHUD() {
         guard let hud = hudStack, let chips = chipRow, let pause = pauseButton else { return }
         hud.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        if traitCollection.preferredContentSizeCategory.isAccessibilityCategory {
+        hudIsForWideScreen = isWide
+        // At accessibility text sizes the chips and Pause do not fit one row of a portrait
+        // phone. A screen on its side has the width, and not the height for a column.
+        if traitCollection.preferredContentSizeCategory.isAccessibilityCategory && !isWide {
             hud.axis = .vertical
             hud.alignment = .leading
             [pause, chips].forEach { hud.addArrangedSubview($0) }
@@ -320,6 +345,8 @@ final class SceneTextOverlay: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        // The phone was turned: the HUD's row or column follows the new shape.
+        if hudStack != nil, hudIsForWideScreen != isWide { arrangeHUD() }
         showUpDownLabelsClearOfHint()
     }
 

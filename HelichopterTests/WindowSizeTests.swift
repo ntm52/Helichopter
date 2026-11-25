@@ -1,5 +1,6 @@
 import Testing
 import SpriteKit
+import GameplayKit
 import UIKit
 @testable import Helichopter
 
@@ -50,7 +51,8 @@ struct WindowSizeTests {
         #expect(GameLayout.best(for: CGSize(width: 375, height: 667)) == .phone)
         #expect(GameLayout.best(for: CGSize(width: 820, height: 1180)) == .pad)
         #expect(GameLayout.best(for: CGSize(width: 1180, height: 820)) == .pad)
-        #expect(GameLayout.best(for: CGSize(width: 1000, height: 420)) == .pad)
+        // A short, wide window gets the wide layout, made to its own shape.
+        #expect(GameLayout.best(for: CGSize(width: 1000, height: 420)) == .wide)
         for narrow in [CGSize(width: 400, height: 1000), CGSize(width: 375, height: 1024),
                        CGSize(width: 320, height: 1180), CGSize(width: 507, height: 1180)] {
             #expect(GameLayout.best(for: narrow) == .phone, "\(narrow)")
@@ -159,5 +161,124 @@ struct WindowSizeTests {
                         "Settings at \(size): \(control.accessibilityLabel ?? "\(type(of: control))") off screen")
             }
         } }
+    }
+
+    /// A phone in landscape (2026-11-17): the app turns with it, and play fills the
+    /// screen with a wide scene instead of a narrow strip between bars.
+    @Test func landscapePhoneGetsAWideSceneThatFillsTheScreen() throws {
+        #expect(RootViewController().supportedInterfaceOrientations == .allButUpsideDown)
+        let phones = [CGSize(width: 874, height: 402), CGSize(width: 667, height: 375), CGSize(width: 956, height: 440)]
+        for window in phones {
+            #expect(GameLayout.best(for: window) == .wide, "\(window)")
+            let inset = UIEdgeInsets(top: 0, left: 62, bottom: 21, right: 62)
+            let game = try #require(GameLayout.wide.makeScene(for: window, safeArea: inset))
+            // The window's own shape, so nothing is cut off and there are no bars.
+            #expect(game.size.height == GameLayout.wideHeight)
+            #expect(abs(game.size.width / game.size.height - window.width / window.height) < 0.01, "\(window)")
+            #expect(GameLayout(sceneSize: game.size) == .wide)
+            // As large on screen as in portrait on the same phone.
+            #expect(abs(window.height / game.size.height - window.height / GameLayout.phone.sceneSize.width) < 0.001)
+            // The helicopter starts clear of the camera housing, with the ceiling and floor in the scene.
+            let player = try #require(game.sceneAdapter?.playerCharacter)
+            let pointsPerUnit = window.height / game.size.height
+            #expect((player.position.x - player.size.width / 2) * pointsPerUnit >= inset.left, "\(window)")
+            #expect(player.position.y == game.size.height / 2)
+            #expect(game.physicsBody != nil)
+            // Pipes fit the shorter scene, with a gap the helicopter can pass.
+            let parts = try #require(PipeFactory.standardPipeParts(for: game.size))
+            #expect(parts.threshold.size.height >= player.size.height)
+            #expect(parts.top.size.height + parts.bottom.size.height + parts.threshold.size.height <= game.size.height + 1)
+        }
+        // The size override is used once, not left for the next scene.
+        #expect(GameScene.pendingShape == nil)
+        #expect(try #require(GameLayout.phone.makeScene()).size == GameLayout.phone.sceneSize)
+        // A full-screen iPad in landscape keeps its own scene, as before.
+        #expect(GameLayout.best(for: CGSize(width: 1180, height: 820)) == .pad)
+        #expect(GameLayout.best(for: CGSize(width: 1366, height: 1024)) == .pad)
+    }
+
+    /// Pipes move at their portrait speed in a wide scene; they only have further to go.
+    @Test func pipesKeepTheirPortraitSpeedInAWideScene() {
+        let portrait = GameLayout.phone.sceneSize
+        let wide = CGSize(width: 1630, height: 750)
+        #expect(PipeFactory.crossingDuration(7, sceneSize: portrait) == 7)
+        #expect(PipeFactory.crossingDuration(7, sceneSize: GameLayout.pad.sceneSize) == 7)
+        let speed = { (size: CGSize) in Double(size.width + PipeFactory.pipeWidth) / PipeFactory.crossingDuration(7, sceneSize: size) }
+        #expect(abs(speed(wide) - speed(portrait)) < 0.001)
+    }
+
+    /// A short screen has no room for Home's mascot; without it every choice fits.
+    @Test func homeFitsAPhoneInLandscape() {
+        let home = HomeViewController()
+        home.view.frame = CGRect(x: 0, y: 0, width: 874, height: 402)
+        home.view.layoutIfNeeded()
+        #expect(home.mascot.isHidden)
+        #expect(!home.menu.scroll.overflowsVertically)
+        #expect(home.menu.buttons.count == 4)
+        home.view.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
+        home.view.layoutIfNeeded()
+        #expect(!home.mascot.isHidden)
+    }
+
+    /// On a phone on its side, at the largest text size: the HUD is one row, the hint
+    /// stays below the waiting helicopter, and Up stays clear of Pause.
+    @Test func landscapeHUDFitsAtTheLargestTextSize() throws {
+        let gs = GameSettings.shared
+        let saved = (gs.controlScheme, gs.showScore)
+        defer { (gs.controlScheme, gs.showScore) = saved }
+        gs.controlScheme = .autoHover
+        gs.showScore = true
+        let size = CGSize(width: 874, height: 402)
+        let view = SKView(frame: CGRect(origin: .zero, size: size))
+        let window = makeTestWindow(frame: view.frame)
+        let host = UIViewController()
+        host.view = view
+        window.rootViewController = host
+        window.isHidden = false
+        defer { window.isHidden = true }
+        let game = try #require(GameLayout.wide.makeScene(for: size))
+        view.presentScene(game)
+        defer { view.presentScene(nil) }
+        let overlay = SceneTextOverlay(frame: view.bounds)
+        view.addSubview(overlay)
+        overlay.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        overlay.updateTraitsIfNeeded()
+        overlay.refresh(in: view)
+        overlay.layoutIfNeeded()
+        let pause = try #require(overlay.pauseButton)
+        let pauseFrame = pause.convert(pause.bounds, to: overlay)
+        let hint = try #require(overlay.flightHintLabel)
+        let hintFrame = hint.convert(hint.bounds, to: overlay)
+        // The helicopter waits at mid-height, half a scene unit of 100 either side.
+        let helicopterBottom = size.height / 2 + 50 * size.height / game.size.height
+        #expect(hintFrame.minY > helicopterBottom)
+        #expect(hint.font.pointSize <= SceneTextOverlay.wideHintPointSize)
+        #expect(overlay.upDownLabels.count == 2)
+        // The test window keeps a portrait phone's top inset; a phone on its side has none.
+        let inset = overlay.safeAreaInsets.top
+        for label in overlay.upDownLabels {
+            #expect(!label.convert(label.bounds, to: overlay).intersects(pauseFrame.offsetBy(dx: 0, dy: -inset)),
+                    "\(label.convert(label.bounds, to: overlay)) \(pauseFrame) inset \(inset) font \(label.font.pointSize)")
+        }
+        // One row: Pause is level with the chips, at the trailing edge.
+        let chip = try #require(overlay.scoreChip)
+        #expect(pauseFrame.minX > size.width / 2)
+        #expect(abs(chip.convert(chip.bounds, to: overlay).minY - pauseFrame.minY) < 1)
+    }
+
+    /// Pause and Round Over show their choices side by side on a short screen, so the
+    /// whole menu fits; at accessibility text sizes they stay a column and scroll.
+    @Test func gameMenusFitAPhoneInLandscape() throws {
+        let game = try #require(GameLayout.wide.makeScene(for: CGSize(width: 874, height: 402)))
+        _ = game.stateMachine.enter(GameOverState.self)
+        let menu = GameMenuView(game: game, phase: .roundOver, traits: UITraitCollection(preferredContentSizeCategory: .large))
+        menu.frame = CGRect(x: 0, y: 0, width: 874, height: 402)
+        menu.layoutIfNeeded()
+        #expect(menu.choices.axis == .horizontal)
+        #expect(menu.buttons.map(\.currentTitle) == ["Home", "Try Again"])
+        #expect(Set(menu.buttons.map { $0.frame.minY }).count == 1)
+        menu.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
+        menu.layoutIfNeeded()
+        #expect(menu.choices.axis == .vertical)
     }
 }

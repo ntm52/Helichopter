@@ -224,6 +224,13 @@ enum ControlScheme: Int {
     var holdingPrimaryPauses: Bool { self != .twoSwitchUD }
 }
 
+/// What still vibrates while Calm Mode is on. Bumps and menu choices never do.
+enum CalmHaptics: Int {
+    case flapAndScore = 0  // each flap or nudge, and each point
+    case scoreOnly    = 1  // each point
+    case none         = 2  // nothing
+}
+
 /// Menu scanning mode.
 enum ScanScheme: Int {
     case autoScan  = 0  // timer auto-advances; primary switch activates
@@ -313,6 +320,8 @@ final class GameSettings {
         case isSettingsLocked        = "gs_isSettingsLocked"
         case voiceOverDirectTouch    = "gs_voiceOverDirectTouch"
         case holdToPauseEnabled      = "gs_holdToPauseEnabled"
+        case speakMenuItems          = "gs_speakMenuItems"
+        case calmHaptics             = "gs_calmHaptics"
     }
 
     /// Bounds include every shipped preset and visible slider range.
@@ -329,6 +338,7 @@ final class GameSettings {
         case .pipeHeightVariance: return (0...1, 1)
         case .controlScheme: return (0...3, 0)
         case .scanScheme: return (0...1, 0)
+        case .calmHaptics: return (0...2, 0)
         case .scanDwellTime: return (0.5...10, 2)
         case .backgroundScrollSpeed: return (0...200, 80)
         case .invulnerabilityDuration: return (0.1...10, 1.5)
@@ -339,7 +349,7 @@ final class GameSettings {
     private func validated(_ value: Double, for key: Key) -> Double {
         guard let (range, fallback) = numericRule(for: key) else { return value }
         guard value.isFinite else { return fallback }
-        if key == .controlScheme || key == .scanScheme {
+        if key == .controlScheme || key == .scanScheme || key == .calmHaptics {
             return range.contains(value) && value.rounded() == value ? value : fallback
         }
         return min(range.upperBound, max(range.lowerBound, value))
@@ -472,6 +482,13 @@ final class GameSettings {
         set { defaults.set(newValue, forKey: "gs_scanningEnabled") }
     }
 
+    /// The scanner says each item's name as it highlights it. Players who read the
+    /// highlight, or who find the voice distracting, can turn it off.
+    var speakMenuItems: Bool {
+        get { defaults.object(forKey: Key.speakMenuItems.rawValue) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.speakMenuItems.rawValue) }
+    }
+
     // MARK: - Phase 4: Vision and motion parameters
 
     /// Scroll speed of the parallax background, independent of gameplay speed.
@@ -524,8 +541,15 @@ final class GameSettings {
         set { defaults.set(newValue, forKey: "gs_selectedPipeSkinID") }
     }
 
+    /// Read when no pipes have been chosen; tests replace it.
+    static var differentiateWithoutColour: () -> Bool = { UIAccessibility.shouldDifferentiateWithoutColor }
+
+    /// The player's own choice always wins. Until they make one, iOS's Differentiate
+    /// Without Colour setting equips Striped Pipes, which show by pattern.
     var selectedPipeSkin: Cosmetic {
-        CosmeticsCatalog.item(id: defaults.string(forKey: "gs_selectedPipeSkinID"), of: .pipe)
+        let chosen = defaults.string(forKey: "gs_selectedPipeSkinID")
+        if chosen == nil, Self.differentiateWithoutColour() { return CosmeticsCatalog.stripedPipes }
+        return CosmeticsCatalog.item(id: chosen, of: .pipe)
     }
 
     /// The chosen look of either kind.
@@ -587,6 +611,19 @@ final class GameSettings {
         get { defaults.bool(forKey: Key.calmMode.rawValue) }
         set { defaults.set(newValue, forKey: Key.calmMode.rawValue) }
     }
+
+    /// What still vibrates in Calm Mode. Defaults to the flap and the score, as before
+    /// this setting existed.
+    var calmHaptics: CalmHaptics {
+        get { CalmHaptics(rawValue: Int(read(.calmHaptics))) ?? .flapAndScore }
+        set { write(Double(newValue.rawValue), for: .calmHaptics) }
+    }
+
+    /// The vibration for each flap, hold, or nudge.
+    var playsFlightHaptics: Bool { !calmMode || calmHaptics == .flapAndScore }
+
+    /// The vibration for each point scored.
+    var playsScoreHaptics: Bool { !calmMode || calmHaptics != .none }
 
     /// Duration (seconds) of the invulnerability window after a no-fail collision. Default 1.5s.
     var invulnerabilityDuration: TimeInterval {

@@ -31,13 +31,35 @@ extension SettingsPanelView {
         choices.translatesAutoresizingMaskIntoConstraints = false
         let scroll = UIScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
-        panel.addSubview(scroll)
+        // Scroll down and Scroll up, for a switch user on a page longer than the screen.
+        // Hidden until such a page is scanned; before the scroll view, so scanned first.
+        let scrollTargets = [ButtonTarget { [weak scroll] in scroll?.scrollPage(down: true) },
+                             ButtonTarget { [weak scroll] in scroll?.scrollPage(down: false) }]
+        adjustmentTargets += scrollTargets
+        let bar = UIStackView(arrangedSubviews: [
+            panelButton("Scroll down", icon: "chevron.down", target: scrollTargets[0], action: #selector(ButtonTarget.tapped)),
+            panelButton("Scroll up", icon: "chevron.up", target: scrollTargets[1], action: #selector(ButtonTarget.tapped))])
+        bar.distribution = .fillEqually
+        bar.spacing = Spacing.m
+        bar.isHidden = true
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        // A hidden bar takes no room: the page then reaches the bottom.
+        let column = UIStackView()
+        column.axis = .vertical
+        column.spacing = Spacing.m
+        column.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(column)
+        column.addArrangedSubview(scroll)
+        column.addArrangedSubview(bar)
+        column.sendSubviewToBack(bar)
+        scrollBar = bar
+        adjustmentScroll = scroll
         scroll.addSubview(choices)
         NSLayoutConstraint.activate([
-            scroll.topAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.topAnchor, constant: Spacing.l),
-            scroll.bottomAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.l),
-            scroll.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: Spacing.l),
-            scroll.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -Spacing.l),
+            column.topAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.topAnchor, constant: Spacing.l),
+            column.bottomAnchor.constraint(equalTo: panel.safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.l),
+            column.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: Spacing.l),
+            column.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -Spacing.l),
             choices.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: Spacing.s),
             choices.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -Spacing.s),
             choices.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor, constant: Spacing.s),
@@ -112,6 +134,7 @@ extension SettingsPanelView {
         switchScanner.stop()
         adjustmentPanel?.removeFromSuperview()
         adjustmentPanel = nil
+        scrollBar = nil
         adjustmentTargets.removeAll()
         let label = returnControlLabel
         returnControlLabel = nil

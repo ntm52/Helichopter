@@ -62,15 +62,16 @@ final class SettingsPanelView: ScrollingPanelView {
 
     let page: SettingsPage
 
-    init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil, page: SettingsPage) {
+    init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil, page: SettingsPage,
+         columns: Bool = false) {
         self.page = page
-        super.init(frame: frame, theme: theme, fontTraits: fontTraits)
+        super.init(frame: frame, theme: theme, fontTraits: fontTraits, columns: columns)
     }
 
     /// The menu of categories.
-    required init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil) {
+    required init(frame: CGRect, theme: UITheme, fontTraits: UITraitCollection? = nil, columns: Bool = false) {
         page = .menu
-        super.init(frame: frame, theme: theme, fontTraits: fontTraits)
+        super.init(frame: frame, theme: theme, fontTraits: fontTraits, columns: columns)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -86,7 +87,9 @@ final class SettingsPanelView: ScrollingPanelView {
     var adjustmentPanel: UIView?
     var adjustmentTargets: [NSObject] = []
     var returnControlLabel: String?
-    var paletteViews: [UIView] = []
+    /// The bar of Scroll up and Scroll down buttons on an open page, for the scanner.
+    var scrollBar: UIView?
+    weak var adjustmentScroll: UIScrollView?
     /// Long explanations, by the name of the control whose page shows them.
     var infoPages: [String: String] = [:]
     /// The buttons of each list of choices, by the list's name.
@@ -105,6 +108,16 @@ final class SettingsPanelView: ScrollingPanelView {
 
     /// While a page covers the list, only that page is scanned.
     override var scanRoot: UIView { adjustmentPanel ?? self }
+
+    /// A switch user cannot scroll, so a page too long for the screen gets Scroll down
+    /// and Scroll up buttons while it is scanned.
+    override func prepareToScan() {
+        guard let bar = scrollBar, let scroll = adjustmentScroll else { return }
+        layoutIfNeeded()
+        guard bar.isHidden, scroll.overflowsVertically else { return }
+        bar.isHidden = false
+        layoutIfNeeded()
+    }
 
     override func reopenAdjustment(labelled label: String?) {
         guard let control = label.flatMap({ control(labelled: $0) }) else { return }
@@ -219,6 +232,12 @@ final class SettingsPanelView: ScrollingPanelView {
         toggleRow("Calm Mode",
                   detail: "No collision sounds or vibration on impact",
                   isOn: gs.calmMode) { v in gs.calmMode = v }
+        choiceRow("Vibration in Calm Mode",
+                  detail: "What you still feel while Calm Mode is on. Bumps never vibrate in Calm Mode.",
+                  items: ["Flap and score", "Score only", "No vibration"],
+                  selectedIndex: gs.calmHaptics.rawValue) { idx in
+            if let choice = CalmHaptics(rawValue: idx) { gs.calmHaptics = choice }
+        }
         toggleRow("Helicopter Outline",
                   detail: "Black and white contrast marker around the helicopter",
                   isOn: gs.helicopterOutline) { v in gs.helicopterOutline = v }
@@ -238,6 +257,9 @@ final class SettingsPanelView: ScrollingPanelView {
         toggleRow("Auto-Scan Menus",
                   detail: "Menus start scanning as soon as they open. When off, your first switch press starts scanning.",
                   isOn: gs.scanningEnabled) { v in gs.scanningEnabled = v }
+        toggleRow("Speak Menu Items",
+                  detail: "The scanner says each item's name as it highlights it",
+                  isOn: gs.speakMenuItems) { v in gs.speakMenuItems = v }
         choiceRow("Menu Scan Mode",
                   detail: "Timed moves the highlight on a timer. Step with Switch 2 waits for your second switch to move it.",
                   items: ["Timed", "Step with Switch 2"],
@@ -281,7 +303,14 @@ final class SettingsPanelView: ScrollingPanelView {
 
     private func buildColours() {
         sectionHeader("Colour Accessibility")
-        paletteRow()
+        let palettes = GameSettings.allPalettes
+        choiceRow("Game Colours",
+                  detail: "Helicopter and pipe colours for different colour vision. The menu theme is separate.",
+                  items: palettes.map(\.name),
+                  selectedIndex: palettes.firstIndex(of: GameSettings.shared.selectedPalette) ?? 0,
+                  accessory: { [weak self] in self?.paletteDots(palettes[$0]) }) { idx in
+            GameSettings.shared.selectedPaletteID = palettes[idx].id
+        }
 
         // The theme is chosen in the Hangar; this points players who look for it here.
         sectionHeader("Menu Theme")

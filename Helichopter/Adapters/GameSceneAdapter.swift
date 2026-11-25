@@ -140,7 +140,7 @@ class GameSceneAdapter: NSObject {
         }
 
         if isSoundEffectsOn { scene?.run(scoreSound) }
-        notification.notificationOccurred(.success)
+        if GameSettings.shared.playsScoreHaptics { notification.notificationOccurred(.success) }
 
         // Announce score to VoiceOver — only when it's running to avoid interrupting audio.
         // Hidden scores stay silent, including the new-high-score message.

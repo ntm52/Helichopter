@@ -48,6 +48,49 @@ class MenuStackView: UIView {
     /// The card behind the column, when the menu sits on one (Pause and Round Over).
     private(set) var card: SurfaceView?
 
+    /// Scroll down and Scroll up, pinned under the column. A switch user cannot scroll, so
+    /// a host whose words may run past the screen scans these first (`scrollItemsIfNeeded`).
+    private(set) lazy var scrollItems: [MenuItem] = [
+        MenuItem("Scroll down", hint: "Shows the words further down") { [weak self] in
+            Feedback.choose()
+            self?.scroll.scrollPage(down: true)
+        },
+        MenuItem("Scroll up", hint: "Shows the words further up") { [weak self] in
+            Feedback.choose()
+            self?.scroll.scrollPage(down: false)
+        }]
+    private let scrollBar = UIStackView()
+    private var scrollEndsAtBar: NSLayoutConstraint!
+    private var scrollEndsAtBottom: NSLayoutConstraint!
+
+    /// The scroll choices if the column is too long for the screen, showing their bar;
+    /// otherwise none. Call when scanning starts.
+    func scrollItemsIfNeeded() -> [MenuItem] {
+        layoutIfNeeded()
+        guard scrollBar.isHidden else { return scrollItems }
+        guard scroll.overflowsVertically else { return [] }
+        if scrollBar.arrangedSubviews.isEmpty {
+            for item in scrollItems {
+                let button = MenuButton(item: item, theme: theme, traits: traits)
+                button.setIcon(systemName: item === scrollItems.first ? "chevron.down" : "chevron.up")
+                button.addTarget(self, action: #selector(activate(_:)), for: .touchUpInside)
+                scrollBar.addArrangedSubview(button)
+            }
+        }
+        scrollBar.isHidden = false
+        scrollEndsAtBottom.isActive = false
+        scrollEndsAtBar.isActive = true
+        layoutIfNeeded()
+        return scrollItems
+    }
+
+    /// Takes the scroll choices away again, for a new page or when scanning is over.
+    func hideScrollBar() {
+        scrollBar.isHidden = true
+        scrollEndsAtBar.isActive = false
+        scrollEndsAtBottom.isActive = true
+    }
+
     /// `onCard` puts the column on a card, for a menu that floats over the game.
     init(traits: UITraitCollection, onCard: Bool = false) {
         self.traits = traits
@@ -60,6 +103,13 @@ class MenuStackView: UIView {
         stack.spacing = Spacing.l
         addSubview(scroll)
         scroll.addSubview(stack)
+        scrollBar.translatesAutoresizingMaskIntoConstraints = false
+        scrollBar.distribution = .fillEqually
+        scrollBar.spacing = Spacing.m
+        scrollBar.isHidden = true
+        addSubview(scrollBar)
+        scrollEndsAtBottom = scroll.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.m)
+        scrollEndsAtBar = scroll.bottomAnchor.constraint(equalTo: scrollBar.topAnchor, constant: -Spacing.m)
         // Centred when the menu fits; scrolls from the top when it doesn't.
         let hug = stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor)
         hug.priority = .defaultLow
@@ -68,7 +118,10 @@ class MenuStackView: UIView {
         fill.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             scroll.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: Spacing.m),
-            scroll.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.m),
+            scrollEndsAtBottom,
+            scrollBar.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -Spacing.m),
+            scrollBar.centerXAnchor.constraint(equalTo: stack.centerXAnchor),
+            scrollBar.widthAnchor.constraint(equalTo: stack.widthAnchor),
             scroll.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: Spacing.l),
             scroll.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -Spacing.l),
             scroll.contentLayoutGuide.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor),
@@ -94,7 +147,7 @@ class MenuStackView: UIView {
             ])
             self.card = card
         }
-        accessibilityElements = [scroll]
+        accessibilityElements = [scroll, scrollBar]
         registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (menu: MenuStackView, _: UITraitCollection) in
             menu.tileRows.forEach { menu.arrange($0, compatibleWith: menu.traitCollection) }
         }
@@ -137,6 +190,23 @@ class MenuStackView: UIView {
         if let icon = icon { button.setIcon(systemName: icon) }
         stack.addArrangedSubview(button)
         return button
+    }
+
+    /// A column of buttons that the host may turn into a row, by changing the returned
+    /// stack's axis, when the screen is short. The scanning order is the order given.
+    @discardableResult
+    func addButtonGroup(for choices: [(choice: MenuChoice, kind: ButtonKind, icon: String)]) -> UIStackView {
+        let group = UIStackView()
+        group.axis = .vertical
+        group.spacing = Spacing.l
+        group.distribution = .fillEqually
+        for entry in choices {
+            let button = makeButton(for: entry.choice, kind: entry.kind, size: .regular)
+            button.setIcon(systemName: entry.icon)
+            group.addArrangedSubview(button)
+        }
+        stack.addArrangedSubview(group)
+        return group
     }
 
     /// A row of equal tiles, each with its icon above its title. At accessibility text
@@ -192,6 +262,7 @@ class MenuStackView: UIView {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         buttons = []
         tileRows = []
+        hideScrollBar()
         scroll.setContentOffset(.zero, animated: false)
     }
 
@@ -339,3 +410,4 @@ class MenuViewController: ScreenViewController {
     override func switchPrimaryBegan() { scanner.primaryActivate() }
     override func switchSecondaryBegan() { scanner.secondaryAdvance() }
 }
+

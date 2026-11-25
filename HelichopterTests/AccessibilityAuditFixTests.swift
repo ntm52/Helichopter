@@ -199,7 +199,8 @@ struct AccessibilityAuditFixTests {
         }
     }
 
-    /// The chosen palette was marked only by its border's colour and width.
+    /// The chosen palette was marked only by its border's colour and width; now by the
+    /// same filled tick as every other list of choices.
     @Test func chosenPaletteIsMarkedByATick() throws {
         try withUnlockedSettings {
             let gs = GameSettings.shared
@@ -208,16 +209,12 @@ struct AccessibilityAuditFixTests {
             gs.selectedPaletteID = "default"
             let (panel, window) = makeSettings(.category(.colours))
             defer { window.isHidden = true }
-            let swatches = panel.paletteViews.compactMap { $0 as? SwatchButton }
-            #expect(swatches.count == GameSettings.allPalettes.count)
-            #expect(swatches.map { !$0.mark.isHidden } == [true, false, false, false, false, false])
-            #expect(swatches.allSatisfy { $0.mark.image != nil && !$0.mark.isAccessibilityElement })
-            swatches[2].sendActions(for: .touchUpInside)
-            #expect(swatches.map { !$0.mark.isHidden } == [false, false, true, false, false, false])
-            #expect(swatches.map { $0.accessibilityTraits.contains(.selected) } == [false, false, true, false, false, false])
-            // The tick stays inside its card, clear of the name.
-            panel.layoutIfNeeded()
-            for swatch in swatches { #expect(swatch.bounds.contains(swatch.mark.frame)) }
+            let choices = try #require(panel.choiceGroups["Game Colours"])
+            #expect(choices.map(\.accessibilityLabel) == GameSettings.allPalettes.map(\.name))
+            #expect(choices.map(\.isChosen) == [true, false, false, false, false, false])
+            choices[2].sendActions(for: .touchUpInside)
+            #expect(gs.selectedPaletteID == "deuteranopia")
+            #expect(choices.map { $0.accessibilityTraits.contains(.selected) } == [false, false, true, false, false, false])
         }
     }
 
@@ -334,9 +331,9 @@ struct AccessibilityAuditFixTests {
         }
     }
 
-    /// A switch user cannot scroll. Scanning down the guide's choices scrolled its words
-    /// off the top, and coming round to the first choice did not bring them back.
-    @Test func scanningBackToTheFirstChoiceShowsTheWordsAboveIt() throws {
+    /// A switch user cannot scroll. A guide step longer than the screen is scanned with
+    /// Scroll down and Scroll up first, and every choice is on screen when focused.
+    @Test func aLongGuideStepIsScannedWithScrollChoices() throws {
         let gs = GameSettings.shared
         let savedScheme = gs.scanScheme
         defer { gs.scanScheme = savedScheme }
@@ -346,20 +343,187 @@ struct AccessibilityAuditFixTests {
         guide.view.layoutIfNeeded()
         let scroll = guide.menu.scroll
         #expect(scroll.contentSize.height > scroll.bounds.height)
+        // Nobody else sees the scroll choices.
+        #expect(guide.scanner.items.count == guide.menu.buttons.count)
         guide.scanner.start()
-        let first = scroll.contentOffset.y
-        for _ in guide.scanner.items.dropFirst() { guide.scanner.secondaryAdvance() }
-        #expect(scroll.contentOffset.y > first)
-        guide.scanner.secondaryAdvance()
+        let titles = guide.scanner.items.compactMap { ($0 as? MenuItem)?.title }
+        #expect(titles.prefix(3) == ["Scroll down", "Scroll up", "Read this step aloud"])
+        #expect(scroll.contentOffset.y == 0)
+        guide.scanner.primaryActivate()
+        let down = scroll.contentOffset.y
+        #expect(down > 0)
+        // The scanner stays on Scroll down, so the next press reads on.
         #expect(guide.scanner.currentIndex == 0)
-        #expect(scroll.contentOffset.y == first)
-        let button = try #require(guide.menu.buttons.first)
-        #expect(scroll.bounds.contains(button.convert(button.bounds, to: scroll)))
+        guide.scanner.secondaryAdvance()
+        guide.scanner.primaryActivate()
+        #expect(scroll.contentOffset.y < down)
+        for button in guide.menu.buttons {
+            guide.scanner.secondaryAdvance()
+            #expect(scroll.bounds.contains(button.convert(button.bounds, to: scroll)))
+        }
+        // The next step starts at its top; a step that fits has no scroll choices.
+        guide.show(page: 1)
+        #expect(scroll.contentOffset.y == 0)
+        guide.scanner.stop()
+        guide.view.frame = CGRect(x: 0, y: 0, width: 390, height: 3000)
+        guide.show(page: 2)
+        guide.view.layoutIfNeeded()
+        guide.scanner.start()
+        #expect(guide.scanner.items.count == guide.menu.buttons.count)
         guide.scanner.stop()
     }
 
     /// The No-Fail bump pulsed 3.3 times a second; flashing must stay under three.
     @Test func noFailBumpPulsesUnderThreeTimesASecond() {
         #expect(1 / (2 * HelicopterNode.bumpPulseHalfPeriod) < 3)
+    }
+
+    // MARK: - Second pass: the issues the audit left open
+
+    /// A slider could only be dragged; its page of large buttons opened for assistive
+    /// technology alone. Now a button under it opens the page for anyone.
+    @Test func everySliderHasAButtonThatOpensItsLargeButtons() throws {
+        try withUnlockedSettings {
+            let (panel, window) = makeSettings(.category(.difficulty))
+            defer { window.isHidden = true }
+            let sliders = panel.controls(in: panel).compactMap { $0 as? UISlider }
+            #expect(sliders.count == 4)
+            for slider in sliders {
+                let name = try #require(slider.accessibilityLabel)
+                let adjust = try #require(panel.control(labelled: "Adjust \(name) with buttons") as? UIButton)
+                // Voice Control users say what they see, or the short name.
+                #expect(adjust.accessibilityUserInputLabels == ["Adjust with buttons", "Adjust \(name)"])
+                #expect(adjust.bounds.height >= Layout.minButtonHeight)
+            }
+            // The scanner still stops once per slider, on the slider.
+            panel.startScanning()
+            #expect(!panel.switchScanner.items.contains { $0.accessibilityScanLabel.hasPrefix("Adjust") })
+            panel.stopScanning()
+            let adjust = try #require(panel.control(labelled: "Adjust Gap Size with buttons"))
+            adjust.sendActions(for: .touchUpInside)
+            #expect(panel.isAdjusting && !panel.switchScanner.isActive)
+            let before = sliders[0].value
+            let increase = try #require(panel.controls(in: panel.scanRoot).first { ($0 as? UIButton)?.currentTitle == "Increase" })
+            increase.sendActions(for: .touchUpInside)
+            #expect(sliders[0].value > before)
+            panel.closeAdjustment()
+            sliders[0].value = before
+            sliders[0].sendActions(for: .valueChanged)
+        }
+    }
+
+    /// A switch user saw only the top of Privacy Policy and Acknowledgements.
+    @Test func aLongPageIsScannedWithScrollChoices() throws {
+        try withUnlockedSettings {
+            let size = CGSize(width: 390, height: 500)
+            let panel = SettingsPanelView(frame: CGRect(origin: .zero, size: size), theme: GameSettings.shared.selectedTheme, page: .menu)
+            let window = makeTestWindow(frame: CGRect(origin: .zero, size: size))
+            let host = UIViewController()
+            host.view = panel
+            window.rootViewController = host
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true }
+            panel.layoutIfNeeded()
+            let policy = try #require(panel.control(labelled: "Privacy Policy"))
+            policy.sendActions(for: .touchUpInside)
+            let scroll = try #require(panel.adjustmentScroll)
+            let bar = try #require(panel.scrollBar)
+            // Hidden for a finger, VoiceOver, and Voice Control, who scroll for themselves.
+            #expect(bar.isHidden)
+            panel.primaryActivate()
+            #expect(!bar.isHidden)
+            #expect(panel.switchScanner.items.map(\.accessibilityScanLabel)
+                    == ["Scroll down", "Scroll up", "Open Full Policy in Safari", "Done"])
+            #expect(scroll.contentOffset.y == 0)
+            panel.primaryActivate()
+            #expect(scroll.contentOffset.y > 0)
+            panel.secondaryAdvance()
+            panel.primaryActivate()
+            #expect(scroll.contentOffset.y == 0)
+            // The bar sits under the page, not over it.
+            #expect(bar.convert(bar.bounds, to: panel).minY >= scroll.convert(scroll.bounds, to: panel).maxY)
+            panel.closeAdjustment()
+            panel.stopScanning()
+        }
+    }
+
+    /// Scanner speech could not be turned off.
+    @Test func speakMenuItemsOffSilencesTheScannerButNotReadAloud() {
+        let savedRunning = FocusScanner.isVoiceOverRunning
+        let savedAnnounce = FocusScanner.announce
+        defer {
+            FocusScanner.isVoiceOverRunning = savedRunning
+            FocusScanner.announce = savedAnnounce
+        }
+        // With VoiceOver "on", every spoken label arrives here instead of at the synthesizer.
+        var spoken: [String] = []
+        FocusScanner.isVoiceOverRunning = { true }
+        FocusScanner.announce = { spoken.append($0) }
+        let settings = GameSettings(defaults: UserDefaults(suiteName: "AuditFixTests.\(UUID().uuidString)")!)
+        settings.scanScheme = .twoSwitch
+        #expect(settings.speakMenuItems)
+        let scanner = FocusScanner(settings: settings)
+        scanner.items = [MenuItem("First", hint: "", action: {}), MenuItem("Second", hint: "", action: {})]
+        scanner.start()
+        #expect(spoken == ["First"])
+        settings.speakMenuItems = false
+        scanner.secondaryAdvance()
+        #expect(spoken == ["First"] && scanner.currentIndex == 1)
+        // "Read this step aloud" is asked for, so it is still read.
+        scanner.readInstructions("The whole step")
+        #expect(spoken == ["First", "The whole step"])
+        settings.resetToDefaults()
+        #expect(settings.speakMenuItems)
+    }
+
+    /// Calm Mode left the flap and score vibrations on, with no way to turn them off.
+    @Test func calmModeCanKeepScoreVibrationOrNone() {
+        let settings = GameSettings(defaults: UserDefaults(suiteName: "AuditFixTests.\(UUID().uuidString)")!)
+        // Without Calm Mode everything vibrates, whatever the choice.
+        settings.calmHaptics = .none
+        #expect(settings.playsFlightHaptics && settings.playsScoreHaptics)
+        settings.calmMode = true
+        #expect(!settings.playsFlightHaptics && !settings.playsScoreHaptics)
+        settings.calmHaptics = .scoreOnly
+        #expect(!settings.playsFlightHaptics && settings.playsScoreHaptics)
+        // The default is what Calm Mode did before the choice existed.
+        settings.resetToDefaults()
+        settings.calmMode = true
+        #expect(settings.calmHaptics == .flapAndScore)
+        #expect(settings.playsFlightHaptics && settings.playsScoreHaptics)
+    }
+
+    /// Differentiate Without Colour equips Striped Pipes until the player chooses pipes.
+    @Test func differentiateWithoutColourEquipsStripedPipesUntilThePlayerChooses() {
+        let saved = GameSettings.differentiateWithoutColour
+        defer { GameSettings.differentiateWithoutColour = saved }
+        let settings = GameSettings(defaults: UserDefaults(suiteName: "AuditFixTests.\(UUID().uuidString)")!)
+        GameSettings.differentiateWithoutColour = { false }
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.classicPipes)
+        GameSettings.differentiateWithoutColour = { true }
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.stripedPipes)
+        settings.select(CosmeticsCatalog.classicPipes)
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.classicPipes)
+        settings.resetToDefaults()
+        #expect(settings.selectedPipeSkin == CosmeticsCatalog.stripedPipes)
+    }
+
+    /// A quiet button is text alone; Button Shapes gives it an underline.
+    @Test func buttonShapesUnderlinesQuietButtons() {
+        let saved = ArcadeButton.prefersButtonShapes
+        defer { ArcadeButton.prefersButtonShapes = saved }
+        let button = ArcadeButton(kind: .quiet, theme: GameSettings.themeParchment)
+        button.setTitle("More about this", for: .normal)
+        button.frame = CGRect(x: 0, y: 0, width: 240, height: 56)
+        ArcadeButton.prefersButtonShapes = { false }
+        button.layoutIfNeeded()
+        #expect(button.underline.isHidden)
+        ArcadeButton.prefersButtonShapes = { true }
+        button.setNeedsLayout()
+        button.layoutIfNeeded()
+        #expect(!button.underline.isHidden)
+        let title = try! #require(button.titleLabel)
+        #expect(button.underline.frame.minY >= title.frame.maxY && button.bounds.contains(button.underline.frame))
+        #expect(button.underline.frame.width == title.frame.width)
     }
 }

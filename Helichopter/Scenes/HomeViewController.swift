@@ -118,8 +118,14 @@ final class HomeViewController: MenuViewController {
         mascot.startAnimating()
     }
 
+    /// A screen shorter than this (a phone in landscape) has no room for the mascot.
+    static let heightForMascot: CGFloat = 520
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        // Without the mascot, the name and all four choices fit a short screen.
+        let hidesMascot = view.bounds.height < Self.heightForMascot
+        if mascot.isHidden != hidesMascot { mascot.isHidden = hidesMascot }
         fitWordmark()
     }
 
@@ -141,7 +147,8 @@ final class HomeViewController: MenuViewController {
     func perform(_ action: HomeAction) {
         switch action {
         case .play:
-            guard let scene = GameLayout.best(for: view.bounds.size).makeScene() else { return }
+            guard let scene = GameLayout.best(for: view.bounds.size)
+                .makeScene(for: view.bounds.size, safeArea: view.safeAreaInsets) else { return }
             navigate(.scene(scene))
         case .hangar:
             navigate(.hangar)

@@ -6,29 +6,54 @@ import AVFoundation
 
 // MARK: - Scene helpers
 
-/// The two gameplay layouts. A game uses whichever covers more of the window when it
-/// starts, so a narrow iPad window gets the larger phone layout instead of wide bars.
+/// The gameplay layouts. A game uses whichever suits the window when it starts: the
+/// portrait phone or iPad scene that covers more of it, or, in a window much wider than
+/// it is tall (a phone in landscape), a wide scene made to the window's own shape.
 enum GameLayout: String, CaseIterable {
     case phone = "GameScene"
     case pad = "GameScene iPad"
+    case wide = "GameScene Wide"
 
-    /// The archive's scene size (a test checks these match).
+    /// The archive that holds the scene's settings. The wide layout has none of its
+    /// own: it is the phone scene, loaded at a different size.
+    var archiveName: String { self == .wide ? GameLayout.phone.rawValue : rawValue }
+
+    /// The archive's scene size (a test checks these match). For the wide layout, the
+    /// size used when there is no window to shape it to.
     var sceneSize: CGSize {
         switch self {
         case .phone: return CGSize(width: 750, height: 1434)
         case .pad: return CGSize(width: 1125, height: 1500)
+        case .wide: return CGSize(width: 1630, height: GameLayout.wideHeight)
         }
+    }
+
+    /// The wide scene's height in scene units: the phone scene's width, so the
+    /// helicopter and pipes are drawn as large on a phone in landscape as in portrait.
+    static let wideHeight: CGFloat = 750
+    /// A window at least this many times wider than tall gets the wide layout. A
+    /// full-screen iPad in landscape (about 1.4) keeps its own scene with bars.
+    static let wideAspect: CGFloat = 1.6
+
+    /// The scene size for a window: the wide layout takes the window's shape, within
+    /// limits, so it fills the screen with no bars and nothing cut off.
+    func sceneSize(for window: CGSize) -> CGSize {
+        guard self == .wide, window.width > 0, window.height > 0 else { return sceneSize }
+        let aspect = min(3, max(GameLayout.wideAspect, window.width / window.height))
+        return CGSize(width: (GameLayout.wideHeight * aspect).rounded(), height: GameLayout.wideHeight)
     }
 
     var backgroundScale: Float {
         switch self {
-        case .phone: return 1.35
+        case .phone, .wide: return 1.35
         case .pad: return 1.5
         }
     }
 
-    /// The layout whose scene has this size; the phone layout for any other scene.
+    /// The layout whose scene has this size: the wide layout for any scene wider than
+    /// tall, the phone layout for any other unknown scene.
     init(sceneSize: CGSize) {
+        if sceneSize.width > sceneSize.height { self = .wide; return }
         self = GameLayout.allCases.first { $0.sceneSize == sceneSize } ?? .phone
     }
 
@@ -41,20 +66,32 @@ enum GameLayout: String, CaseIterable {
     /// Fraction of a window the scene covers, after `RootViewController.scaleMode`.
     func coverage(of window: CGSize) -> CGFloat {
         guard window.width > 0, window.height > 0 else { return 0 }
+        // The wide layout fills a wide window and is never used in any other.
+        if self == .wide { return window.width / window.height >= GameLayout.wideAspect ? 1 : 0 }
         if RootViewController.scaleMode(sceneSize: sceneSize, in: window) == .aspectFill { return 1 }
         let scale = min(window.width / sceneSize.width, window.height / sceneSize.height)
         return (sceneSize.width * scale) * (sceneSize.height * scale) / (window.width * window.height)
     }
 
-    /// The layout that fills more of the window; the device default when they tie.
+    /// The wide layout in a wide window; otherwise the portrait layout that fills more
+    /// of the window, or the device default when they tie.
     static func best(for window: CGSize) -> GameLayout {
+        if GameLayout.wide.coverage(of: window) == 1 { return .wide }
         let preferred = deviceDefault
         let other: GameLayout = preferred == .pad ? .phone : .pad
         return other.coverage(of: window) > preferred.coverage(of: window) + 0.01 ? other : preferred
     }
 
-    func makeScene() -> GameScene? {
-        GameScene(fileNamed: rawValue)
+    /// `window` and `safeArea` shape the wide layout: its size, and how far the
+    /// helicopter starts from the edge so a camera housing never covers it.
+    func makeScene(for window: CGSize = .zero, safeArea: UIEdgeInsets = .zero) -> GameScene? {
+        if self == .wide {
+            let size = sceneSize(for: window)
+            let unitsPerPoint = window.height > 0 ? size.height / window.height : 0
+            GameScene.pendingShape = (size, safeArea.left * unitsPerPoint)
+        }
+        defer { GameScene.pendingShape = nil }
+        return GameScene(fileNamed: archiveName)
     }
 }
 
@@ -220,7 +257,8 @@ class RootViewController: UIViewController {
     override var canBecomeFirstResponder: Bool { true }
 
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-        UIDevice.current.userInterfaceIdiom == .pad ? .allButUpsideDown : .portrait
+        // A phone mounted in landscape, on a wheelchair or a stand, must not show the app sideways.
+        .allButUpsideDown
     }
 
     override var prefersStatusBarHidden: Bool { true }

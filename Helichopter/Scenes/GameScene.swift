@@ -46,8 +46,20 @@ class GameScene: SKScene {
 
     // MARK: - Lifecycle
 
+    /// Set by `GameLayout.makeScene` while it loads a scene whose size is not the
+    /// archive's: the wide layout's size, and how far in the helicopter starts.
+    static var pendingShape: (size: CGSize, leadingInset: CGFloat)?
+    /// Scene units between the leading edge and the helicopter's usual place, so a
+    /// phone's camera housing never covers it in landscape.
+    private(set) var leadingInset: CGFloat = 0
+
     override func sceneDidLoad() {
         super.sceneDidLoad()
+        // Before anything is built: the world, the background, and pipes follow the size.
+        if let shape = Self.pendingShape {
+            size = shape.size
+            leadingInset = shape.leadingInset
+        }
         sceneAdapter = GameSceneAdapter(with: self)
         sceneAdapter?.stateMachine = stateMachine
         sceneAdapter?.onGameOverEntered = { [weak self] in

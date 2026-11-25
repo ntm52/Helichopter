@@ -29,13 +29,24 @@ struct PipeFactory {
             pipe.name = pipeName
             targetNode.addChild(pipe)
 
-            let moveAction = SKAction.move(to: CGPoint(x: -(pipe.size.width + scene.size.width), y: pipe.position.y), duration: pipeMoveDuration)
+            let moveAction = SKAction.move(to: CGPoint(x: -(pipe.size.width + scene.size.width), y: pipe.position.y),
+                                           duration: crossingDuration(pipeMoveDuration, sceneSize: scene.size))
             let sequence = SKAction.sequence([moveAction, .removeFromParent()])
             pipe.run(sequence)
         }
 
         let sequence = SKAction.sequence([waitAction, producePipeAction])
         return SKAction.repeatForever(sequence)
+    }
+
+    /// How long a pipe takes to cross a scene. `setting` is the time across a portrait
+    /// scene. A wide scene has further to cross, so it takes longer in proportion: pipes
+    /// move at the speed they have in portrait, and the player sees them coming sooner.
+    static func crossingDuration(_ setting: TimeInterval, sceneSize: CGSize) -> TimeInterval {
+        guard sceneSize.width > sceneSize.height else { return setting }
+        let portraitWidth = GameLayout.phone.sceneSize.width
+        // A pipe starts at the scene's far edge and leaves by its own width past the near one.
+        return setting * Double((sceneSize.width + pipeWidth) / (portraitWidth + pipeWidth))
     }
 
     private static func produceStandardPipe(sceneSize: CGSize) -> SKSpriteNode? {
